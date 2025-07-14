@@ -1,0 +1,216 @@
+/* ------------------- */
+/* CSS Variables      */
+/* ------------------- */
+:root {
+    --dark-navy: #01161E;
+    --medium-gray: #717568;
+    --light-green: #BCD8B7;
+    --forest-green: #497740;
+    --soft-lavender: #D7C6E6;
+    --white: #ffffff;
+
+    --font-heading: 'Roboto Slab', serif;
+    --font-body: 'Montserrat', sans-serif;
+}
+
+/* ------------------- */
+/* General Styles     */
+/* ------------------- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: var(--font-body);
+    background-color: var(--light-green);
+    color: var(--dark-navy);
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+h1, h2, h3 {
+    font-family: var(--font-heading);
+    color: var(--dark-navy);
+    margin-bottom: 1rem;
+}
+
+h1 { font-size: 3rem; }
+h2 { font-size: 2.5rem; text-align: center; margin-bottom: 2rem; }
+h3 { font-size: 1.5rem; color: var(--forest-green); }
+
+section {
+    padding: 60px 0;
+}
+
+/* ------------------- */
+/* Header & Nav       */
+/* ------------------- */
+header {
+    background-color: var(--white);
+    padding: 1rem 0;
+    border-bottom: 3px solid var(--forest-green);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header .logo {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 1.5rem;
+}
+
+header nav ul {
+    list-style: none;
+    display: flex;
+    gap: 20px;
+}
+
+header nav a {
+    text-decoration: none;
+    color: var(--dark-navy);
+    font-weight: 700;
+    transition: color 0.3s ease;
+}
+
+header nav a:hover {
+    color: var(--forest-green);
+}
+
+/* ------------------- */
+/* Hero Section       */
+/* ------------------- */
+.hero {
+    background-color: var(--light-green);
+    text-align: center;
+    padding: 80px 0;
+}
+
+.hero .subtitle {
+    font-size: 1.2rem;
+    max-width: 600px;
+    margin: 0 auto 2rem;
+}
+
+.cta-button {
+    display: inline-block;
+    background-color: var(--forest-green);
+    color: var(--white);
+    padding: 12px 25px;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: 700;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.cta-button:hover {
+    background-color: var(--dark-navy);
+    transform: translateY(-3px);
+}
+
+/* ------------------- */
+/* About Section      */
+/* ------------------- */
+.about {
+    background-color: var(--medium-gray);
+    color: var(--white);
+}
+
+.about h2 {
+    color: var(--white);
+}
+
+.about-content {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+}
+
+.profile-pic {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 5px solid var(--soft-lavender);
+}
+
+/* ------------------- */
+/* Projects Section   */
+/* ------------------- */
+.project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+}
+
+.project-card {
+    background-color: var(--white);
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.project-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.project-card a {
+    text-decoration: none;
+    color: var(--forest-green);
+    font-weight: 700;
+}
+
+/* ------------------- */
+/* Contact Section    */
+/* ------------------- */
+.contact {
+    background-color: var(--soft-lavender);
+    text-align: center;
+}
+
+/* ------------------- */
+/* Footer             */
+/* ------------------- */
+footer {
+    background-color: var(--dark-navy);
+    color: var(--light-green);
+    text-align: center;
+    padding: 20px 0;
+}
+
+/* ------------------- */
+/* Responsiveness     */
+/* ------------------- */
+@media (max-width: 768px) {
+    h1 { font-size: 2.5rem; }
+    h2 { font-size: 2rem; }
+
+    header .container {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .about-content {
+        flex-direction: column;
+        text-align: center;
+    }
+}
