@@ -1,14 +1,16 @@
 /* --- Color & Font Variables --- */
 :root {
-    --clr-bg: #E0D3DE; /* Pale Lilac */
-    --clr-text: #3E3B54; /* Deep Indigo */
+    /* Main Palette */
+    --clr-bg: #2d2a3d; /* UPDATE: Using a darker base like Faded Ink for a modern, immersive feel */
+    --clr-text: #E0D3DE; /* Pale Lilac for primary text */
+    --clr-text-muted: #a9a5b9; /* A muted version for subtitles */
     --clr-accent-primary: #A9C5A0; /* Sage Green */
     --clr-accent-secondary: #5F5980; /* Muted Grape */
-    --clr-dark: #4B644A; /* Forest Moss */
+    --clr-dark-moss: #4B644A; /* Forest Moss */
     --clr-white: #f8f8f8;
 
-    --font-heading: 'Montserrat', sans-serif;
-    --font-body: 'Lato', sans-serif;
+    /* UPDATE: Swapping fonts for a clean, modern, slightly rounded sans-serif */
+    --font-primary: 'Poppins', sans-serif;
 }
 
 /* --- General & Reset Styles --- */
@@ -16,21 +18,6 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    html, body {
-        height: 100%;
-        margin: 0;
-        padding: 0;
-    }
-
-    body {
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-    }
-
-    footer {
-        margin-top: auto;
-    }
 }
 
 html {
@@ -38,62 +25,77 @@ html {
 }
 
 body {
-    font-family: var(--font-body);
+    font-family: var(--font-primary);
     background-color: var(--clr-bg);
     color: var(--clr-text);
-    line-height: 1.6;
+    line-height: 1.7;
 }
 
 .container {
-    max-width: 1100px;
+    max-width: 1200px; /* UPDATE: Slightly wider container */
     margin: 0 auto;
     padding: 0 30px;
 }
 
-h1, h2 {
-    font-family: var(--font-heading);
-    color: var(--clr-accent-secondary);
-    margin-bottom: 20px;
+h1, h2, h3 {
+    font-weight: 600; /* UPDATE: Using weight instead of a separate font family */
+    color: var(--clr-white);
 }
 
-h1 { font-size: 3rem; }
-h2 { font-size: 2.5rem; text-align: center; }
+h1 { font-size: 3.2rem; line-height: 1.1; }
+h2 { font-size: 2.5rem; text-align: center; margin-bottom: 50px; position: relative; }
+
+/* UPDATE: Added a subtle underline element for headings to give them style */
+h2::after {
+    content: '';
+    position: absolute;
+    bottom: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background-color: var(--clr-accent-primary);
+    border-radius: 2px;
+}
 
 section {
-    padding: 60px 0;
+    padding: 80px 0;
 }
 
 /* --- Buttons & Links --- */
 .btn {
     display: inline-block;
-    padding: 12px 24px;
-    border-radius: 5px;
+    padding: 12px 28px;
+    border-radius: 8px; /* UPDATE: A modern, slightly rounded corner */
     text-decoration: none;
-    font-weight: bold;
-    font-family: var(--font-heading);
-    transition: background-color 0.3s, transform 0.2s;
+    font-weight: 600;
+    font-family: var(--font-primary);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
 }
 
 .btn-primary {
     background-color: var(--clr-accent-primary);
-    color: var(--clr-text);
+    color: var(--clr-bg);
 }
 
 .btn-primary:hover {
-    background-color: var(--clr-dark);
-    color: var(--clr-white);
-    transform: translateY(-2px);
+    background-color: transparent;
+    border-color: var(--clr-accent-primary);
+    color: var(--clr-accent-primary);
+    transform: translateY(-3px);
 }
 
 /* --- Header & Navigation --- */
 .site-header {
-    background: rgba(224, 211, 222, 0.8); /* Semi-transparent Pale Lilac */
+    background: rgba(45, 42, 61, 0.7); /* UPDATE: Darker transparency */
     backdrop-filter: blur(10px);
     position: sticky;
     top: 0;
     width: 100%;
     z-index: 100;
-    padding: 15px 0;
+    padding: 20px 0;
+    border-bottom: 1px solid rgba(95, 89, 128, 0.2); /* UPDATE: Subtle border for depth */
 }
 
 .main-nav {
@@ -103,10 +105,9 @@ section {
 }
 
 .logo {
-    font-family: var(--font-heading);
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--clr-accent-secondary);
+    color: var(--clr-white);
     text-decoration: none;
 }
 
@@ -116,54 +117,76 @@ section {
 }
 
 .main-nav ul li {
-    margin-left: 20px;
+    margin-left: 30px;
 }
 
 .main-nav ul li a {
     text-decoration: none;
-    color: var(--clr-text);
-    font-weight: bold;
-    padding: 5px 0;
-    border-bottom: 2px solid transparent;
-    transition: border-color 0.3s;
+    color: var(--clr-text-muted);
+    font-weight: 500;
+    position: relative;
+    padding-bottom: 5px;
+    transition: color 0.3s;
+}
+
+/* UPDATE: New hover effect for nav links */
+.main-nav ul li a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: var(--clr-accent-primary);
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.3s ease-out;
 }
 
 .main-nav ul li a:hover {
-    color: var(--clr-accent-secondary);
-    border-bottom-color: var(--clr-accent-secondary);
+    color: var(--clr-white);
+}
+
+.main-nav ul li a:hover::after {
+    transform: scaleX(1);
+    transform-origin: left;
 }
 
 /* --- Hero Section --- */
 .hero {
     min-height: 80vh;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
+    padding-bottom: 80px;
 }
 
 .hero p {
     font-size: 1.2rem;
+    color: var(--clr-text-muted);
     max-width: 600px;
-    margin: 0 auto 30px;
+    margin: 20px auto 40px;
 }
 
 /* --- About Section --- */
 .grid-2-col {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 40px;
+    gap: 60px;
     align-items: center;
 }
 
 .about-image img {
     max-width: 100%;
     border-radius: 10px;
+    border: 2px solid var(--clr-accent-secondary); /* UPDATE: Adding a subtle border */
 }
 
 /* --- Content/Projects Section --- */
 .content-section {
-    background-color: #e6dce2; /* Slightly darker shade for contrast */
+    background-color: #262433; /* UPDATE: A slightly different dark shade for separation */
 }
 
 .project-grid {
@@ -178,70 +201,72 @@ section {
     border-radius: 10px;
     overflow: hidden;
     cursor: pointer;
+    background-color: var(--clr-accent-secondary);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.project-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
 .project-card img {
     width: 100%;
     display: block;
-    transition: transform 0.5s ease;
-}
-
-.card-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 100%;
-    background: rgba(62, 59, 84, 0.8); /* Deep Indigo overlay */
-    color: var(--clr-white);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    opacity: 0;
-    transition: opacity 0.4s ease;
-}
-
-.project-card:hover .card-overlay {
-    opacity: 1;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
 }
 
 .project-card:hover img {
-    transform: scale(1.1);
+    opacity: 1;
 }
 
-.card-overlay h3 {
+/* UPDATE: New card text style, always visible but more prominent on hover */
+.card-text {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    padding: 20px;
+    width: 100%;
+    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+}
+
+.card-text h3 {
     color: var(--clr-white);
-    font-family: var(--font-heading);
+    font-weight: 600;
 }
 
 /* --- Community Section --- */
 .community-section {
     text-align: center;
 }
-
+.community-section p {
+    max-width: 500px;
+    margin: 0 auto;
+    color: var(--clr-text-muted);
+}
 .social-links {
-    margin-top: 30px;
+    margin-top: 40px;
     display: flex;
     justify-content: center;
     gap: 20px;
     flex-wrap: wrap;
 }
-
 .btn-social {
-    background-color: var(--clr-accent-primary);
-    color: var(--clr-text);
+    background-color: var(--clr-accent-secondary);
+    color: var(--clr-white);
     min-width: 150px;
 }
-
 .btn-social:hover {
-    background-color: var(--clr-dark);
+    background-color: transparent;
     color: var(--clr-white);
-    transform: translateY(-2px);
+    border-color: var(--clr-accent-secondary);
+    transform: translateY(-3px);
 }
 
 /* --- Contact Section --- */
 .contact-section {
-     background-color: #e6dce2;
+     background-color: #262433;
 }
 
 .contact-form {
@@ -249,89 +274,66 @@ section {
     margin: 40px auto 0;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 20px;
 }
 
 .contact-form input,
 .contact-form textarea {
     width: 100%;
-    padding: 12px;
-    border: 2px solid var(--clr-accent-secondary);
-    border-radius: 5px;
+    padding: 15px;
+    border: 1px solid var(--clr-accent-secondary);
+    border-radius: 8px;
     background-color: var(--clr-bg);
-    font-family: var(--font-body);
+    font-family: var(--font-primary);
     font-size: 1rem;
+    color: var(--clr-text);
 }
 
 .contact-form input:focus,
 .contact-form textarea:focus {
-    outline: 2px solid var(--clr-accent-primary);
+    outline: none;
+    border-color: var(--clr-accent-primary);
+    box-shadow: 0 0 10px rgba(169, 197, 160, 0.3);
 }
 
 /* --- Footer --- */
 .site-footer-dark {
-    background-color: var(--clr-dark);
-    color: var(--clr-bg);
-    padding: 30px 0;
+    background-color: #1f1d2b;
+    color: var(--clr-text-muted);
+    padding: 40px 0;
+    text-align: center;
 }
 
 .footer-content {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 20px;
 }
 
 .footer-socials a {
-    color: var(--clr-bg);
+    color: var(--clr-text-muted);
     font-size: 1.5rem;
-    margin-left: 15px;
-    transition: color 0.3s;
+    margin: 0 10px;
+    transition: color 0.3s, transform 0.2s;
 }
 
 .footer-socials a:hover {
     color: var(--clr-accent-primary);
+    transform: translateY(-2px);
 }
 
-/* --- Media Queries for Responsiveness --- */
-@media (max-width: 768px) {
-    h1 { font-size: 2.5rem; }
-    h2 { font-size: 2rem; }
-
-    .main-nav {
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .grid-2-col {
-        grid-template-columns: 1fr;
-        text-align: center;
-    }
-
-    .about-image {
-        grid-row: 1; /* Puts image on top on mobile */
-    }
-    
-    .footer-content {
-        flex-direction: column;
-        gap: 15px;
-    }
-}
-/* --- Additions for JavaScript Interactivity --- */
-
-/* Style for the active navigation link */
+/* --- JS Interactivity Styles --- */
 .main-nav ul li a.active {
-    color: var(--clr-accent-secondary);
-    border-bottom-color: var(--clr-accent-secondary);
+    color: var(--clr-white);
 }
-
-/* Styles for scroll-in animations */
 .hidden {
     opacity: 0;
-    transform: translateY(30px);
-    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+    filter: blur(5px);
+    transform: translateY(20px);
+    transition: all 0.7s ease;
 }
-
 .show {
     opacity: 1;
+    filter: blur(0);
     transform: translateY(0);
 }

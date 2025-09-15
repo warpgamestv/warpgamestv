@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
-    <script src="script.js"></script>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WarpGamesTV | Official Website</title>
+    <link rel="icon" href="favicon.png" type="image/x-icon">
+    <link rel="apple-touch-icon" href="Logo.png">
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 <body>
@@ -16,12 +17,12 @@
     <header class="site-header">
         <div class="container">
             <nav class="main-nav">
-                <a href="#" class="logo">WarpGamesTV</a>
+                <a href="index.html" class="logo">WarpGamesTV</a>
                 <ul>
                     <li><a href="about.html">About</a></li>
-                    <li><a href="#content">Content</a></li>
-                    <li><a href="#community">Community</a></li>
-                    <li><a href="#contact">Contact</a></li>
+                    <li><a href="content.html">Content</a></li>
+                    <li><a href="community.html">Community</a></li>
+                    <li><a href="contact.html">Contact</a></li>
                 </ul>
             </nav>
         </div>
@@ -30,73 +31,9 @@
     <main>
         <section id="home" class="hero">
             <div class="container">
-                <h1>Exploring new worlds, one game at a time.</h1>
-                <p>Welcome to the official hub for all things WarpGamesTV. Catch the latest streams, videos, and community news.</p>
-                <a href="https://twitch.tv/warpgamestv" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Watch Live on Twitch</a>
-            </div>
-        </section>
-
-        <section id="about" class="about-section">
-            <div class="container grid-2-col">
-                <div class="about-text">
-                    <h2>About Me</h2>
-                    <p>Hi, I'm Warp! I started this channel to build a community around thoughtful and engaging gameplay. Whether we're diving into complex strategy games or exploring vast open worlds, my goal is to create a positive and welcoming space for everyone. Thanks for stopping by!</p>
-                </div>
-                <div class="about-image">
-                    <img src="https://via.placeholder.com/400" alt="A photo of Warp or the WarpGamesTV logo">
-                </div>
-            </div>
-        </section>
-
-        <section id="content" class="content-section">
-            <div class="container">
-                <h2>My Content & Projects</h2>
-                <div class="project-grid">
-                    <div class="project-card">
-                        <img src="https://via.placeholder.com/500x281" alt="Thumbnail for a game series">
-                        <div class="card-overlay">
-                            <h3>Longplay: RPG Chronicles</h3>
-                        </div>
-                    </div>
-                    <div class="project-card">
-                        <img src="https://via.placeholder.com/500x281" alt="Thumbnail for a podcast">
-                        <div class="card-overlay">
-                            <h3>The Warp Zone Podcas</h3>
-                        </div>
-                    </div>
-                    <div class="project-card">
-                        <img src="https://via.placeholder.com/500x281" alt="Thumbnail for strategy guides">
-                        <div class="card-overlay">
-                            <h3>Strategy Guides</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-        
-        <section id="community" class="community-section">
-            <div class="container">
-                <h2>Join the Community</h2>
-                <p>Connect with me and our amazing community on your favorite platforms.</p>
-                <div class="social-links">
-                    <a href="https://twitch.tv/warpgamestv" class="btn btn-social" target="_blank" rel="noopener noreferrer">Twitch</a>
-                    <a href="https://youtube.com/@warpgamestv" class="btn btn-social" target="_blank" rel="noopener noreferrer">YouTube</a>
-                    <a href="https://discord.warpgamestv.com" class="btn btn-social" target="_blank" rel="noopener noreferrer">Discord</a>
-                    <a href="https://twitter.com/warpgamestv" class="btn btn-social" target="_blank" rel="noopener noreferrer">Twitter</a>
-                </div>
-            </div>
-        </section>
-
-        <section id="contact" class="contact-section">
-            <div class="container">
-                <h2>Get In Touch</h2>
-                <p>For business inquiries, collaborations, or other questions, please use the form below.</p>
-                <form class="contact-form">
-                    <input type="text" name="name" placeholder="Your Name" required>
-                    <input type="email" name="email" placeholder="Your Email" required>
-                    <textarea name="message" rows="5" placeholder="Your Message" required></textarea>
-                    <button type="submit" class="btn btn-primary">Send Message</button>
-                </form>
+                <h1 class="hidden">Exploring new worlds, one game at a time.</h1>
+                <p class="hidden">Welcome to the official hub for all things WarpGamesTV. Catch the latest streams, videos, and community news.</p>
+                <a href="https://twitch.tv/warpgamestv" class="btn btn-primary hidden" target="_blank" rel="noopener noreferrer">Watch Live on Twitch</a>
             </div>
         </section>
     </main>
@@ -110,10 +47,12 @@
                     <a href="https://youtube.com/@warpgamestv" target="_blank" rel="noopener noreferrer"><i class="fab fa-youtube"></i></a>
                     <a href="https://twitter.com/warpgamestv" target="_blank" rel="noopener noreferrer"><i class="fab fa-twitter"></i></a>
                     <a href="https://discord.warpgamestv.com" target="_blank" rel="noopener noreferrer"><i class="fab fa-discord"></i></a>
+                    <a href="https://bsky.app/profile/warpgamestv.com" target="_blank" rel="noopener noreferrer"><i class="fab fa-bluesky"></i></a>
                 </div>
             </div>
         </div>
-</footer>
+    </footer>
 
+    <script src="script.js"></script>
 </body>
 </html>
