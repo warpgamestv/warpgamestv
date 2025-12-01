@@ -11,38 +11,93 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+        <meta property="og:type" content="website">
+    <meta property="og:url" content="https://warpgamestv.com/">
+    <meta property="og:title" content="WarpGamesTV | Twilight Garden Lounge">
+    <meta property="og:description" content="Join the community for cozy RPGs, strategy games, and open-world adventures.">
+    <meta property="og:image" content="https://warpgamestv.com/Logo.png">
+
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://warpgamestv.com/">
+    <meta property="twitter:title" content="WarpGamesTV | Twilight Garden Lounge">
+    <meta property="twitter:description" content="Join the community for cozy RPGs, strategy games, and open-world adventures.">
+    <meta property="twitter:image" content="https://warpgamestv.com/Logo.png">
 </head>
 <body>
 
-    <header class="site-header">
-        <div class="container">
-            <nav class="main-nav">
-                <a href="index.html" class="logo">WarpGamesTV</a>
-                <ul>
-                    <li><a href="about.html">About</a></li>
-                    <li><a href="content.html">Content</a></li>
-                    <li><a href="community.html">Community</a></li>
-                    <li><a href="contact.html">Contact</a></li>
-                </ul>
-            </nav>
-        </div>
-    </header>
+<header class="site-header">
+    <div class="container">
+        <nav class="main-nav">
+            <a href="index.html" class="logo">
+    <img src="Logo.png" alt="Warp Logo">
+    WarpGamesTV
+</a>
+
+            <div class="nav-toggle">
+                <i class="fas fa-bars"></i>
+            </div>
+
+            <ul class="nav-links">
+                <li><a href="about.html">About</a></li>
+                <li><a href="content.html">Content</a></li>
+                <li><a href="community.html">Community</a></li>
+                <li><a href="contact.html">Contact</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>
 
     <main>
-        <section id="community" class="community-section">
-            <div class="container">
-                <h2 class="hidden">Join the Community</h2>
-                <p class="hidden">Connect with me and our amazing community on your favorite platforms.</p>
-                <div class="social-links hidden">
-                    <a href="https://twitch.tv/warpgamestv" class="btn btn-social" target="_blank" rel="noopener noreferrer">Twitch</a>
-                    <a href="https://youtube.com/@warpgamestv" class="btn btn-social" target="_blank" rel="noopener noreferrer">YouTube</a>
-                    <a href="https://discord.warpgamestv.com" class="btn btn-social" target="_blank" rel="noopener noreferrer">Discord</a>
-                    <a href="https://twitter.com/warpgamestv" class="btn btn-social" target="_blank" rel="noopener noreferrer">Twitter</a>
-                    <a href="https://bsky.app/profile/warpgamestv.com" class="btn btn-social" target="_blank" rel="noopener noreferrer">BlueSky</a>
+    <section id="community" class="community-section">
+        <div class="container">
+            <h2 class="hidden">Join the Lounge</h2>
+            <p class="community-intro hidden">
+                The WarpGamesTV community is a cozy, welcoming space for everyone. 
+                Choose a portal below to connect, chat, or watch.
+            </p>
+            
+            <div class="community-grid">
+                <a href="https://discord.warpgamestv.com" target="_blank" class="community-card glass-panel hidden">
+                    <div class="card-icon"><i class="fab fa-discord"></i></div>
+                    <h3>The Lounge</h3>
+                    <p>Join our Discord for 24/7 chat, voice hangouts, and community game nights.</p>
+                    <span class="link-arrow">Join Server <i class="fas fa-arrow-right"></i></span>
+                </a>
+
+                <a href="https://twitch.tv/warpgamestv" target="_blank" class="community-card glass-panel hidden">
+                    <div class="card-icon"><i class="fab fa-twitch"></i></div>
+                    <h3>Live Streams</h3>
+                    <p>Catch the gameplay live, redeem channel points, and chat with the stream team.</p>
+                    <span class="link-arrow">Watch Live <i class="fas fa-arrow-right"></i></span>
+                </a>
+
+                <a href="https://ko-fi.com/warpgamestv" target="_blank" class="community-card glass-panel hidden" style="border-color: rgba(255, 215, 0, 0.3);">
+                    <div class="card-icon" style="color: #ffd700;"><i class="fas fa-heart"></i></div>
+                    <h3>Support the Stream</h3>
+                    <p>Enjoying the content? Tips are never required but always appreciated to help upgrade the gear.</p>
+                    <span class="link-arrow" style="color: #ffd700;">Tip Jar <i class="fas fa-arrow-right"></i></span>
+                </a>
+
+                <a href="https://youtube.com/@warpgamestv" target="_blank" class="community-card glass-panel hidden">
+                    <div class="card-icon"><i class="fab fa-youtube"></i></div>
+                    <h3>VODs & Shorts</h3>
+                    <p>Missed a stream? Catch up on highlights, longplays, and shorts here.</p>
+                    <span class="link-arrow">Watch Videos <i class="fas fa-arrow-right"></i></span>
+                </a>
+
+                <div class="community-card glass-panel hidden">
+                    <div class="card-icon"><i class="fab fa-twitter"></i></div>
+                    <h3>Social Updates</h3>
+                    <p>Get schedule updates, go-live notifications, and random thoughts.</p>
+                    <div class="mini-links">
+                        <a href="https://twitter.com/warpgamestv" target="_blank">Twitter/X</a>
+                        <a href="https://bsky.app/profile/warpgamestv.com" target="_blank">BlueSky</a>
+                    </div>
                 </div>
             </div>
-        </section>
-    </main>
+        </div>
+    </section>
+</main>
 
     <footer class="site-footer-dark">
         <div class="container">
@@ -60,5 +115,6 @@
     </footer>
 
     <script src="script.js"></script>
+</body>
 </body>
 </html>

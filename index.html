@@ -11,32 +11,92 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://warpgamestv.com/">
+    <meta property="og:title" content="WarpGamesTV | Twilight Garden Lounge">
+    <meta property="og:description" content="Join the community for cozy RPGs, strategy games, and open-world adventures.">
+    <meta property="og:image" content="https://warpgamestv.com/Logo.png">
+
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://warpgamestv.com/">
+    <meta property="twitter:title" content="WarpGamesTV | Twilight Garden Lounge">
+    <meta property="twitter:description" content="Join the community for cozy RPGs, strategy games, and open-world adventures.">
+    <meta property="twitter:image" content="https://warpgamestv.com/Logo.png">
 </head>
 <body>
 
-    <header class="site-header">
-        <div class="container">
-            <nav class="main-nav">
-                <a href="index.html" class="logo">WarpGamesTV</a>
-                <ul>
-                    <li><a href="about.html">About</a></li>
-                    <li><a href="content.html">Content</a></li>
-                    <li><a href="community.html">Community</a></li>
-                    <li><a href="contact.html">Contact</a></li>
-                </ul>
-            </nav>
-        </div>
-    </header>
+<header class="site-header">
+    <div class="container">
+        <nav class="main-nav">
+            <a href="index.html" class="logo">
+    <img src="Logo.png" alt="Warp Logo">
+    WarpGamesTV
+</a>
+
+            <div class="nav-toggle">
+                <i class="fas fa-bars"></i>
+            </div>
+
+            <ul class="nav-links">
+                <li><a href="about.html">About</a></li>
+                <li><a href="content.html">Content</a></li>
+                <li><a href="community.html">Community</a></li>
+                <li><a href="contact.html">Contact</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>
 
     <main>
-        <section id="home" class="hero">
-            <div class="container">
-                <h1 class="hidden">Exploring new worlds, one game at a time.</h1>
-                <p class="hidden">Welcome to the official hub for all things WarpGamesTV. Catch the latest streams, videos, and community news.</p>
-                <a href="https://twitch.tv/warpgamestv" class="btn btn-primary hidden" target="_blank" rel="noopener noreferrer">Watch Live on Twitch</a>
+    <section id="home" class="hero">
+        <div class="container hero-content">
+            <h1 class="hidden">Exploring new worlds,<br> <span style="color: var(--accent-sage);">one game at a time.</span></h1>
+            
+            <p class="hidden">
+                Welcome to <strong>WarpGamesTV</strong>. A cozy corner of the internet for 
+                immersive gameplay, strategy, and community vibes.
+            </p>
+            
+            <div style="margin-top: 30px;" class="hidden">
+    
+    <a href="https://twitch.tv/warpgamestv" id="live-btn" class="btn btn-primary" target="_blank">
+        <span class="live-icon"></span> <span id="live-text">Offline</span> </a>
+
+    <a href="content.html" class="btn btn-social" style="margin-left: 15px;">
+        View Projects
+    </a>
+</div>
+        </div>
+    </section>
+
+    <section id="schedule" style="position: relative; z-index: 10;">
+    <div class="container">
+        <div class="glass-panel" style="padding: 40px; max-width: 800px; margin: 0 auto;">
+            <h2>Weekly Schedule</h2>
+            <div class="schedule-grid">
+                <div class="schedule-row">
+                    <span class="day">Mon</span>
+                    <span class="time">7:00 PM CST</span>
+                    <span class="game">Rocket League (Ranked)</span>
+                </div>
+                <div class="schedule-row">
+                    <span class="day">Wed</span>
+                    <span class="time">7:00 PM CST</span>
+                    <span class="game">Minecraft Hardcore</span>
+                </div>
+                <div class="schedule-row">
+                    <span class="day">Fri</span>
+                    <span class="time">8:00 PM CST</span>
+                    <span class="game">Community Night / RPGs</span>
+                </div>
             </div>
-        </section>
-    </main>
+            <p style="text-align: center; margin-top: 20px; font-size: 0.9rem;">
+                *Times subject to change. Check Discord for updates.
+            </p>
+        </div>
+    </div>
+</section>
+</main>
 
     <footer class="site-footer-dark">
         <div class="container">
@@ -54,5 +114,6 @@
     </footer>
 
     <script src="script.js"></script>
+</body>
 </body>
 </html>

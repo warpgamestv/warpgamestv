@@ -11,37 +11,100 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+        <meta property="og:type" content="website">
+    <meta property="og:url" content="https://warpgamestv.com/">
+    <meta property="og:title" content="WarpGamesTV | Twilight Garden Lounge">
+    <meta property="og:description" content="Join the community for cozy RPGs, strategy games, and open-world adventures.">
+    <meta property="og:image" content="https://warpgamestv.com/Logo.png">
+
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://warpgamestv.com/">
+    <meta property="twitter:title" content="WarpGamesTV | Twilight Garden Lounge">
+    <meta property="twitter:description" content="Join the community for cozy RPGs, strategy games, and open-world adventures.">
+    <meta property="twitter:image" content="https://warpgamestv.com/Logo.png">
 </head>
 <body>
 
-    <header class="site-header">
-        <div class="container">
-            <nav class="main-nav">
-                <a href="index.html" class="logo">WarpGamesTV</a>
-                <ul>
-                    <li><a href="about.html">About</a></li>
-                    <li><a href="content.html">Content</a></li>
-                    <li><a href="community.html">Community</a></li>
-                    <li><a href="contact.html">Contact</a></li>
-                </ul>
-            </nav>
-        </div>
-    </header>
+<header class="site-header">
+    <div class="container">
+        <nav class="main-nav">
+            <a href="index.html" class="logo">
+    <img src="Logo.png" alt="Warp Logo">
+    WarpGamesTV
+</a>
+
+            <div class="nav-toggle">
+                <i class="fas fa-bars"></i>
+            </div>
+
+            <ul class="nav-links">
+                <li><a href="about.html">About</a></li>
+                <li><a href="content.html">Content</a></li>
+                <li><a href="community.html">Community</a></li>
+                <li><a href="contact.html">Contact</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>
 
     <main>
-        <section id="contact" class="contact-section">
-            <div class="container">
-                <h2 class="hidden">Get In Touch</h2>
-                <p class="hidden" style="text-align: center;">For business inquiries, collaborations, or other questions, please use the form below.</p>
-                <form class="contact-form hidden">
-                    <input type="text" name="name" placeholder="Your Name" required>
-                    <input type="email" name="email" placeholder="Your Email" required>
-                    <textarea name="message" rows="5" placeholder="Your Message" required></textarea>
-                    <button type="submit" class="btn btn-primary">Send Message</button>
-                </form>
+    <section id="contact" class="contact-section">
+        <div class="container">
+            <h2 class="hidden">Get In Touch</h2>
+            
+            <div class="contact-grid">
+                <div class="contact-info hidden">
+                    <h3>Let's Collaborate</h3>
+                    <p>
+                        Have a game you want me to play? Want to discuss a sponsorship? 
+                        Or just want to send some feedback? Drop me a message using the form!
+                    </p>
+                    
+                    <div class="info-list">
+                        <div class="info-item">
+                            <i class="fas fa-envelope"></i>
+                            <span>business@warpgamestv.com</span>
+                        </div>
+                        <div class="info-item">
+                            <i class="fab fa-discord"></i>
+                            <span>Discord: Warp's Lounge</span>
+                        </div>
+                    </div>
+
+                    <p style="margin-top: 30px; font-size: 0.9rem; opacity: 0.7;">
+                        *I try to respond to all business inquiries within 48 hours.
+                    </p>
+                </div>
+
+                <div class="contact-form-wrapper glass-panel hidden">
+                    <form class="contact-form">
+                        <div class="form-group">
+                            <label for="name">Name / Handle</label>
+                            <input type="text" id="name" name="name" placeholder="Your Name" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <input type="email" id="email" name="email" placeholder="you@example.com" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="subject">Subject</label>
+                            <input type="text" id="subject" name="subject" placeholder="Collaboration / Feedback / Game Suggestion">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="message">Message</label>
+                            <textarea id="message" name="message" rows="5" placeholder="Type your message here..." required></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Send Message</button>
+                    </form>
+                </div>
             </div>
-        </section>
-    </main>
+        </div>
+    </section>
+</main>
 
     <footer class="site-footer-dark">
         <div class="container">
@@ -59,5 +122,6 @@
     </footer>
     
     <script src="script.js"></script>
+</body>
 </body>
 </html>

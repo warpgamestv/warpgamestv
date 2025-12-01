@@ -1,339 +1,1072 @@
-/* --- Color & Font Variables --- */
+/* --- Variables: Twilight Garden Palette --- */
 :root {
-    /* Main Palette */
-    --clr-bg: #2d2a3d; /* UPDATE: Using a darker base like Faded Ink for a modern, immersive feel */
-    --clr-text: #E0D3DE; /* Pale Lilac for primary text */
-    --clr-text-muted: #a9a5b9; /* A muted version for subtitles */
-    --clr-accent-primary: #A9C5A0; /* Sage Green */
-    --clr-accent-secondary: #5F5980; /* Muted Grape */
-    --clr-dark-moss: #4B644A; /* Forest Moss */
-    --clr-white: #f8f8f8;
-
-    /* UPDATE: Swapping fonts for a clean, modern, slightly rounded sans-serif */
+    /* Backgrounds: Deep Atmosphere */
+    --bg-deep: #1a1824; 
+    --bg-gradient: radial-gradient(circle at 50% 0%, #3d3652 0%, #1a1824 80%);
+    
+    /* Text */
+    --text-main: #E0D3DE;       /* Pale Lilac */
+    --text-muted: #9caab9;      /* Cool Grey */
+    
+    /* Accents */
+    --accent-sage: #A9C5A0;     /* Sage Green - Primary Action */
+    --accent-glow: #bbb4d9;     /* Lavender Fog - Secondary Glow */
+    --accent-moss: #4B644A;     /* Dark Moss - Borders/Depth */
+    
+    /* Glassmorphism Variables */
+    --glass-bg: rgba(45, 42, 61, 0.6);
+    --glass-border: rgba(169, 197, 160, 0.1);
+    --glass-blur: blur(12px);
+    
+    /* Fonts */
     --font-primary: 'Poppins', sans-serif;
 }
 
-/* --- General & Reset Styles --- */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
+/* --- Reset & Base --- */
+/* Global fix for all pages to clear the nav bar */
+section {
+    padding-top: 120px;
 }
 
-html {
-    scroll-behavior: smooth;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
     font-family: var(--font-primary);
-    background-color: var(--clr-bg);
-    color: var(--clr-text);
+    background: var(--bg-deep);
+    background-image: var(--bg-gradient);
+    background-attachment: fixed; /* Keeps the glow in place while scrolling */
+    color: var(--text-main);
     line-height: 1.7;
+    overflow-x: hidden;
 }
+
+html { scroll-behavior: smooth; }
 
 .container {
-    max-width: 1200px; /* UPDATE: Slightly wider container */
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 0 30px;
+    padding: 0 2rem;
 }
 
-h1, h2, h3 {
-    font-weight: 600; /* UPDATE: Using weight instead of a separate font family */
-    color: var(--clr-white);
+/* --- Typography --- */
+h1, h2, h3 { color: #fff; font-weight: 700; letter-spacing: -0.5px; }
+h1 { font-size: 4rem; line-height: 1.1; margin-bottom: 1rem; text-shadow: 0 0 20px rgba(169, 197, 160, 0.2); }
+h2 { font-size: 2.5rem; margin-bottom: 3rem; text-align: center; }
+p { color: var(--text-muted); font-size: 1.1rem; }
+
+/* --- "Glass" Components --- */
+.glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
 }
 
-h1 { font-size: 3.2rem; line-height: 1.1; }
-h2 { font-size: 2.5rem; text-align: center; margin-bottom: 50px; position: relative; }
+/* --- Navigation --- */
+.site-header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    padding: 1.5rem 0;
+    transition: all 0.3s ease;
+}
 
-/* UPDATE: Added a subtle underline element for headings to give them style */
-h2::after {
+/* Dynamic Nav Background on Scroll */
+.site-header.scrolled {
+    background: rgba(26, 24, 36, 0.9);
+    backdrop-filter: blur(10px);
+    padding: 1rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.main-nav { display: flex; justify-content: space-between; align-items: center; }
+
+/* --- Logo Styling --- */
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* Space between the leaf logo and the text */
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    text-decoration: none;
+}
+
+.logo img {
+    height: 40px; /* Sets a fixed height so it fits in the nav bar */
+    width: auto;  /* Keeps the aspect ratio correct */
+    object-fit: contain;
+    transition: transform 0.3s ease;
+}
+
+/* Optional: Subtle spin on hover */
+.logo:hover img {
+    transform: rotate(10deg);
+}
+
+.main-nav ul { list-style: none; display: flex; gap: 40px; }
+
+.main-nav a {
+    text-decoration: none;
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: color 0.3s ease;
+    position: relative;
+}
+
+.main-nav a:hover, .main-nav a.active { color: var(--accent-sage); }
+
+/* Glowing Dot for Active Link */
+.main-nav a.active::after {
     content: '';
     position: absolute;
-    bottom: -15px;
+    bottom: -6px;
     left: 50%;
     transform: translateX(-50%);
-    width: 60px;
-    height: 3px;
-    background-color: var(--clr-accent-primary);
-    border-radius: 2px;
+    width: 6px;
+    height: 6px;
+    background: var(--accent-sage);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--accent-sage);
 }
 
-section {
-    padding: 80px 0;
-}
-
-/* --- Buttons & Links --- */
+/* --- Buttons --- */
 .btn {
     display: inline-block;
-    padding: 12px 28px;
-    border-radius: 8px; /* UPDATE: A modern, slightly rounded corner */
+    padding: 14px 32px;
+    border-radius: 50px; /* Pill shape is more modern */
     text-decoration: none;
     font-weight: 600;
-    font-family: var(--font-primary);
     transition: all 0.3s ease;
-    border: 2px solid transparent;
+    cursor: pointer;
 }
 
 .btn-primary {
-    background-color: var(--clr-accent-primary);
-    color: var(--clr-bg);
+    background: linear-gradient(135deg, var(--accent-sage), var(--accent-moss));
+    color: #fff;
+    border: none;
+    box-shadow: 0 4px 15px rgba(169, 197, 160, 0.3);
 }
 
 .btn-primary:hover {
-    background-color: transparent;
-    border-color: var(--clr-accent-primary);
-    color: var(--clr-accent-primary);
     transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(169, 197, 160, 0.5);
 }
 
-/* --- Header & Navigation --- */
-.site-header {
-    background: rgba(45, 42, 61, 0.7); /* UPDATE: Darker transparency */
-    backdrop-filter: blur(10px);
-    position: sticky;
-    top: 0;
-    width: 100%;
-    z-index: 100;
-    padding: 20px 0;
-    border-bottom: 1px solid rgba(95, 89, 128, 0.2); /* UPDATE: Subtle border for depth */
+.btn-social {
+    background: rgba(255,255,255,0.05);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.1);
 }
 
-.main-nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.logo {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--clr-white);
-    text-decoration: none;
-}
-
-.main-nav ul {
-    list-style: none;
-    display: flex;
-}
-
-.main-nav ul li {
-    margin-left: 30px;
-}
-
-.main-nav ul li a {
-    text-decoration: none;
-    color: var(--clr-text-muted);
-    font-weight: 500;
-    position: relative;
-    padding-bottom: 5px;
-    transition: color 0.3s;
-}
-
-/* UPDATE: New hover effect for nav links */
-.main-nav ul li a::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 2px;
-    background-color: var(--clr-accent-primary);
-    transform: scaleX(0);
-    transform-origin: right;
-    transition: transform 0.3s ease-out;
-}
-
-.main-nav ul li a:hover {
-    color: var(--clr-white);
-}
-
-.main-nav ul li a:hover::after {
-    transform: scaleX(1);
-    transform-origin: left;
+.btn-social:hover {
+    background: var(--accent-sage);
+    color: var(--bg-deep);
+    border-color: var(--accent-sage);
 }
 
 /* --- Hero Section --- */
 .hero {
-    min-height: 80vh;
+    min-height: 100vh;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding-bottom: 80px;
+    position: relative;
+    padding-top: 80px;
 }
 
-.hero p {
-    font-size: 1.2rem;
-    color: var(--clr-text-muted);
-    max-width: 600px;
-    margin: 20px auto 40px;
+.hero-content {
+    max-width: 800px;
+    z-index: 2;
 }
 
-/* --- About Section --- */
-.grid-2-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 60px;
-    align-items: center;
+/* Subtle glow behind hero text */
+.hero::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(169, 197, 160, 0.15) 0%, rgba(0,0,0,0) 70%);
+    z-index: 1;
+    pointer-events: none;
 }
 
-.about-image img {
-    max-width: 100%;
-    border-radius: 10px;
-    border: 2px solid var(--clr-accent-secondary); /* UPDATE: Adding a subtle border */
-}
-
-/* --- Content/Projects Section --- */
-.content-section {
-    background-color: #262433; /* UPDATE: A slightly different dark shade for separation */
-}
-
+/* --- Project Grid (Content Page) --- */
 .project-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 30px;
-    margin-top: 40px;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2rem;
 }
 
 .project-card {
-    position: relative;
-    border-radius: 10px;
+    /* Extending glass panel styles */
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
     overflow: hidden;
-    cursor: pointer;
-    background-color: var(--clr-accent-secondary);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: transform 0.4s ease, border-color 0.4s ease;
 }
 
 .project-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    transform: translateY(-10px);
+    border-color: var(--accent-sage);
 }
 
 .project-card img {
     width: 100%;
-    display: block;
-    opacity: 0.7;
-    transition: opacity 0.3s ease;
+    height: 200px;
+    object-fit: cover;
+    opacity: 0.8;
+    transition: opacity 0.3s;
 }
 
-.project-card:hover img {
-    opacity: 1;
-}
+.project-card:hover img { opacity: 1; }
 
-/* UPDATE: New card text style, always visible but more prominent on hover */
-.card-text {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    padding: 20px;
+.card-text { padding: 1.5rem; }
+.card-text h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+
+/* --- Forms --- */
+.contact-form input, .contact-form textarea {
     width: 100%;
-    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #fff;
+    margin-bottom: 1rem;
+    font-family: inherit;
 }
 
-.card-text h3 {
-    color: var(--clr-white);
-    font-weight: 600;
-}
-
-/* --- Community Section --- */
-.community-section {
-    text-align: center;
-}
-.community-section p {
-    max-width: 500px;
-    margin: 0 auto;
-    color: var(--clr-text-muted);
-}
-.social-links {
-    margin-top: 40px;
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-.btn-social {
-    background-color: var(--clr-accent-secondary);
-    color: var(--clr-white);
-    min-width: 150px;
-}
-.btn-social:hover {
-    background-color: transparent;
-    color: var(--clr-white);
-    border-color: var(--clr-accent-secondary);
-    transform: translateY(-3px);
-}
-
-/* --- Contact Section --- */
-.contact-section {
-     background-color: #262433;
-}
-
-.contact-form {
-    max-width: 600px;
-    margin: 40px auto 0;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.contact-form input,
-.contact-form textarea {
-    width: 100%;
-    padding: 15px;
-    border: 1px solid var(--clr-accent-secondary);
-    border-radius: 8px;
-    background-color: var(--clr-bg);
-    font-family: var(--font-primary);
-    font-size: 1rem;
-    color: var(--clr-text);
-}
-
-.contact-form input:focus,
-.contact-form textarea:focus {
+.contact-form input:focus, .contact-form textarea:focus {
     outline: none;
-    border-color: var(--clr-accent-primary);
-    box-shadow: 0 0 10px rgba(169, 197, 160, 0.3);
+    border-color: var(--accent-sage);
+    box-shadow: 0 0 15px rgba(169, 197, 160, 0.1);
 }
 
 /* --- Footer --- */
 .site-footer-dark {
-    background-color: #1f1d2b;
-    color: var(--clr-text-muted);
-    padding: 40px 0;
+    margin-top: 4rem;
+    padding: 3rem 0;
+    border-top: 1px solid rgba(255,255,255,0.05);
     text-align: center;
 }
 
-.footer-content {
+.footer-socials { margin-top: 1rem; display: flex; justify-content: center; gap: 20px; }
+.footer-socials a { color: var(--text-muted); font-size: 1.5rem; transition: all 0.3s; }
+.footer-socials a:hover { color: var(--accent-sage); text-shadow: 0 0 10px var(--accent-sage); }
+
+/* --- Utilities --- */
+.hidden { opacity: 0; transform: translateY(30px); filter: blur(5px); transition: all 0.8s ease-out; }
+.show { opacity: 1; transform: translateY(0); filter: blur(0); }
+
+/* --- Mobile Nav --- */
+
+/* --- 1. DESKTOP NAVIGATION (Default) --- */
+.main-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    padding: 10px 0;
+}
+
+/* HIDE the hamburger button on Desktop */
+.nav-toggle {
+    display: none; 
+}
+
+/* Show the links in a row on Desktop */
+.main-nav ul {
+    display: flex;
+    gap: 30px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.main-nav ul li a {
+    text-decoration: none;
+    color: var(--clr-text-muted); /* or #a9a5b9 if var not set */
+    font-weight: 500;
+    transition: color 0.3s;
+}
+
+.main-nav ul li a:hover,
+.main-nav ul li a.active {
+    color: #fff;
+}
+
+/* --- 2. MOBILE NAVIGATION (Screens smaller than 768px) --- */
+@media (max-width: 768px) {
+    
+    /* Show the hamburger button */
+    .nav-toggle {
+        display: block;
+        color: #fff;
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 10px;
+    }
+
+    /* Hide the links by default */
+    .main-nav ul {
+        display: none; 
+        position: absolute;
+        top: 100%; /* Pins it directly below the header */
+        left: 0;
+        width: 100%; /* Stretches across full screen width */
+        
+        background: #1a1824; /* Dark background */
+        flex-direction: column;
+        align-items: center;
+        padding: 20px 0;
+        gap: 20px;
+        z-index: 1000;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+    }
+
+    /* Only show links when JS adds the 'open' class */
+    .main-nav ul.open {
+        display: flex;
+    }
+    
+    .main-nav ul li {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .main-nav ul li a {
+        display: block;
+        padding: 10px;
+        font-size: 1.2rem;
+    }
+}
+
+/* --- About Section Specifics --- */
+
+.about-section {
+    /* Updated to clear the fixed header */
+    padding-top: 140px; 
+    padding-bottom: 80px;
+    
+    /* Keeps the vertical centering */
+    min-height: 100vh; 
+    display: flex;
+    flex-direction: column; /* Ensures the H2 sits above the grid properly */
+    justify-content: center;
+}
+.about-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+}
+
+/* 1. The Floating Image Effect */
+.about-image-wrapper {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* The glowing blob behind the image */
+.image-glow {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, var(--accent-sage) 0%, rgba(0,0,0,0) 70%);
+    opacity: 0.4;
+    filter: blur(40px);
+    z-index: 0;
+    animation: pulse-glow 4s ease-in-out infinite alternate;
+}
+
+.floating-avatar {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 350px;
+    border-radius: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    /* The Float Animation */
+    animation: float 6s ease-in-out infinite;
+}
+
+/* 2. The Text Card styling */
+.about-text {
+    padding: 3rem;
+}
+
+.about-text h3 {
+    color: var(--accent-sage);
+    margin-bottom: 1.5rem;
+    font-size: 2rem;
+}
+
+.about-text p {
+    margin-bottom: 1.5rem;
+    color: #d1d1d1;
+}
+
+/* Little stats row at the bottom of the card */
+.about-stats {
+    display: flex;
+    gap: 30px;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.stat-item {
     display: flex;
     flex-direction: column;
+}
+
+.stat-number {
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: #fff;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--accent-sage);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* --- Keyframe Animations --- */
+
+/* Makes the image bob up and down */
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+    100% { transform: translateY(0px); }
+}
+
+/* Makes the background glow pulse */
+@keyframes pulse-glow {
+    0% { transform: scale(0.8); opacity: 0.3; }
+    100% { transform: scale(1.1); opacity: 0.5; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+    .about-grid {
+        grid-template-columns: 1fr;
+        gap: 3rem;
+        text-align: center;
+    }
+    
+    .about-stats {
+        justify-content: center;
+    }
+    
+    .about-image-wrapper {
+        order: -1; /* Puts image on top on mobile */
+    }
+}
+/* --- Community Section Specifics --- */
+
+.community-section {
+    padding-top: 140px; /* Clears the nav bar */
+    padding-bottom: 80px;
+    min-height: 100vh;
+}
+
+.community-intro {
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto 50px auto;
+}
+
+.community-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 30px;
+}
+
+/* The Card Styling */
+.community-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 40px 30px;
+    text-decoration: none; /* Removes underline from the whole card */
+    transition: transform 0.3s ease, border-color 0.3s ease, background 0.3s;
+}
+
+/* Hover Effect: Lift up and glow Sage Green */
+.community-card:hover {
+    transform: translateY(-10px);
+    border-color: var(--accent-sage);
+    background: rgba(45, 42, 61, 0.8); /* Slightly less transparent on hover */
+}
+
+/* The Icons */
+.card-icon {
+    font-size: 3rem;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.community-card:hover .card-icon {
+    color: var(--accent-sage);
+    text-shadow: 0 0 20px rgba(169, 197, 160, 0.6);
+}
+
+.community-card h3 {
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+    color: #fff;
+}
+
+.community-card p {
+    font-size: 0.95rem;
+    margin-bottom: 20px;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+/* The "Link Arrow" at the bottom */
+.link-arrow {
+    margin-top: auto; /* Pushes it to the bottom of the card */
+    color: var(--accent-sage);
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.link-arrow i {
+    transition: transform 0.3s ease;
+}
+
+.community-card:hover .link-arrow i {
+    transform: translateX(5px); /* Arrow slides right on hover */
+}
+
+/* Special styling for the 'Socials' card with multiple links */
+.mini-links {
+    display: flex;
+    gap: 15px;
+    margin-top: auto;
+}
+
+.mini-links a {
+    color: #fff;
+    background: var(--accent-secondary); /* Muted Grape */
+    padding: 8px 16px;
+    border-radius: 20px;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: background 0.3s;
+}
+
+.mini-links a:hover {
+    background: var(--accent-sage);
+    color: var(--bg-deep);
+}
+/* --- Content Page Specifics --- */
+
+.content-section {
+    padding-top: 140px; /* Clears the fixed nav bar */
+    padding-bottom: 80px;
+    min-height: 100vh;
+}
+
+.section-intro {
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto 50px auto;
+    color: var(--text-muted);
+}
+
+/* Enhancing the Card for Thumbnails */
+.project-card {
+    text-decoration: none; /* Removes link underline */
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Ensures cards in the same row are equal height */
+}
+
+.project-card h3 {
+    color: #fff;
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+    transition: color 0.3s;
+}
+
+.project-card:hover h3 {
+    color: var(--accent-sage);
+}
+
+.project-card p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* Thumbnail Wrapper for Badges */
+.thumbnail-wrapper {
+    position: relative;
+    overflow: hidden;
+    /* Force 16:9 aspect ratio for gaming thumbnails */
+    aspect-ratio: 16 / 9; 
+}
+
+.thumbnail-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.project-card:hover .thumbnail-wrapper img {
+    transform: scale(1.05); /* Subtle zoom on hover */
+}
+
+/* --- Badges & Duration Tags --- */
+.badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #fff;
+    z-index: 2;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+}
+
+.badge-twitch { background-color: #9146FF; }
+.badge-youtube { background-color: #FF0000; }
+.badge-guide { background-color: var(--accent-sage); color: var(--bg-deep); }
+.badge-live { background-color: #e91e63; animation: pulse 2s infinite; }
+
+.duration {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+/* --- Contact Page Specifics --- */
+
+.contact-section {
+    padding-top: 140px; /* Clears the fixed nav bar */
+    padding-bottom: 80px;
+    min-height: 100vh;
+}
+
+.contact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr; /* Info takes less space, Form takes more */
+    gap: 4rem;
+    align-items: start;
+    margin-top: 2rem;
+}
+
+/* Left Column Styling */
+.contact-info h3 {
+    color: var(--accent-sage);
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.contact-info p {
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+    line-height: 1.8;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+    color: #fff;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.03); /* Very subtle box */
+    border-radius: 10px;
+    transition: transform 0.3s ease;
+}
+
+.info-item:hover {
+    transform: translateX(10px);
+    background: rgba(169, 197, 160, 0.1);
+}
+
+.info-item i {
+    color: var(--accent-sage);
+    font-size: 1.2rem;
+}
+
+/* Right Column (Form) Styling */
+.contact-form-wrapper {
+    padding: 40px;
+    /* The glass effect is inherited from .glass-panel class */
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-left: 5px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 900px) {
+    .contact-grid {
+        grid-template-columns: 1fr; /* Stack them vertically */
+        gap: 3rem;
+    }
+    
+    .contact-info {
+        text-align: center;
+        order: -1; /* Keep info on top */
+    }
+    
+    .info-item {
+        justify-content: center;
+    }
+}
+
+/* Schedule Styles */
+.schedule-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.schedule-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 15px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    transition: background 0.3s;
+}
+
+.schedule-row:last-child {
+    border-bottom: none;
+}
+
+.schedule-row:hover {
+    background: rgba(169, 197, 160, 0.1); /* Sage hover */
+}
+
+.schedule-row .day {
+    font-weight: 700;
+    color: var(--accent-sage);
+    width: 60px;
+}
+
+.schedule-row .time {
+    color: #fff;
+    width: 120px;
+}
+
+.schedule-row .game {
+    color: var(--text-muted);
+    text-align: right;
+    flex-grow: 1;
+}
+
+@media (max-width: 600px) {
+    .schedule-row {
+        flex-direction: column;
+        text-align: center;
+        gap: 5px;
+    }
+    .schedule-row .game { text-align: center; }
+}
+/* --- Live Indicator Styles --- */
+
+/* Default State (Offline) - Looks like a normal button */
+#live-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--glass-bg); /* Muted when offline */
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
+}
+
+/* LIVE State - This class is added by JS */
+#live-btn.is-live {
+    background: #e91e63; /* Bright Pink/Red */
+    border-color: #e91e63;
+    color: #fff;
+    box-shadow: 0 0 20px rgba(233, 30, 99, 0.5);
+    animation: bounce-subtle 2s infinite;
+}
+
+/* The Glowing Dot */
+.live-icon {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #555; /* Grey when offline */
+    transition: all 0.3s ease;
+}
+
+/* Dot Animation when Live */
+#live-btn.is-live .live-icon {
+    background-color: #fff;
+    box-shadow: 0 0 10px #fff;
+    animation: pulse-dot 1.5s infinite;
+}
+
+/* Animations */
+@keyframes pulse-dot {
+    0% { transform: scale(0.95); opacity: 0.7; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+@keyframes bounce-subtle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+/* --- Gear/Specs Section --- */
+
+details {
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+details[open] {
+    background: rgba(0,0,0,0.4) !important; /* Darker when open */
+    border-color: var(--accent-sage) !important;
+}
+
+summary {
+    padding: 15px 20px;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-muted);
+    list-style: none; /* Hides default triangle */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: color 0.3s;
+}
+
+summary:hover {
+    color: var(--accent-sage);
+}
+
+/* Custom Arrow Icon */
+summary::after {
+    content: '+';
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+details[open] summary::after {
+    content: '-';
+}
+
+.gear-list {
+    padding: 20px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 20px;
 }
 
-.footer-socials a {
-    color: var(--clr-text-muted);
+.gear-category h4 {
+    color: #fff;
+    margin-bottom: 10px;
+    font-size: 1rem;
+    border-bottom: 1px solid var(--accent-sage);
+    display: inline-block;
+    padding-bottom: 2px;
+}
+
+.gear-category ul {
+    list-style: none;
+}
+
+.gear-category li {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+}
+
+.gear-category li strong {
+    color: #e0d3de; /* Pale Lilac */
+}
+
+/* Mobile fix for gear list */
+@media (max-width: 600px) {
+    .gear-list { grid-template-columns: 1fr; }
+}
+/* --- Easter Egg: Warp Mode --- */
+.warp-mode {
+    animation: rainbow-bg 5s infinite alternate;
+}
+
+.warp-mode .logo, 
+.warp-mode .floating-avatar {
+    animation: spin 1s linear infinite !important;
+}
+
+@keyframes rainbow-bg {
+    0% { filter: hue-rotate(0deg); }
+    100% { filter: hue-rotate(360deg); }
+}
+
+@keyframes spin {
+    100% { transform: rotate(360deg); }
+}
+
+/* --- Linktree / Bio Page Styles --- */
+
+body.links-page {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    background: var(--bg-deep); /* Ensures fallback color */
+}
+
+/* Container limits width to look like a phone app */
+.links-container {
+    width: 100%;
+    max-width: 480px;
+    text-align: center;
+    position: relative;
+    z-index: 10;
+}
+
+/* Profile Area */
+.profile-header {
+    margin-bottom: 2rem;
+}
+
+.profile-pic {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    
+    object-fit: contain; 
+    
+    /* THE FIX: The first number (50%) centers it horizontally. 
+       The second number (60%) moves it down vertically. 
+       Increase to 65% or 70% if it needs to go lower. */
+    object-position: 50% 70%;
+    
+    background-color: #1a1824; /* Matches your dark theme to hide edges */
+    border: 3px solid var(--accent-sage);
+    margin-bottom: 1rem;
+    box-shadow: 0 0 20px rgba(169, 197, 160, 0.3);
+}
+
+.profile-header h1 {
     font-size: 1.5rem;
-    margin: 0 10px;
-    transition: color 0.3s, transform 0.2s;
+    margin-bottom: 0.5rem;
 }
 
-.footer-socials a:hover {
-    color: var(--clr-accent-primary);
-    transform: translateY(-2px);
+.profile-header p {
+    font-size: 0.95rem;
+    color: var(--accent-sage);
 }
 
-/* --- JS Interactivity Styles --- */
-.main-nav ul li a.active {
-    color: var(--clr-white);
+/* The Link Buttons */
+.links-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
-.hidden {
-    opacity: 0;
-    filter: blur(5px);
-    transform: translateY(20px);
-    transition: all 0.7s ease;
+
+.link-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    padding: 18px;
+    text-decoration: none;
+    color: #fff;
+    font-weight: 600;
+    transition: transform 0.2s, background 0.2s;
+    position: relative;
 }
-.show {
-    opacity: 1;
-    filter: blur(0);
-    transform: translateY(0);
+
+.link-card:hover {
+    transform: scale(1.02);
+    background: rgba(169, 197, 160, 0.2); /* Sage highlight */
+    border-color: var(--accent-sage);
+}
+
+.link-card i {
+    font-size: 1.2rem;
+}
+
+/* Specific Style for Twitch Button */
+#twitch-link {
+    background: rgba(145, 70, 255, 0.15);
+    border-color: rgba(145, 70, 255, 0.4);
+}
+#twitch-link:hover {
+    background: rgba(145, 70, 255, 0.3);
+}
+
+/* Mini Socials at bottom */
+.mini-socials {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.mini-socials a {
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    transition: color 0.3s;
+}
+
+.mini-socials a:hover {
+    color: var(--accent-sage);
+    transform: translateY(-3px);
 }

@@ -11,50 +11,92 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+        <meta property="og:type" content="website">
+    <meta property="og:url" content="https://warpgamestv.com/">
+    <meta property="og:title" content="WarpGamesTV | Twilight Garden Lounge">
+    <meta property="og:description" content="Join the community for cozy RPGs, strategy games, and open-world adventures.">
+    <meta property="og:image" content="https://warpgamestv.com/Logo.png">
+
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://warpgamestv.com/">
+    <meta property="twitter:title" content="WarpGamesTV | Twilight Garden Lounge">
+    <meta property="twitter:description" content="Join the community for cozy RPGs, strategy games, and open-world adventures.">
+    <meta property="twitter:image" content="https://warpgamestv.com/Logo.png">
 </head>
 <body>
 
-    <header class="site-header">
-        <div class="container">
-            <nav class="main-nav">
-                <a href="index.html" class="logo">WarpGamesTV</a>
-                <ul>
-                    <li><a href="about.html">About</a></li>
-                    <li><a href="content.html">Content</a></li>
-                    <li><a href="community.html">Community</a></li>
-                    <li><a href="contact.html">Contact</a></li>
-                </ul>
-            </nav>
-        </div>
-    </header>
+<header class="site-header">
+    <div class="container">
+        <nav class="main-nav">
+            <a href="index.html" class="logo">
+    <img src="Logo.png" alt="Warp Logo">
+    WarpGamesTV
+</a>
+
+            <div class="nav-toggle">
+                <i class="fas fa-bars"></i>
+            </div>
+
+            <ul class="nav-links">
+                <li><a href="about.html">About</a></li>
+                <li><a href="content.html">Content</a></li>
+                <li><a href="community.html">Community</a></li>
+                <li><a href="contact.html">Contact</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>
 
     <main>
-        <section id="content" class="content-section">
-            <div class="container">
-                <h2 class="hidden">My Content & Projects</h2>
-                <div class="project-grid">
-                    <div class="project-card hidden">
-                        <img src="https://via.placeholder.com/500x281" alt="Thumbnail for a game series">
-                        <div class="card-text">
-                            <h3>Longplay: RPG Chronicles</h3>
-                        </div>
+    <section id="content" class="content-section">
+        <div class="container">
+            <h2 class="hidden">The Archives</h2>
+            <p class="section-intro hidden">
+                Highlights, full streams, and guides from across the WarpGames universe.
+            </p>
+
+            <div class="project-grid">
+                
+                <a href="https://youtu.be/ZDjLOghGPzQ" target="_blank" class="project-card hidden">
+                    <div class="thumbnail-wrapper">
+                        <img src="https://placehold.co/600x340/1a1824/A9C5A0?text=Modded+Minecraft+VOD" alt="Modded Minecraft Thumbnail">
+                        <span class="badge badge-twitch">Twitch VOD</span>
+                        <span class="duration">3:20:04</span>
                     </div>
-                    <div class="project-card hidden">
-                        <img src="https://via.placeholder.com/500x281" alt="Thumbnail for a podcast">
-                        <div class="card-text">
-                            <h3>The Warp Zone Podcast</h3>
-                        </div>
+                    <div class="card-text">
+                        <h3>Modded Minecraft w/ Friends</h3>
+                        <p>VOD Aug. 29, 2025 | Exploring the new modpack with @SerenSantiagoTV and @lunakibby.</p>
                     </div>
-                    <div class="project-card hidden">
-                        <img src="https://via.placeholder.com/500x281" alt="Thumbnail for strategy guides">
-                        <div class="card-text">
-                            <h3>Strategy Guides</h3>
-                        </div>
+                </a>
+
+                <a href="https://youtube.com/@warpgamestv" target="_blank" class="project-card hidden">
+                    <div class="thumbnail-wrapper">
+                        <img src="https://placehold.co/600x340/1a1824/bbb4d9?text=Rocket+League+Ranked" alt="Rocket League Thumbnail">
+                        <span class="badge badge-youtube">Highlights</span>
+                        <span class="duration">12:15</span>
                     </div>
-                </div>
+                    <div class="card-text">
+                        <h3>Ranked 2s: The Grind</h3>
+                        <p>Chasing Champion rank. Intense overtimes and some questionable whiffs.</p>
+                    </div>
+                </a>
+
+                <a href="https://youtube.com/@warpgamestv" target="_blank" class="project-card hidden">
+                    <div class="thumbnail-wrapper">
+                        <img src="https://placehold.co/600x340/1a1824/A9C5A0?text=Studio+Upgrade+2025" alt="Tech Guide Thumbnail">
+                        <span class="badge badge-guide">Vlog</span>
+                        <span class="duration">18:30</span>
+                    </div>
+                    <div class="card-text">
+                        <h3>Studio Upgrade Tour</h3>
+                        <p>Finally installed the new GPU! Walking through the PC specs and stream setup.</p>
+                    </div>
+                </a>
+
             </div>
-        </section>
-    </main>
+        </div>
+    </section>
+</main>
 
     <footer class="site-footer-dark">
         <div class="container">
@@ -72,5 +114,6 @@
     </footer>
 
     <script src="script.js"></script>
+</body>
 </body>
 </html>
