@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bioluminescent Moss - Cambium Wiki | WarpGamesTV</title>
+    <link rel="icon" href="../../favicon.png" type="image/x-icon">
+    <link rel="stylesheet" href="../../style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://warpgamestv.com/mods.html">
+    <meta property="og:title" content="WarpGamesTV | Mods & Development">
+    <meta property="og:description" content="Download my latest Minecraft mods and view source code.">
+    <meta property="og:image" content="https://warpgamestv.com/Logo.png">
+
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="WarpGamesTV | Mods & Development">
+    <meta property="twitter:description" content="Download my latest Minecraft mods and view source code.">
+    <meta property="twitter:image" content="https://warpgamestv.com/Logo.png">
+</head>
+
+<body>
+
+    <header class="site-header">
+        <div class="container">
+            <nav class="main-nav">
+                <a href="../../index.html" class="logo">
+                    <img src="../../Logo.png" alt="Warp Logo">
+                    WarpGamesTV
+                </a>
+                <div class="nav-toggle"><i class="fas fa-bars"></i></div>
+                <ul class="nav-links">
+                    <li><a href="../../about.html">About</a></li>
+                    <li><a href="../../content.html">Content</a></li>
+                    <li><a href="../../mods.html" >Mods</a></li>
+                    <li><a href="../../community.html">Community</a></li>
+                    <li><a href="../../contact.html">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main><section class="content-section">
+    <div class="container wiki-layout">
+        <h3>Cambium Wiki</h3>
+        <div class="wiki-content"><h1 id="bioluminescent-moss"><a href="bioluminescent-moss.html" class="auto-link">Bioluminescent Moss</a><a class="header-anchor" onclick="copyToClipboard('bioluminescent-moss')" title="Copy link to clipboard"><i class="fas fa-link"></i></a></h1>
+<aside class="toc-container"><h4>On This Page</h4><ul class="toc-nav"><li class="toc-h2"><a href="#properties" class="toc-link">Properties</a></li></ul></aside>
+<strong><a href="bioluminescent-moss.html" class="auto-link">Bioluminescent Moss</a></strong> is a radiant, spreading flora found within the Cambium ecosystem. It serves as an excellent, natural, and aesthetic light source for Solarpunk builds.
+<h2 id="properties">Properties<a class="header-anchor" onclick="copyToClipboard('properties')" title="Copy link to clipboard"><i class="fas fa-link"></i></a></h2>
+<em>Shapeless recipe: <span class="tooltip-container"><a href="living-materials.html#organic-ash" class="auto-link">Organic Ash</a><div class="tooltip-content"><img src="assets/organic_ash.png" class="tooltip-image"></div></span> + Glowstone Dust + Redstone → 4x <a href="bioluminescent-moss.html" class="auto-link">Bioluminescent Moss</a></em>
+<ul><li><strong>Illumination:</strong> The moss emits a gentle, ambient light with a light level of <strong>12</strong>.</li>
+<li><strong>Versatility:</strong> As a multiface block (similar to Glow Lichen or Vines), <a href="bioluminescent-moss.html" class="auto-link">Bioluminescent Moss</a> can be applied to any solid face of a block (floor, ceiling, or walls).</li>
+<li><strong>Spreading:</strong> In the right conditions, the moss can naturally spread to adjacent surfaces, slowly illuminating large organic caverns and structures.</li>
+<li><strong>Aesthetic:</strong> The moss has a distinct white-snow map color and produces a soft, glowing ambiance perfect for decorating your biological machinery areas or illuminating your <span class="tooltip-container"><a href="resource-trees.html" class="auto-link">Resource Tree</a><div class="tooltip-content"><img src="assets/sapling_stem.png" class="tooltip-image"></div></span> farms seamlessly.</li>
+</ul>
+<div class="last-updated">Last updated: March 17, 2026</div><div class="wiki-page-nav"><a href="living-wood.html" class="btn-wiki-nav prev"><i class="fas fa-arrow-left"></i> Back</a><a href="photovoltaic-armor.html" class="btn-wiki-nav next">Next <i class="fas fa-arrow-right"></i></a></div>        </div>
+    </div>
+    <button id="scrollToTopBtn" onclick="scrollToTop()" title="Go to top"><i class="fas fa-arrow-up"></i></button>
+</section>
+
+<script>
+function searchWiki() {
+    let filter = document.getElementById('wikiSearchInput').value.toLowerCase();
+    let nav = document.getElementById('wikiNavList');
+    let categories = nav.querySelectorAll('.nav-category');
+    let homeLink = nav.querySelector('.wiki-nav-link');
+
+    if (homeLink) {
+        homeLink.style.display = 'home'.indexOf(filter) > -1 || filter === '' ? '' : 'none';
+    }
+
+    categories.forEach(function(details) {
+        let summary = details.querySelector('summary');
+        let categoryName = summary.textContent.toLowerCase();
+        let items = details.querySelectorAll('li');
+        let categoryMatch = categoryName.indexOf(filter) > -1;
+        let anyChildVisible = false;
+
+        items.forEach(function(li) {
+            let a = li.querySelector('a');
+            let text = (a.textContent || a.innerText).toLowerCase();
+            if (filter === '' || text.indexOf(filter) > -1 || categoryMatch) {
+                li.style.display = '';
+                anyChildVisible = true;
+            } else {
+                li.style.display = 'none';
+            }
+        });
+
+        if (filter === '') {
+            details.style.display = '';
+        } else if (anyChildVisible || categoryMatch) {
+            details.style.display = '';
+            details.open = true;
+        } else {
+            details.style.display = 'none';
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    let activeLink = document.querySelector('.wiki-nav a.active');
+    if (activeLink) {
+        let parentDetails = activeLink.closest('details.nav-category');
+        if (parentDetails) parentDetails.open = true;
+    }
+});
+
+window.onscroll = function() {scrollFunction()};
+function scrollFunction() {
+    let btn = document.getElementById("scrollToTopBtn");
+    if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+        btn.style.display = "flex";
+        btn.style.opacity = "1";
+    } else {
+        btn.style.opacity = "0";
+        setTimeout(() => { if(btn.style.opacity === "0") btn.style.display = "none"; }, 300);
+    }
+}
+function scrollToTop() {
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
+function copyToClipboard(id) {
+    let url = window.location.href.split('#')[0] + '#' + id;
+    navigator.clipboard.writeText(url).then(() => {
+    });
+}
+</script></main>
+
+    <footer class="site-footer-dark">
+        <div class="container">
+            <div class="footer-content">
+                <p>&copy; 2025 WarpGamesTV. All Rights Reserved.</p>
+                <div class="footer-socials">
+                    <a href="https://twitch.tv/warpgamestv" target="_blank"><i class="fab fa-twitch"></i></a>
+                    <a href="https://youtube.com/@warpgamestv" target="_blank"><i class="fab fa-youtube"></i></a>
+                    <a href="https://twitter.com/warpgamestv" target="_blank"><i class="fab fa-twitter"></i></a>
+                    <a href="https://discord.warpgamestv.com" target="_blank"><i class="fab fa-discord"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../../script.js"></script>
+</body>
+
+</html>
