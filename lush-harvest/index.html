@@ -9,7 +9,7 @@
     <title>Lush Harvest | Bioluminescent Exploration</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./src/style.css">
 </head>
 
@@ -17,6 +17,7 @@
     <div id="app">
         <div class="game-container">
             <div class="hud">
+                <!-- Moved buff-display below currency-pane -->
                 <div id="currency-pane" class="glass grid-hud">
                     <div class="currency-item main-currency">
                         <span class="label">Pods</span>
@@ -36,16 +37,25 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Active Buffs Container (Pinned to corner) -->
+            <div id="buff-container">
+                <!-- Bubbles injected via JS -->
+            </div>
 
             <div class="actions top-actions">
-                <button id="upgrades-toggle" class="nav-btn glass" title="Upgrades">🛡️</button>
-                <button id="cosmetics-toggle" class="nav-btn glass" title="Cosmetics">👕</button>
-                <button id="settings-toggle" class="nav-btn glass" title="Settings">⚙️</button>
-                <button id="build-toggle" class="nav-btn glass" title="Bind Tether"
-                    style="display: none; background: rgba(0, 255, 128, 0.2);">🔗 <span
-                        id="tether-count">0/0</span></button>
-                <button id="ascend-toggle" class="nav-btn glass" title="Ascend"
-                    style="display: none; background: rgba(188, 0, 255, 0.2);">🆙</button>
+                <button id="boosts-toggle" class="nav-btn glass" title="Rewarded Boosts">⚡</button>
+            </div>
+
+            <div id="combo-container" class="glass" style="display: none;">
+                <div class="combo-info">
+                    <span class="combo-multiplier">1.0x</span>
+                    <span class="combo-label">COMBO</span>
+                </div>
+                <div class="combo-bar">
+                    <div id="combo-fill"></div>
+                </div>
+                <div id="frenzy-indicator" style="display: none;">FRENZY!</div>
             </div>
 
             <div id="objective-tracker" class="glass">
@@ -61,9 +71,7 @@
                 </div>
             </div>
 
-            <div id="buff-display" class="glass" style="display: none;">
-                Mystic Blessing: <span id="buff-timer">0</span>s
-            </div>
+
 
             <div id="camera" class="world-viewport">
                 <div id="game-world">
@@ -97,20 +105,54 @@
             </div>
         </div>
 
+        <!-- Bottom Action Bar -->
+        <div class="bottom-bar-container">
+            <div id="main-actions" class="glass bottom-bar">
+                <button id="upgrades-toggle" class="nav-btn" title="Upgrades">
+                    <span class="btn-icon">🛡️</span> <span class="btn-label">Upgrades</span>
+                </button>
+                <button id="cosmetics-toggle" class="nav-btn" title="Cosmetics">
+                    <span class="btn-icon">👕</span> <span class="btn-label">Cosmetics</span>
+                </button>
+                <button id="settings-toggle" class="nav-btn" title="Settings">
+                    <span class="btn-icon">⚙️</span> <span class="btn-label">Settings</span>
+                </button>
+                <button id="build-toggle" class="nav-btn" title="Bind Tether"
+                    style="display: none; background: rgba(0, 255, 128, 0.2);">
+                    <span class="btn-icon">🔗</span> <span class="btn-label">Tether</span> <span
+                        id="tether-count">0/0</span>
+                </button>
+                <button id="ascend-toggle" class="nav-btn" title="Ascend"
+                    style="display: none; background: rgba(188, 0, 255, 0.2);">
+                    <span class="btn-icon">🆙</span> <span class="btn-label">Ascend</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="warp-overlay"></div>
+        <div id="biome-toast">
+            <h1 id="biome-title">NEW AREA</h1>
+            <p id="biome-desc">Transitioning...</p>
+        </div>
+
     </div>
 
-    <div id="upgrades-panel" class="overlay hidden">
+    <div id="upgrades-panel" class="overlay">
         <div class="overlay-content glass">
             <header>
                 <h2>Mystic Upgrades</h2>
                 <button id="close-upgrades" class="close-btn">&times;</button>
             </header>
+            <div class="shop-tabs">
+                <button class="tab-btn active" data-currency="motes">Mote Upgrades</button>
+                <button class="tab-btn" data-currency="starFragments">Star Upgrades</button>
+            </div>
             <div class="upgrade-list">
             </div>
         </div>
     </div>
 
-    <div id="cosmetics-panel" class="overlay hidden">
+    <div id="cosmetics-panel" class="overlay">
         <div class="overlay-content glass">
             <header>
                 <h2>Cosmetics</h2>
@@ -121,25 +163,61 @@
         </div>
     </div>
 
-    <div id="settings-panel" class="overlay hidden">
+    <div id="settings-panel" class="overlay">
         <div class="overlay-content glass" style="text-align: center;">
             <header>
-                <h2>Settings</h2>
+                <h2>Settings & System</h2>
                 <button id="close-settings" class="close-btn">&times;</button>
             </header>
-            <div style="display: flex; flex-direction: column; gap: 15px; padding-top: 20px;">
-                <p>Transfer your progress to another device</p>
-                <button id="export-save" class="upgrade-btn">Copy Save String</button>
-                <button id="import-save" class="upgrade-btn">Load Save String</button>
-                <div style="height: 1px; background: rgba(255,255,255,0.2); margin: 10px 0;"></div>
-                <button id="wipe-save" class="upgrade-btn" style="background: #a92020;">Hard Reset Progress</button>
-                <p id="settings-msg"
-                    style="color: var(--neon-lime); min-height: 20px; font-weight: bold; margin-top: 10px;"></p>
+            <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 10px;">
+                <div class="setting-item" style="flex-direction: column; align-items: start; gap: 5px;">
+                    <div style="display: flex; justify-content: space-between; width: 100%;">
+                        <label>Master Volume</label>
+                        <span id="master-vol-val">80%</span>
+                    </div>
+                    <input type="range" id="master-volume-control" min="0" max="100" value="80" style="width: 100%;">
+                </div>
+                <div class="setting-item" style="flex-direction: column; align-items: start; gap: 5px;">
+                    <div style="display: flex; justify-content: space-between; width: 100%;">
+                        <label>Music Volume</label>
+                        <span id="bgm-vol-val">80%</span>
+                    </div>
+                    <input type="range" id="bgm-volume-control" min="0" max="100" value="80" style="width: 100%;">
+                </div>
+                <div class="setting-item" style="flex-direction: column; align-items: start; gap: 5px;">
+                    <div style="display: flex; justify-content: space-between; width: 100%;">
+                        <label>Effects Volume</label>
+                        <span id="sfx-vol-val">80%</span>
+                    </div>
+                    <input type="range" id="sfx-volume-control" min="0" max="100" value="80" style="width: 100%;">
+                </div>
+                <div class="setting-item">
+                    <label>Show Particles</label>
+                    <input type="checkbox" id="particles-toggle" checked>
+                </div>
+                <div class="setting-item">
+                    <label>Screen Shake</label>
+                    <input type="checkbox" id="shake-toggle" checked>
+                </div>
+
+                <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 10px 0;"></div>
+                
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">Data Management</p>
+                <button id="export-save" class="upgrade-btn" style="padding: 8px;">Copy Save String</button>
+                <button id="import-save" class="upgrade-btn" style="padding: 8px;">Load Save String</button>
+                <button id="wipe-save" class="upgrade-btn" style="background: #a92020; padding: 8px;">Hard Reset Progress</button>
+                
+                <p id="settings-msg" style="color: var(--neon-lime); min-height: 20px; font-weight: bold; margin-top: 5px; font-size: 0.8rem;"></p>
+                
+                <div style="margin-top: 10px; padding: 10px; border-radius: 10px; background: rgba(0,0,255,0.1);">
+                    <p style="font-size: 0.75rem; color: var(--neon-cyan); margin: 0;">v2.3 Production</p>
+                    <p style="font-size: 0.7rem; color: var(--text-muted); margin: 5px 0 0 0;">Developed by <span style="color: white; font-weight: bold;">WarpGamesTV</span></p>
+                </div>
             </div>
         </div>
     </div>
 
-    <div id="ascend-panel" class="overlay hidden">
+    <div id="ascend-panel" class="overlay">
         <div class="overlay-content glass" style="text-align: center;">
             <header>
                 <h2>Ascension</h2>
@@ -161,7 +239,7 @@
         </div>
     </div>
 
-    <div id="astral-panel" class="overlay hidden">
+    <div id="astral-panel" class="overlay">
         <div class="overlay-content glass astral-nebula">
             <header>
                 <h2 class="neon-purple">The Astral Forge</h2>
@@ -181,6 +259,87 @@
                 <button id="begin-next-run" class="upgrade-btn"
                     style="background: var(--neon-purple); width: 100%;">Begin Next Journey</button>
             </div>
+        </div>
+    </div>
+
+    <div id="boosts-panel" class="overlay">
+        <div class="overlay-content glass">
+            <header>
+                <h2>Celestial Boosts</h2>
+                <button id="close-boosts" class="close-btn">&times;</button>
+            </header>
+            <p style="text-align: center; margin-bottom: 20px; font-size: 0.9rem; color: var(--text-muted);">Watch a
+                quick vision to gain cosmic power.</p>
+            <div class="boost-list">
+                <div class="boost-card glass">
+                    <div class="boost-info">
+                        <div class="boost-icon neon-lime">✨</div>
+                        <div>
+                            <h3>Luminous Surge</h3>
+                            <p>2x Mote gain for 5 minutes</p>
+                        </div>
+                    </div>
+                    <button class="boost-btn upgrade-btn" data-boost="mote_2x">Watch Ad</button>
+                </div>
+                <div class="boost-card glass">
+                    <div class="boost-info">
+                        <div class="boost-icon neon-cyan">💨</div>
+                        <div>
+                            <h3>Solar Wind</h3>
+                            <p>+50% Speed for 5 minutes</p>
+                        </div>
+                    </div>
+                    <button class="boost-btn upgrade-btn" data-boost="speed_1.5x">Watch Ad</button>
+                </div>
+                <div class="boost-card glass">
+                    <div class="boost-info">
+                        <div class="boost-icon neon-gold">🌸</div>
+                        <div>
+                            <h3>Instant Blossom</h3>
+                            <p>Instantly refill all tree pods</p>
+                        </div>
+                    </div>
+                    <button class="boost-btn upgrade-btn" data-boost="refill_all">Watch Ad</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-menu" class="overlay active">
+        <div id="menu-particles"></div>
+        <div class="main-menu-content glass slide-up">
+            <div class="menu-header">
+                <img src="./lush_harvest_logo_1773966169586.png" alt="Lush Harvest" class="menu-logo">
+                <h1 class="game-title">Lush Harvest</h1>
+                <p class="game-subtitle">Explore a bioluminescent world of wonder</p>
+            </div>
+            
+            <div class="menu-actions">
+                <button id="start-game" class="pulse-btn primary-menu-btn">
+                    <span class="btn-shine"></span>
+                    <span class="btn-text">Start Journey</span>
+                </button>
+                <button id="menu-settings-toggle" class="secondary-menu-btn">
+                    <span class="btn-icon">⚙️</span> Settings
+                </button>
+            </div>
+            
+            <div class="menu-footer-card glass">
+                <div class="version-tag">v2.3 PRODUCTION</div>
+                <div class="creator-info">Created by <span>WarpGamesTV</span></div>
+                <p class="tagline">Crafted with ✨ and 🌿</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="ad-mock-overlay" class="overlay hidden" style="z-index: 2000; background: rgba(0,0,0,0.95);">
+        <div class="overlay-content" style="text-align: center;">
+            <p style="font-size: 1.5rem; margin-bottom: 20px;">Watching Vision...</p>
+            <div style="width: 100%; height: 10px; background: #333; border-radius: 5px; overflow: hidden;">
+                <div id="ad-progress"
+                    style="width: 0%; height: 100%; background: var(--neon-lime); transition: width 0.1s linear;"></div>
+            </div>
+            <p id="ad-timer" style="margin-top: 10px; color: var(--text-muted);">3s remaining</p>
         </div>
     </div>
     </div>
