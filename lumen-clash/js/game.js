@@ -820,10 +820,10 @@ function applyCharacterTextureAlphaKnockout(scene) {
 
 function characterPreviewAssetUrl(charId, skinLabel) {
     if (charId === 'voidWeaver' && skinLabel === 'Verdant') {
-        return 'assets/void_weaver_green.png?v=1';
+        return 'assets/void_weaver_green.svg?v=1';
     }
     const base = charId === 'aegisKnight' ? 'aegis_knight' : charId === 'lumenSage' ? 'lumen_sage' : 'void_weaver';
-    return `assets/${base}.png?v=2`;
+    return `assets/${base}.svg?v=2`;
 }
 
 function refreshCharacterPreviewImg() {
@@ -862,10 +862,10 @@ function mountPreviewImg(container, dataUrl) {
 
 // Phaser Scene functions
 function preload() {
-    this.load.image('voidWeaver', 'assets/void_weaver.png?v=2');
-    this.load.image('voidWeaver_green', 'assets/void_weaver_green.png?v=1');
-    this.load.image('aegisKnight', 'assets/aegis_knight.png?v=2');
-    this.load.image('lumenSage', 'assets/lumen_sage.png?v=2');
+    this.load.image('voidWeaver', 'assets/void_weaver.svg?v=2');
+    this.load.image('voidWeaver_green', 'assets/void_weaver_green.svg?v=1');
+    this.load.image('aegisKnight', 'assets/aegis_knight.svg?v=2');
+    this.load.image('lumenSage', 'assets/lumen_sage.svg?v=2');
 }
 
 let playerLeftShape;
