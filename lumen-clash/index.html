@@ -480,7 +480,25 @@
                     <span id="bp-account-level" class="bp-rank-value">1</span>
                 </div>
             </div>
-            <p class="bp-modal-sub">Earn XP with any character to rank up and unlock cosmetics.</p>
+            <div class="bp-premium-row" aria-label="Premium unlock progress">
+                <div class="bp-premium-card">
+                    <div class="bp-premium-top">
+                        <span id="bp-premium-status" class="bp-premium-status bp-premium-status--locked">Premium locked</span>
+                        <span class="bp-credits-pill" aria-label="Lumens earned">
+                            <span class="bp-credits-icon" aria-hidden="true">💠</span>
+                            <span id="bp-credits-earned">0</span>
+                            <span class="bp-credits-sep">/</span>
+                            <span id="bp-credits-cost">0</span>
+                            <span class="bp-credits-label">Lumens</span>
+                        </span>
+                    </div>
+                    <div class="bp-premium-meter" aria-hidden="true">
+                        <div id="bp-credits-fill" class="bp-premium-meter-fill" style="width:0%"></div>
+                    </div>
+                    <p class="bp-modal-sub bp-modal-sub--tight">Earn Lumens on the free track. When you’ve banked enough, unlock Premium—no store required.</p>
+                    <button type="button" id="btn-bp-unlock-premium" class="menu-btn bp-unlock-btn hidden">Unlock Premium</button>
+                </div>
+            </div>
         </div>
 
         <div class="lumen-panel lumen-panel--bp card-glass">

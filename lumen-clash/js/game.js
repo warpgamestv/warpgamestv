@@ -686,11 +686,39 @@ let currentSkinIndex = 0;
 const BP_REWARDS = {
     2: { type: 'emote', id: 'hype', name: '🎈 Hype' },
     3: { type: 'skin', id: 'verdant', name: 'Verdant' },
+    4: { type: 'credits', id: 'lumens', amount: 20, name: '+20 Lumens' },
     5: { type: 'title', id: 'warrior', name: 'Warrior' },
+    7: { type: 'credits', id: 'lumens', amount: 20, name: '+20 Lumens' },
+    9: { type: 'credits', id: 'lumens', amount: 20, name: '+20 Lumens' },
     10: { type: 'skin', id: 'abyssal', name: 'Abyssal' },
+    12: { type: 'credits', id: 'lumens', amount: 20, name: '+20 Lumens' },
     15: { type: 'title', id: 'grandmaster', name: 'Grandmaster' },
+    18: { type: 'credits', id: 'lumens', amount: 20, name: '+20 Lumens' },
     20: { type: 'skin', id: 'legend', name: 'Lumen Legend' }
 };
+
+const BP_PREMIUM_UNLOCK_COST_LUMENS = 100;
+const BP_PREMIUM_UNLOCK_KEY = 'lumen_clash_bp_premium_unlocked';
+
+function bpPremiumUnlocked() {
+    return localStorage.getItem(BP_PREMIUM_UNLOCK_KEY) === 'on';
+}
+
+function setBpPremiumUnlocked(on) {
+    localStorage.setItem(BP_PREMIUM_UNLOCK_KEY, on ? 'on' : 'off');
+}
+
+function bpLumensEarnedByRank(rank) {
+    const r = Math.max(1, Math.min(20, Number(rank) || 1));
+    let sum = 0;
+    for (let i = 1; i <= r; i++) {
+        const rw = BP_REWARDS[i];
+        if (rw && rw.type === 'credits' && rw.id === 'lumens') {
+            sum += Math.max(0, Number(rw.amount) || 0);
+        }
+    }
+    return sum;
+}
 
 /** Sum of (class xp) / sum of (level×100) — matches how ranks grow from class levels, not lifetime stats.xp */
 function sumRosterXpProgress(classes) {
@@ -2199,6 +2227,41 @@ function openBattlePass() {
     track.innerHTML = '';
     // Generate nodes for levels 1-20
     const accLevel = Math.max(1, Number(playerProfileData.level) || 1);
+
+    // Premium unlock UI (free-earned Lumens)
+    const lumensEarned = bpLumensEarnedByRank(accLevel);
+    const cost = BP_PREMIUM_UNLOCK_COST_LUMENS;
+    const premiumAlready = bpPremiumUnlocked();
+    const eligible = lumensEarned >= cost;
+    const premiumActive = premiumAlready || eligible;
+
+    const premiumStatus = document.getElementById('bp-premium-status');
+    if (premiumStatus) {
+        premiumStatus.textContent = premiumActive ? 'Premium active' : 'Premium locked';
+        premiumStatus.classList.toggle('bp-premium-status--active', premiumActive);
+        premiumStatus.classList.toggle('bp-premium-status--locked', !premiumActive);
+    }
+
+    const creditsEarnedEl = document.getElementById('bp-credits-earned');
+    if (creditsEarnedEl) creditsEarnedEl.textContent = `${lumensEarned}`;
+    const creditsCostEl = document.getElementById('bp-credits-cost');
+    if (creditsCostEl) creditsCostEl.textContent = `${cost}`;
+    const creditsFill = document.getElementById('bp-credits-fill');
+    if (creditsFill) creditsFill.style.width = `${Math.min(100, (lumensEarned / cost) * 100)}%`;
+
+    const unlockBtn = document.getElementById('btn-bp-unlock-premium');
+    if (unlockBtn) {
+        unlockBtn.classList.toggle('hidden', premiumAlready || !eligible);
+        unlockBtn.disabled = premiumAlready || !eligible;
+        unlockBtn.textContent = premiumAlready ? 'Premium unlocked' : 'Unlock Premium';
+        unlockBtn.onclick = () => {
+            if (bpPremiumUnlocked()) return;
+            if (bpLumensEarnedByRank(accLevel) < cost) return;
+            setBpPremiumUnlocked(true);
+            openBattlePass(); // re-render
+        };
+    }
+
     for (let i = 1; i <= 20; i++) {
         const node = document.createElement('div');
         node.className = 'bp-node';
@@ -2210,7 +2273,10 @@ function openBattlePass() {
         let name = 'Empty';
         
         if (reward) {
-            icon = reward.type === 'emote' ? reward.id : (reward.type === 'title' ? '📜' : '🎨');
+            if (reward.type === 'emote') icon = reward.id;
+            else if (reward.type === 'title') icon = '📜';
+            else if (reward.type === 'credits') icon = '💠';
+            else icon = '🎨';
             if (reward.id === 'hype') icon = '🎈';
             name = reward.name;
         } else if (i === 1) {
