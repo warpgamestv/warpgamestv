@@ -469,28 +469,29 @@
         <span id="perf-ping">Ping —</span>
     </div>
 
-    <!-- Battle Pass Modal -->
-    <div id="battle-pass-modal" class="modal hidden">
-        <div class="modal-content">
-            <span id="btn-close-bp" class="close-modal" onclick="closeModal('battle-pass-modal')">&times;</span>
-            <div class="modal-header-premium">
-                <h2>🏆 LUMINARY PASS</h2>
-                <div class="account-level-badge">
-                    <span>Rank</span>
-                    <span id="bp-account-level">1</span>
+    <!-- Luminary Pass -->
+    <div id="battle-pass-modal" class="hidden lumen-modal-screen lumen-modal-screen--bp" role="dialog" aria-modal="true" aria-labelledby="bp-title">
+        <div class="lumen-modal-head">
+            <p class="lumen-modal-eyebrow">Seasonal rewards</p>
+            <div class="bp-modal-title-row">
+                <h2 id="bp-title" class="modal-screen-title modal-screen-title--h2">Luminary Pass</h2>
+                <div class="bp-rank-badge" aria-label="Luminary Pass rank">
+                    <span class="bp-rank-label">Rank</span>
+                    <span id="bp-account-level" class="bp-rank-value">1</span>
                 </div>
             </div>
-            
-            <div class="bp-track-container">
-                <div id="bp-track" class="bp-track">
+            <p class="bp-modal-sub">Earn XP with any character to rank up and unlock cosmetics.</p>
+        </div>
+
+        <div class="lumen-panel lumen-panel--bp card-glass">
+            <div class="bp-track-container bp-track-container--panel">
+                <div id="bp-track" class="bp-track" aria-label="Luminary Pass rewards track">
                     <!-- Rewards generated via JS -->
                 </div>
             </div>
-            
-            <div class="bp-footer">
-                <p>Earn XP with any character to rank up your Luminary Pass!</p>
-            </div>
         </div>
+
+        <button type="button" id="btn-close-bp" class="menu-btn secondary-btn btn-lumen-back" onclick="closeModal('battle-pass-modal')">Back ↩</button>
     </div>
 
     <!-- Character Preview & Customization Modal -->
