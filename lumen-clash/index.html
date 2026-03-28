@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     
-    <link rel="stylesheet" href="css/style.css?v=24">
+    <link rel="stylesheet" href="css/style.css?v=26">
     <link rel="stylesheet" href="css/background.css?v=2">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <script>
@@ -108,6 +108,40 @@
 
     <div id="game-container">
         <!-- Phaser injects canvas here -->
+    </div>
+
+    <!-- PRE-MATCH HERO SELECT -->
+    <div id="hero-select-overlay" class="hidden lumen-modal-screen lumen-modal-screen--center hero-select-overlay">
+        <div class="lumen-modal-head lumen-modal-head--compact">
+            <p class="lumen-modal-eyebrow">Match lobby</p>
+            <h2 class="modal-screen-title modal-screen-title--h2">Select Hero</h2>
+            <p id="hero-select-countdown" class="lumen-modal-sub">Waiting for players...</p>
+        </div>
+        <div class="lumen-panel hero-select-panel card-glass">
+            <div class="hero-select-grid">
+                <button type="button" class="hero-select-card" data-hero-select="aegisKnight">
+                    <span class="hero-select-name">Knight</span>
+                    <span class="hero-select-desc">Tank • High Health</span>
+                </button>
+                <button type="button" class="hero-select-card" data-hero-select="lumenSage">
+                    <span class="hero-select-name">Sage</span>
+                    <span class="hero-select-desc">Mage • Burst Damage</span>
+                </button>
+                <button type="button" class="hero-select-card" data-hero-select="voidWeaver">
+                    <span class="hero-select-name">Void Weaver</span>
+                    <span class="hero-select-desc">Assassin • High Speed</span>
+                </button>
+            </div>
+            <div class="hero-select-skin-row">
+                <label for="hero-select-skin" class="hero-select-skin-label">Skin</label>
+                <select id="hero-select-skin" class="premium-select hero-select-skin"></select>
+            </div>
+            <div class="hero-select-ready-row">
+                <button type="button" id="btn-hero-ready" class="menu-btn">Lock In</button>
+                <span id="hero-ready-status" class="hero-ready-status">Not ready</span>
+                <span id="hero-opponent-ready-status" class="hero-ready-status hero-ready-status--opponent">Opponent selecting...</span>
+            </div>
+        </div>
     </div>
 
     <!-- MAIN MENU UI -->
@@ -253,6 +287,18 @@
             <p style="font-size:12px; margin-bottom:10px;"><span id="profile-xp-text">0 / 300</span> roster XP</p>
             <p style="font-size:11px; margin:-6px 0 10px; opacity:0.55;">Bar = progress across all classes (rank rises when any class levels up).</p>
             <p style="font-size:14px; color:#aaa;">Wins: <span id="profile-wins">0</span> | Losses: <span id="profile-losses">0</span></p>
+
+            <div class="profile-title-block">
+                <label class="profile-title-label" for="profile-select-title">Display title</label>
+                <p class="profile-title-hint">Unlocked titles come from your Luminary Pass rank. Equip one to show it under your name in the menu.</p>
+                <div class="profile-title-row">
+                    <select id="profile-select-title" class="premium-select profile-title-select" aria-describedby="profile-title-status">
+                        <option value="">No Title</option>
+                    </select>
+                    <button type="button" id="btn-save-profile-title" class="save-btn profile-title-save">Save</button>
+                </div>
+                <p id="profile-title-status" class="profile-title-status hidden" role="status" aria-live="polite"></p>
+            </div>
         </div>
 
         <div style="width: 90%; max-width: 600px; text-align: left; margin-bottom: 5px; font-weight: bold; color: #4a00e0;">Match History (Last 10)</div>
@@ -538,11 +584,6 @@
                 </div>
 
                 <div class="char-customization">
-                    <label>Title Selection</label>
-                    <select id="select-title" class="premium-select">
-                        <option value="">No Title</option>
-                    </select>
-
                     <label>Skin Variant</label>
                     <div class="skin-selector">
                         <button class="skin-nav" onclick="prevSkin()">&lt;</button>
@@ -567,6 +608,6 @@
             <button type="button" id="btn-disconnect-ok" class="menu-btn disconnect-ok-btn">Return to Menu</button>
         </div>
     </div>
-    <script src="js/game.js?v=50"></script>
+    <script src="js/game.js?v=54"></script>
 </body>
 </html>

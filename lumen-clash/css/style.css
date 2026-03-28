@@ -848,6 +848,56 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
     margin: 0;
     font-size: 0.85rem;
 }
+
+.profile-title-block {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(0, 210, 255, 0.15);
+}
+
+.profile-title-label {
+    display: block;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(0, 210, 255, 0.65);
+    margin-bottom: 6px;
+}
+
+.profile-title-hint {
+    margin: 0 0 10px 0;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: rgba(165, 175, 210, 0.75);
+}
+
+.profile-title-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.profile-title-select {
+    flex: 1 1 180px;
+    margin-bottom: 0;
+}
+
+.profile-title-save {
+    flex-shrink: 0;
+}
+
+.profile-title-status {
+    margin: 8px 0 0;
+    font-size: 0.78rem;
+    color: rgba(0, 210, 255, 0.85);
+}
+
+.profile-title-status.profile-title-status--error {
+    color: #ff8899;
+}
 .xp-bar-bg {
     width: 100%;
     height: 8px;
@@ -1429,6 +1479,97 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
     max-width: 420px;
     text-align: center;
     border-color: rgba(255, 0, 85, 0.35);
+}
+
+.hero-select-overlay {
+    z-index: 450;
+}
+
+.hero-select-panel {
+    width: min(94vw, 760px);
+}
+
+.hero-select-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.hero-select-card {
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    color: rgba(225, 232, 252, 0.95);
+    min-height: 86px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.hero-select-card:hover {
+    border-color: rgba(0, 210, 255, 0.38);
+    background: rgba(0, 210, 255, 0.08);
+}
+
+.hero-select-card.active {
+    border-color: rgba(0, 210, 255, 0.55);
+    background: rgba(0, 210, 255, 0.14);
+    box-shadow: 0 0 0 1px rgba(0, 210, 255, 0.18);
+}
+
+.hero-select-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.hero-select-desc {
+    font-size: 0.74rem;
+    color: rgba(170, 182, 218, 0.82);
+}
+
+.hero-select-skin-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.hero-select-skin-label {
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(178, 192, 230, 0.75);
+    font-family: 'Outfit', sans-serif;
+}
+
+.hero-select-skin {
+    margin: 0;
+    max-width: 260px;
+}
+
+.hero-select-ready-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 12px;
+}
+
+.hero-ready-status {
+    font-size: 0.84rem;
+    color: rgba(245, 208, 140, 0.95);
+}
+
+.hero-ready-status--opponent {
+    color: rgba(150, 190, 255, 0.95);
 }
 
 .lumen-settings-row {

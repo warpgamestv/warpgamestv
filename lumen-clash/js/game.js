@@ -82,6 +82,11 @@ let reconnectTimer = null;
 let manualSocketClose = false;
 let lastRoomId = null;
 let lastTurnSnapshot = null;
+let heroSelectLocked = false;
+let heroSelectPick = { charId: null, skin: 'Default' };
+let heroSelectCountdownUntil = 0;
+let heroSelectCountdownTimer = null;
+let heroSelectServerSnapshot = null;
 
 const matchStats = {
     active: false,
@@ -470,9 +475,11 @@ function computeDesiredPresence() {
     if (typeof document !== 'undefined' && document.hidden) return 'away';
     const mainHidden = document.getElementById('main-menu-container').classList.contains('hidden');
     const matchmaking = !document.getElementById('matchmaking-overlay').classList.contains('hidden');
+    const heroSel = document.getElementById('hero-select-overlay');
+    const heroSelectOpen = heroSel && !heroSel.classList.contains('hidden');
     const inGame = !document.getElementById('ui-container').classList.contains('hidden');
     const priv = !document.getElementById('private-match-container').classList.contains('hidden');
-    if (inGame || matchmaking) return 'match';
+    if (inGame || matchmaking || heroSelectOpen) return 'match';
     if (priv) return 'private_lobby';
     if (!mainHidden) return 'menu';
     return 'menu';
@@ -616,7 +623,28 @@ async function fetchPlayerProfile(silent = false) {
 
         // Render match history
         updateMatchHistoryUI(data.matchHistory);
+
+        fillProfileTitleSelect();
     } catch (e) { console.error('Profile fetch failed', e); }
+}
+
+function fillProfileTitleSelect() {
+    const titleSelect = document.getElementById('profile-select-title');
+    if (!titleSelect || !playerProfileData) return;
+    const current = titleSelect.value;
+    titleSelect.innerHTML = '<option value="">No Title</option>';
+    (playerProfileData.unlockedTitles || []).forEach(title => {
+        const opt = document.createElement('option');
+        opt.value = title;
+        opt.innerText = title;
+        titleSelect.appendChild(opt);
+    });
+    const equip = playerProfileData.equippedTitle || '';
+    if (equip && [...titleSelect.options].some(o => o.value === equip)) {
+        titleSelect.value = equip;
+    } else if (current && [...titleSelect.options].some(o => o.value === current)) {
+        titleSelect.value = current;
+    }
 }
 
 function updateMatchHistoryUI(history) {
@@ -684,16 +712,25 @@ let currentPreviewCharId = 'aegisKnight';
 let currentSkinIndex = 0;
 
 const BP_REWARDS = {
+    1: { type: 'title', id: 'recruit', name: 'Recruit' },
     2: { type: 'emote', id: 'hype', name: '🎈 Hype' },
     3: { type: 'skin', id: 'verdant', name: 'Verdant' },
     4: { type: 'credits', id: 'lumens', amount: 20, name: '+20 Lumens' },
     5: { type: 'title', id: 'warrior', name: 'Warrior' },
+    6: { type: 'skin', id: 'crimson_knight', name: 'Crimson Knight' },
     7: { type: 'credits', id: 'lumens', amount: 20, name: '+20 Lumens' },
+    8: { type: 'title', id: 'tactician', name: 'Tactician' },
     9: { type: 'credits', id: 'lumens', amount: 20, name: '+20 Lumens' },
     10: { type: 'skin', id: 'abyssal', name: 'Abyssal' },
+    11: { type: 'skin', id: 'astral_sage', name: 'Astral Sage' },
     12: { type: 'credits', id: 'lumens', amount: 20, name: '+20 Lumens' },
+    13: { type: 'title', id: 'arc_warden', name: 'Arc Warden' },
+    14: { type: 'title', id: 'starforged', name: 'Starforged' },
     15: { type: 'title', id: 'grandmaster', name: 'Grandmaster' },
+    16: { type: 'title', id: 'mythbreaker', name: 'Mythbreaker' },
+    17: { type: 'title', id: 'season_vanguard', name: 'Season Vanguard' },
     18: { type: 'credits', id: 'lumens', amount: 20, name: '+20 Lumens' },
+    19: { type: 'title', id: 'paragon', name: 'Paragon' },
     20: { type: 'skin', id: 'legend', name: 'Lumen Legend' }
 };
 
@@ -718,6 +755,41 @@ function bpLumensEarnedByRank(rank) {
         }
     }
     return sum;
+}
+
+function textureKeyForClassAndSkin(classId, skinLabel) {
+    if (classId === 'voidWeaver') {
+        if (skinLabel === 'Verdant') return 'voidWeaver_green';
+        if (skinLabel === 'Abyssal') return 'voidWeaver_abyssal';
+        if (skinLabel === 'Lumen Legend') return 'voidWeaver_legend';
+        return 'voidWeaver';
+    }
+    if (classId === 'aegisKnight') {
+        if (skinLabel === 'Crimson') return 'aegisKnight_crimson';
+        return 'aegisKnight';
+    }
+    if (classId === 'lumenSage') {
+        if (skinLabel === 'Astral') return 'lumenSage_astral';
+        return 'lumenSage';
+    }
+    return classId;
+}
+
+function availableSkinsForChar(charId, accountRank) {
+    const r = Math.max(1, Number(accountRank) || 1);
+    const skins = ['Default'];
+    if (charId === 'voidWeaver') {
+        if (r >= 3) skins.push('Verdant');
+        if (r >= 10) skins.push('Abyssal');
+        if (r >= 20) skins.push('Lumen Legend');
+    }
+    if (charId === 'aegisKnight') {
+        if (r >= 6) skins.push('Crimson');
+    }
+    if (charId === 'lumenSage') {
+        if (r >= 11) skins.push('Astral');
+    }
+    return skins;
 }
 
 /** Sum of (class xp) / sum of (level×100) — matches how ranks grow from class levels, not lifetime stats.xp */
@@ -751,7 +823,25 @@ function rosterPctAfterSubtractingClassXp(pg, classId, delta) {
 
 /** RGB max channel at or below this → alpha 0 (removes flat black / dark matte backdrops on PNGs). */
 const CHAR_BITMAP_NEAR_BLACK_THRESHOLD = 28;
-const CHARACTER_TEXTURE_KEYS_FOR_KNOCKOUT = ['voidWeaver', 'voidWeaver_green', 'aegisKnight', 'lumenSage'];
+const CHARACTER_TEXTURE_KEYS_FOR_KNOCKOUT = [
+    'voidWeaver',
+    'voidWeaver_green',
+    'voidWeaver_abyssal',
+    'voidWeaver_legend',
+    'aegisKnight',
+    'aegisKnight_crimson',
+    'lumenSage',
+    'lumenSage_astral'
+];
+
+/** Variant texture keys → base key (for matching on-screen scale when PNG dimensions differ). */
+const VARIANT_TEXTURE_BASE = {
+    voidWeaver_green: 'voidWeaver',
+    voidWeaver_abyssal: 'voidWeaver',
+    voidWeaver_legend: 'voidWeaver',
+    aegisKnight_crimson: 'aegisKnight',
+    lumenSage_astral: 'lumenSage'
+};
 
 const characterPreviewImageCache = Object.create(null);
 
@@ -784,19 +874,18 @@ function getTextureSourceImage(texture) {
     return s0 && s0.image ? s0.image : null;
 }
 
-/** void_weaver_green.png is often exported at a different resolution than void_weaver.png */
-function voidWeaverTextureScaleFactor(scene, textureKey) {
-    if (textureKey !== 'voidWeaver_green') return 1;
-    if (!scene || !scene.textures.exists('voidWeaver') || !scene.textures.exists('voidWeaver_green')) return 1;
-    const base = getTextureSourceImage(scene.textures.get('voidWeaver'));
-    const grn = getTextureSourceImage(scene.textures.get('voidWeaver_green'));
-    if (!base || !grn) return 1;
-    const bw = base.naturalWidth || base.width;
-    const bh = base.naturalHeight || base.height;
-    const gw = grn.naturalWidth || grn.width;
-    const gh = grn.naturalHeight || grn.height;
-    if (!bw || !bh || !gw || !gh) return 1;
-    return Math.min(bw / gw, bh / gh);
+function spriteVariantScaleFactor(scene, textureKey) {
+    const baseKey = VARIANT_TEXTURE_BASE[textureKey];
+    if (!baseKey || !scene || !scene.textures.exists(baseKey) || !scene.textures.exists(textureKey)) return 1;
+    const baseImg = getTextureSourceImage(scene.textures.get(baseKey));
+    const varImg = getTextureSourceImage(scene.textures.get(textureKey));
+    if (!baseImg || !varImg) return 1;
+    const bw = baseImg.naturalWidth || baseImg.width;
+    const bh = baseImg.naturalHeight || baseImg.height;
+    const vw = varImg.naturalWidth || varImg.width;
+    const vh = varImg.naturalHeight || varImg.height;
+    if (!bw || !bh || !vw || !vh) return 1;
+    return Math.min(bw / vw, bh / vh);
 }
 
 function computePhaserSpriteBaseScales() {
@@ -821,10 +910,10 @@ function applyPhaserCharacterScales(scene) {
     const cfg = computePhaserSpriteBaseScales();
     if (!cfg) return;
     if (cfg.inBattle) {
-        playerLeftShape.setScale(cfg.leftBase * voidWeaverTextureScaleFactor(scene, playerLeftShape.texture.key)).setFlipX(false);
-        playerRightShape.setScale(cfg.rightBase * voidWeaverTextureScaleFactor(scene, playerRightShape.texture.key)).setFlipX(true);
+        playerLeftShape.setScale(cfg.leftBase * spriteVariantScaleFactor(scene, playerLeftShape.texture.key)).setFlipX(false);
+        playerRightShape.setScale(cfg.rightBase * spriteVariantScaleFactor(scene, playerRightShape.texture.key)).setFlipX(true);
     } else {
-        playerLeftShape.setScale(cfg.leftBase * voidWeaverTextureScaleFactor(scene, playerLeftShape.texture.key)).setFlipX(false);
+        playerLeftShape.setScale(cfg.leftBase * spriteVariantScaleFactor(scene, playerLeftShape.texture.key)).setFlipX(false);
     }
 }
 
@@ -849,6 +938,18 @@ function applyCharacterTextureAlphaKnockout(scene) {
 function characterPreviewAssetUrl(charId, skinLabel) {
     if (charId === 'voidWeaver' && skinLabel === 'Verdant') {
         return 'assets/void_weaver_green.png?v=1';
+    }
+    if (charId === 'voidWeaver' && skinLabel === 'Abyssal') {
+        return 'assets/void_weaver_abyssal.png?v=1';
+    }
+    if (charId === 'voidWeaver' && skinLabel === 'Lumen Legend') {
+        return 'assets/void_weaver_legend.png?v=1';
+    }
+    if (charId === 'aegisKnight' && skinLabel === 'Crimson') {
+        return 'assets/aegis_knight_crimson.png?v=1';
+    }
+    if (charId === 'lumenSage' && skinLabel === 'Astral') {
+        return 'assets/lumen_sage_astral.png?v=1';
     }
     const base = charId === 'aegisKnight' ? 'aegis_knight' : charId === 'lumenSage' ? 'lumen_sage' : 'void_weaver';
     return `assets/${base}.png?v=2`;
@@ -892,8 +993,12 @@ function mountPreviewImg(container, dataUrl) {
 function preload() {
     this.load.image('voidWeaver', 'assets/void_weaver.png?v=2');
     this.load.image('voidWeaver_green', 'assets/void_weaver_green.png?v=1');
+    this.load.image('voidWeaver_abyssal', 'assets/void_weaver_abyssal.png?v=1');
+    this.load.image('voidWeaver_legend', 'assets/void_weaver_legend.png?v=1');
     this.load.image('aegisKnight', 'assets/aegis_knight.png?v=2');
     this.load.image('lumenSage', 'assets/lumen_sage.png?v=2');
+    this.load.image('aegisKnight_crimson', 'assets/aegis_knight_crimson.png?v=1');
+    this.load.image('lumenSage_astral', 'assets/lumen_sage_astral.png?v=1');
 }
 
 let playerLeftShape;
@@ -903,7 +1008,7 @@ let phaserLayoutBattleMode = false;
 function menuHeroTextureKey(charId) {
     let key = charId;
     const skin = playerProfileData && playerProfileData.equippedSkins && playerProfileData.equippedSkins[charId];
-    if (skin === 'Verdant' && charId === 'voidWeaver') key = 'voidWeaver_green';
+    key = textureKeyForClassAndSkin(charId, skin || 'Default');
     return key;
 }
 
@@ -1005,9 +1110,107 @@ function clearReconnectTimer() {
     reconnectTimer = null;
 }
 
+function clearHeroSelectCountdownTimer() {
+    if (!heroSelectCountdownTimer) return;
+    clearInterval(heroSelectCountdownTimer);
+    heroSelectCountdownTimer = null;
+}
+
+function availableSkinsByHeroId(charId) {
+    return availableSkinsForChar(charId, playerProfileData && playerProfileData.level ? playerProfileData.level : 1);
+}
+
+function setHeroSelectSkinOptions(charId, preferredSkin) {
+    const select = document.getElementById('hero-select-skin');
+    if (!select) return;
+    const skins = availableSkinsByHeroId(charId);
+    select.innerHTML = '';
+    skins.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.innerText = s;
+        select.appendChild(opt);
+    });
+    const fallback = skins.includes('Default') ? 'Default' : (skins[0] || 'Default');
+    select.value = preferredSkin && skins.includes(preferredSkin) ? preferredSkin : fallback;
+}
+
+function updateHeroSelectCardClasses(charId) {
+    document.querySelectorAll('.hero-select-card').forEach(card => {
+        card.classList.toggle('active', card.getAttribute('data-hero-select') === charId);
+    });
+}
+
+function extractHeroSelectServerState() {
+    const hs = gameState && gameState.heroSelect;
+    if (!hs) return null;
+    const me = myPlayerId || 'p1';
+    const opp = me === 'p1' ? 'p2' : 'p1';
+    const players = hs.players || {};
+    const meRow = players[me] || {};
+    const oppRow = players[opp] || {};
+    return {
+        meChar: meRow.charId || null,
+        meSkin: meRow.skin || 'Default',
+        meReady: !!meRow.ready,
+        oppReady: !!oppRow.ready,
+        deadline: Number(hs.deadline) || 0
+    };
+}
+
+function syncHeroSelectUIFromState() {
+    const overlay = document.getElementById('hero-select-overlay');
+    const countdown = document.getElementById('hero-select-countdown');
+    const readyStatus = document.getElementById('hero-ready-status');
+    const oppStatus = document.getElementById('hero-opponent-ready-status');
+    const readyBtn = document.getElementById('btn-hero-ready');
+    if (!overlay || !countdown || !readyStatus || !oppStatus || !readyBtn) return;
+
+    const server = extractHeroSelectServerState();
+    if (server) heroSelectServerSnapshot = server;
+    const effective = heroSelectServerSnapshot || {
+        meChar: heroSelectPick.charId,
+        meSkin: heroSelectPick.skin || 'Default',
+        meReady: heroSelectLocked,
+        oppReady: false,
+        deadline: 0
+    };
+
+    const fallbackChar = CHARACTER_CLASSES[selectedCharacterIndex] ? CHARACTER_CLASSES[selectedCharacterIndex].id : 'aegisKnight';
+    const charId = effective.meChar || heroSelectPick.charId || fallbackChar;
+    const skin = effective.meSkin || heroSelectPick.skin || 'Default';
+
+    heroSelectPick.charId = charId;
+    heroSelectPick.skin = skin;
+    heroSelectLocked = !!effective.meReady;
+
+    updateHeroSelectCardClasses(charId);
+    setHeroSelectSkinOptions(charId, skin);
+
+    readyStatus.innerText = heroSelectLocked ? 'Locked in' : 'Not ready';
+    oppStatus.innerText = effective.oppReady ? 'Opponent locked in' : 'Opponent selecting...';
+    readyBtn.disabled = heroSelectLocked;
+    readyBtn.innerText = heroSelectLocked ? 'Locked' : 'Lock In';
+
+    if (effective.deadline > Date.now()) {
+        heroSelectCountdownUntil = effective.deadline;
+        clearHeroSelectCountdownTimer();
+        const tick = () => {
+            const ms = Math.max(0, heroSelectCountdownUntil - Date.now());
+            countdown.innerText = ms > 0 ? `Lock in your hero (${Math.ceil(ms / 1000)}s)` : 'Waiting for server...';
+        };
+        tick();
+        heroSelectCountdownTimer = setInterval(tick, 200);
+    } else {
+        clearHeroSelectCountdownTimer();
+        countdown.innerText = 'Lock in your hero';
+    }
+    reportPresenceIfChanged(true);
+}
+
 function scheduleReconnect() {
     if (manualSocketClose) return;
-    const inMatchFlow = gameState && (gameState.status === 'IN_PROGRESS' || gameState.status === 'WAITING_FOR_PLAYERS');
+    const inMatchFlow = gameState && (gameState.status === 'IN_PROGRESS' || gameState.status === 'WAITING_FOR_PLAYERS' || gameState.status === 'HERO_SELECT');
     if (!inMatchFlow) return;
     if (reconnectAttempts >= 3) {
         document.getElementById('matchmaking-text').innerText = "Connection lost. Please return to menu.";
@@ -1039,6 +1242,10 @@ function connectWebSocket(specificRoomId = null) {
     // Append chosen character class
     const charId = CHARACTER_CLASSES[selectedCharacterIndex].id;
     persistLastSelectedCharacterId(charId);
+    if (!heroSelectPick.charId) {
+        heroSelectPick.charId = charId;
+        heroSelectPick.skin = 'Default';
+    }
     // Connect to Node.js proxy to bypass Firewall issues on Windows
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     let wsUrl = `${wsProtocol}//${window.location.host}/play?char=${charId}&uid=${localUid}`;
@@ -1067,6 +1274,10 @@ function connectWebSocket(specificRoomId = null) {
             }
             gameState = msg.state;
             updateUI();
+        }
+        if (msg.type === 'HERO_SELECT_UPDATE') {
+            heroSelectServerSnapshot = msg.heroSelect || null;
+            syncHeroSelectUIFromState();
         }
         if (msg.type === 'EMOTE') {
             showEmoteBubble(msg.pId, msg.emote);
@@ -1164,6 +1375,8 @@ function updateUI() {
     // Hide Main Menu and ALL modals if game started
     if (gameState.status === 'IN_PROGRESS') {
         document.getElementById('matchmaking-overlay').classList.add('hidden');
+        document.getElementById('hero-select-overlay').classList.add('hidden');
+        clearHeroSelectCountdownTimer();
         document.getElementById('main-menu-container').classList.add('hidden');
         
         // Hide every modal just in case
@@ -1175,10 +1388,27 @@ function updateUI() {
         document.getElementById('ui-container').classList.remove('hidden');
         document.getElementById('emote-bar').classList.remove('hidden');
         renderEmoteBar();
-    } else if (gameState.status === 'WAITING_FOR_PLAYERS' && myPlayerId) {
-        // We connected but are waiting
-        document.getElementById('matchmaking-text').innerText = "Waiting for Opponent...";
+    } else if (gameState.status === 'HERO_SELECT' && myPlayerId) {
+        document.getElementById('matchmaking-overlay').classList.add('hidden');
         document.getElementById('ui-container').classList.add('hidden');
+        document.getElementById('main-menu-container').classList.add('hidden');
+        document.getElementById('hero-select-overlay').classList.remove('hidden');
+        document.getElementById('emote-bar').classList.add('hidden');
+        syncHeroSelectUIFromState();
+        reportPresenceIfChanged(true);
+    } else if (gameState.status === 'WAITING_FOR_PLAYERS' && myPlayerId) {
+        const playerCount = gameState && gameState.players ? Object.keys(gameState.players).length : 0;
+        document.getElementById('ui-container').classList.add('hidden');
+        document.getElementById('main-menu-container').classList.add('hidden');
+        if (playerCount < 2) {
+            document.getElementById('hero-select-overlay').classList.add('hidden');
+            document.getElementById('matchmaking-overlay').classList.remove('hidden');
+            document.getElementById('matchmaking-text').innerText = "Waiting for Opponent...";
+        } else {
+            document.getElementById('matchmaking-overlay').classList.add('hidden');
+            document.getElementById('hero-select-overlay').classList.remove('hidden');
+            syncHeroSelectUIFromState();
+        }
     }
 
     // Update Health Bars & Animations
@@ -1195,8 +1425,7 @@ function updateUI() {
 
         document.getElementById('name-left').innerText = `${myUsername} (${myPlayer.class})`;
         if (playerLeftShape && myPlayer.classId) {
-            let textureKey = myPlayer.classId;
-            if (myPlayer.equippedSkin === 'Verdant' && myPlayer.classId === 'voidWeaver') textureKey = 'voidWeaver_green';
+            let textureKey = textureKeyForClassAndSkin(myPlayer.classId, myPlayer.equippedSkin || 'Default');
             if (playerLeftShape.active && playerLeftShape.texture.key !== textureKey) {
                 playerLeftShape.setTexture(textureKey);
                 applyPhaserCharacterScales(playerLeftShape.scene);
@@ -1219,8 +1448,7 @@ function updateUI() {
 
         document.getElementById('name-right').innerText = `${oppPlayer.username || 'Opponent'} (${oppPlayer.class})`;
         if (playerRightShape && oppPlayer.classId) {
-            let textureKey = oppPlayer.classId;
-            if (oppPlayer.equippedSkin === 'Verdant' && oppPlayer.classId === 'voidWeaver') textureKey = 'voidWeaver_green';
+            let textureKey = textureKeyForClassAndSkin(oppPlayer.classId, oppPlayer.equippedSkin || 'Default');
             if (playerRightShape.active && playerRightShape.texture.key !== textureKey) {
                 playerRightShape.setTexture(textureKey);
                 applyPhaserCharacterScales(playerRightShape.scene);
@@ -1246,6 +1474,11 @@ function updateUI() {
     if (gameState.status === 'WAITING_FOR_PLAYERS') {
         document.getElementById('status-message').innerText = "Waiting for opponent...";
         document.getElementById('turn-timer').classList.add('hidden');
+        document.querySelectorAll('.ability-btn').forEach(b => b.disabled = true);
+    } else if (gameState.status === 'HERO_SELECT') {
+        document.getElementById('status-message').innerText = "Hero Select";
+        document.getElementById('turn-timer').classList.add('hidden');
+        document.getElementById('ability-bar').classList.add('hidden');
         document.querySelectorAll('.ability-btn').forEach(b => b.disabled = true);
     } else if (gameState.status === 'IN_PROGRESS') {
         const isMyTurn = (myPlayerId === 'p1' && gameState.turn === 0) || (myPlayerId === 'p2' && gameState.turn === 1);
@@ -1330,10 +1563,12 @@ function updateUI() {
             const iWon = me.health > 0 && opp.health <= 0;
             sfx.playGameOver(iWon);
         }
-    } else {
+    } else if (gameState.status !== 'HERO_SELECT') {
         // If not game over, ensure splash is hidden (rematch started or quit)
         document.getElementById('xp-splash-overlay').classList.add('hidden');
         document.getElementById('xp-splash-overlay').classList.remove('active-showing');
+        document.getElementById('hero-select-overlay').classList.add('hidden');
+        clearHeroSelectCountdownTimer();
         if (gameState.status !== 'IN_PROGRESS') endMatchStatsSession();
     }
 
@@ -1385,6 +1620,14 @@ document.getElementById('btn-quick-match').addEventListener('click', () => {
     document.getElementById('matchmaking-overlay').classList.remove('hidden');
     document.getElementById('matchmaking-text').innerText = "Connecting to Server...";
     reportPresenceIfChanged(true);
+    heroSelectLocked = false;
+    heroSelectServerSnapshot = null;
+    heroSelectCountdownUntil = 0;
+    clearHeroSelectCountdownTimer();
+    const initialChar = CHARACTER_CLASSES[selectedCharacterIndex] ? CHARACTER_CLASSES[selectedCharacterIndex].id : 'aegisKnight';
+    heroSelectPick = { charId: initialChar, skin: 'Default' };
+    setHeroSelectSkinOptions(initialChar, 'Default');
+    updateHeroSelectCardClasses(initialChar);
     connectWebSocket();
 });
 
@@ -1409,6 +1652,48 @@ document.querySelectorAll('.char-card').forEach(card => {
     });
 });
 
+document.querySelectorAll('.hero-select-card').forEach(card => {
+    card.addEventListener('click', () => {
+        if (heroSelectLocked) return;
+        const charId = card.getAttribute('data-hero-select');
+        heroSelectPick.charId = charId;
+        heroSelectPick.skin = 'Default';
+        updateHeroSelectCardClasses(charId);
+        setHeroSelectSkinOptions(charId, 'Default');
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ action: 'hero_select_pick', charId, skin: heroSelectPick.skin }));
+        }
+    });
+});
+
+const heroSelectSkinEl = document.getElementById('hero-select-skin');
+if (heroSelectSkinEl) {
+    heroSelectSkinEl.addEventListener('change', () => {
+        if (heroSelectLocked) return;
+        heroSelectPick.skin = heroSelectSkinEl.value || 'Default';
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ action: 'hero_select_pick', charId: heroSelectPick.charId, skin: heroSelectPick.skin }));
+        }
+    });
+}
+
+const btnHeroReady = document.getElementById('btn-hero-ready');
+if (btnHeroReady) {
+    btnHeroReady.addEventListener('click', () => {
+        if (heroSelectLocked) return;
+        if (!heroSelectPick.charId) return;
+        heroSelectLocked = true;
+        syncHeroSelectUIFromState();
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                action: 'hero_select_ready',
+                charId: heroSelectPick.charId,
+                skin: heroSelectPick.skin || 'Default'
+            }));
+        }
+    });
+}
+
 // Customize links inside cards
 document.querySelectorAll('.btn-customize-link').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -1424,6 +1709,13 @@ document.getElementById('btn-battle-pass').addEventListener('click', () => {
 document.getElementById('btn-save-customization').addEventListener('click', () => {
     saveCustomization();
 });
+
+const btnSaveProfileTitle = document.getElementById('btn-save-profile-title');
+if (btnSaveProfileTitle) {
+    btnSaveProfileTitle.addEventListener('click', () => {
+        saveProfileTitle();
+    });
+}
 
 function updateMenuCharacterDisplay() {
     const char = CHARACTER_CLASSES[selectedCharacterIndex];
@@ -2024,6 +2316,12 @@ window.addEventListener('resize', () => {
 // Settings & Profile UI Logic
 document.getElementById('btn-profile').addEventListener('click', () => {
     document.getElementById('profile-container').classList.remove('hidden');
+    const st = document.getElementById('profile-title-status');
+    if (st) {
+        st.classList.add('hidden');
+        st.textContent = '';
+        st.classList.remove('profile-title-status--error');
+    }
     fetchPlayerProfile();
 });
 document.getElementById('btn-close-profile').addEventListener('click', () => {
@@ -2316,17 +2614,6 @@ function openCharacterPreview(charId) {
     document.getElementById('preview-hp-bar').style.width = Math.min(100, (currentHP / 300) * 100) + '%';
     document.getElementById('preview-atk-bar').style.width = Math.min(100, (currentATK / 50) * 100) + '%';
     
-    // Fill Titles Select
-    const titleSelect = document.getElementById('select-title');
-    titleSelect.innerHTML = '<option value="">No Title</option>';
-    (playerProfileData.unlockedTitles || []).forEach(title => {
-        const opt = document.createElement('option');
-        opt.value = title;
-        opt.innerText = title;
-        if (playerProfileData.equippedTitle === title) opt.selected = true;
-        titleSelect.appendChild(opt);
-    });
-
     // Skin Selector Logic
     updateSkinPreview();
 
@@ -2335,10 +2622,7 @@ function openCharacterPreview(charId) {
 }
 
 function updateSkinPreview() {
-    const skins = ['Default'];
-    if (currentPreviewCharId === 'voidWeaver' && playerProfileData.level >= 3) skins.push('Verdant');
-    if (playerProfileData.level >= 10) skins.push('Abyssal');
-    if (playerProfileData.level >= 20) skins.push('Lumen Legend');
+    const skins = availableSkinsForChar(currentPreviewCharId, playerProfileData.level);
     
     const equipped = playerProfileData.equippedSkins[currentPreviewCharId] || 'Default';
     currentSkinIndex = skins.indexOf(equipped);
@@ -2349,35 +2633,32 @@ function updateSkinPreview() {
 }
 
 function nextSkin() {
-    const skins = ['Default'];
-    if (currentPreviewCharId === 'voidWeaver' && playerProfileData.level >= 3) skins.push('Verdant');
-    if (playerProfileData.level >= 10) skins.push('Abyssal');
-    if (playerProfileData.level >= 20) skins.push('Lumen Legend');
+    const skins = availableSkinsForChar(currentPreviewCharId, playerProfileData.level);
     currentSkinIndex = (currentSkinIndex + 1) % skins.length;
     document.getElementById('current-skin-name').innerText = skins[currentSkinIndex];
     refreshCharacterPreviewImg();
 }
 
 function prevSkin() {
-    const skins = ['Default'];
-    if (currentPreviewCharId === 'voidWeaver' && playerProfileData.level >= 3) skins.push('Verdant');
-    if (playerProfileData.level >= 10) skins.push('Abyssal');
-    if (playerProfileData.level >= 20) skins.push('Lumen Legend');
+    const skins = availableSkinsForChar(currentPreviewCharId, playerProfileData.level);
     currentSkinIndex = (currentSkinIndex - 1 + skins.length) % skins.length;
     document.getElementById('current-skin-name').innerText = skins[currentSkinIndex];
     refreshCharacterPreviewImg();
 }
 
 async function saveCustomization() {
-    const title = document.getElementById('select-title').value;
     const skinName = document.getElementById('current-skin-name').innerText;
-    
+    const titlePreserve =
+        playerProfileData && playerProfileData.equippedTitle !== undefined
+            ? playerProfileData.equippedTitle
+            : '';
+
     try {
         const res = await fetch('/save-customization', {
             method: 'POST',
             body: JSON.stringify({
                 uid: localUid,
-                equippedTitle: title,
+                equippedTitle: titlePreserve,
                 charId: currentPreviewCharId,
                 skin: skinName
             })
@@ -2392,6 +2673,55 @@ async function saveCustomization() {
             fetchPlayerProfile(); // Refresh
         }
     } catch(e) { console.error("Save failed", e); }
+}
+
+async function saveProfileTitle() {
+    const titleSelect = document.getElementById('profile-select-title');
+    const statusEl = document.getElementById('profile-title-status');
+    if (!titleSelect || !playerProfileData) return;
+
+    const title = titleSelect.value;
+    const charId = CHARACTER_CLASSES[selectedCharacterIndex]?.id || 'aegisKnight';
+    const skin =
+        (playerProfileData.equippedSkins && playerProfileData.equippedSkins[charId]) || 'Default';
+
+    if (statusEl) {
+        statusEl.classList.remove('hidden', 'profile-title-status--error');
+        statusEl.textContent = 'Saving…';
+    }
+
+    try {
+        const res = await fetch('/save-customization', {
+            method: 'POST',
+            body: JSON.stringify({
+                uid: localUid,
+                equippedTitle: title,
+                charId,
+                skin
+            })
+        });
+        if (res.ok) {
+            if (playerProfileData) playerProfileData.equippedTitle = title;
+            syncMainMenuHeaderProfile(playerProfileData);
+            if (statusEl) {
+                statusEl.textContent = 'Title updated.';
+                statusEl.classList.remove('profile-title-status--error');
+            }
+            sfx.playClick();
+            await fetchPlayerProfile(true);
+        } else {
+            if (statusEl) {
+                statusEl.textContent = 'Could not save title. Try again.';
+                statusEl.classList.add('profile-title-status--error');
+            }
+        }
+    } catch (e) {
+        console.error('Save title failed', e);
+        if (statusEl) {
+            statusEl.textContent = 'Could not save title.';
+            statusEl.classList.add('profile-title-status--error');
+        }
+    }
 }
 
 // Fail-safe global handlers for Splash Screen
@@ -2411,6 +2741,8 @@ window.handleSplashExit = function() {
 
     document.getElementById('ui-container').classList.add('hidden');
     document.getElementById('matchmaking-overlay').classList.add('hidden');
+    const hso = document.getElementById('hero-select-overlay');
+    if (hso) hso.classList.add('hidden');
     document.getElementById('main-menu-container').classList.remove('hidden');
     closeMenuActivityPopover();
     reportPresenceIfChanged(true);
@@ -2899,7 +3231,7 @@ if (btnCloseEmotePresets) {
   'btn-host-choice','btn-join-choice','btn-submit-join','btn-rematch','btn-rematch-bo3','btn-splash-exit',
   'btn-duel-toast-social',
   'btn-menu-activity', 'btn-menu-activity-close',
-  'btn-battle-pass', 'btn-emote-presets', 'btn-save-customization',
+  'btn-battle-pass', 'btn-emote-presets', 'btn-save-customization', 'btn-save-profile-title', 'btn-hero-ready',
   'btn-perf-overlay', 'btn-a11y-large-text', 'btn-a11y-high-contrast', 'btn-a11y-hp-bars', 'btn-reduce-motion',
   'btn-menu-vfx', 'btn-camera-shake', 'btn-hit-stop'].forEach(id => {
      const el = document.getElementById(id);
