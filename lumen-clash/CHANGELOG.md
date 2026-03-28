@@ -1,5 +1,10 @@
 # Lumen Clash
 
+## v1.5.1 — Matchmaking overlay visibility (2026-03-28)
+### Fixed
+- **Queue / hero select hidden**: `#matchmaking-overlay` lived inside `#main-menu-container`, so when the menu was hidden after connecting, the spinner and hero-select flow disappeared and only the Phaser canvas showed (looked like an empty arena or battle view). Matchmaking is now a **sibling** of the main menu with a higher **z-index** so it stays visible until the match starts.
+- **Lobby state**: `HERO_SELECT` and `WAITING_FOR_PLAYERS` no longer require `myPlayerId` to apply layout; **`updateUI`** bails safely if `gameState` is null.
+
 ## v1.5.0 — Pre-match hero select (2026-03-27)
 ### Added
 - **Server-driven hero select**: When both players are in a room, the match enters **`HERO_SELECT`** before **`IN_PROGRESS`**. The worker stores each player’s **`hero_select_pick`** / **`hero_select_ready`**, broadcasts **`HERO_SELECT_UPDATE`** (deadline + lock state), and starts the round after both lock in or after a **20s** timeout.

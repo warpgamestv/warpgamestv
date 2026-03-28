@@ -1368,7 +1368,9 @@ function triggerDamageFeedback(scene, damagedSprite, counterSprite, hurtKickX, c
 }
 
 function updateUI() {
-    if (gameState && gameState.status !== 'GAME_OVER') {
+    if (!gameState) return;
+
+    if (gameState.status !== 'GAME_OVER') {
         hideVictorySplashForActiveMatch();
     }
 
@@ -1388,7 +1390,7 @@ function updateUI() {
         document.getElementById('ui-container').classList.remove('hidden');
         document.getElementById('emote-bar').classList.remove('hidden');
         renderEmoteBar();
-    } else if (gameState.status === 'HERO_SELECT' && myPlayerId) {
+    } else if (gameState.status === 'HERO_SELECT') {
         document.getElementById('matchmaking-overlay').classList.add('hidden');
         document.getElementById('ui-container').classList.add('hidden');
         document.getElementById('main-menu-container').classList.add('hidden');
@@ -1396,7 +1398,7 @@ function updateUI() {
         document.getElementById('emote-bar').classList.add('hidden');
         syncHeroSelectUIFromState();
         reportPresenceIfChanged(true);
-    } else if (gameState.status === 'WAITING_FOR_PLAYERS' && myPlayerId) {
+    } else if (gameState.status === 'WAITING_FOR_PLAYERS') {
         const playerCount = gameState && gameState.players ? Object.keys(gameState.players).length : 0;
         document.getElementById('ui-container').classList.add('hidden');
         document.getElementById('main-menu-container').classList.add('hidden');
@@ -1409,6 +1411,10 @@ function updateUI() {
             document.getElementById('hero-select-overlay').classList.remove('hidden');
             syncHeroSelectUIFromState();
         }
+        reportPresenceIfChanged(true);
+    } else if (gameState.status !== 'GAME_OVER') {
+        document.getElementById('ui-container').classList.add('hidden');
+        document.getElementById('emote-bar').classList.add('hidden');
     }
 
     // Update Health Bars & Animations

@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     
-    <link rel="stylesheet" href="css/style.css?v=26">
+    <link rel="stylesheet" href="css/style.css?v=27">
     <link rel="stylesheet" href="css/background.css?v=2">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <script>
@@ -226,11 +226,12 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <div id="matchmaking-overlay" class="hidden">
-            <div class="spinner"></div>
-            <h2 id="matchmaking-text">Finding Opponent...</h2>
-        </div>
+    <!-- Outside main-menu-container so it stays visible when the menu is hidden during queue -->
+    <div id="matchmaking-overlay" class="hidden">
+        <div class="spinner"></div>
+        <h2 id="matchmaking-text">Finding Opponent...</h2>
     </div>
 
     <!-- CHARACTER MENU -->
@@ -608,6 +609,6 @@
             <button type="button" id="btn-disconnect-ok" class="menu-btn disconnect-ok-btn">Return to Menu</button>
         </div>
     </div>
-    <script src="js/game.js?v=54"></script>
+    <script src="js/game.js?v=55"></script>
 </body>
 </html>
