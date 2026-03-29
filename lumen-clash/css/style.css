@@ -51,6 +51,15 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
     pointer-events: none; /* toggled to auto when the main menu is hidden (see game.js) */
 }
 
+/* Phaser defaults canvas to pointer-events:auto; without this, menu “dead zones” still hit the canvas. */
+#game-container:not(.game-container--battle) canvas {
+    pointer-events: none !important;
+}
+
+#game-container.game-container--battle canvas {
+    pointer-events: auto !important;
+}
+
 #ui-container {
     position: absolute;
     top: 0;
@@ -322,11 +331,7 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
     padding-bottom: env(safe-area-inset-bottom, 0px);
     box-sizing: border-box;
     background: transparent;
-    pointer-events: none;
-}
-
-#main-menu-container .main-menu-header,
-#main-menu-container .main-menu-layout {
+    /* Full-screen hit target: dead zones (side margins, gaps) used to fall through to the Phaser canvas and felt “broken”. */
     pointer-events: auto;
 }
 
@@ -1035,7 +1040,7 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
 }
 
 #matchmaking-overlay {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
@@ -1046,9 +1051,15 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 400;
+    z-index: 8500;
     backdrop-filter: blur(10px);
     pointer-events: auto;
+}
+
+/* Above Phaser WebGL (see syncGameContainerPointerEvents — canvas stays non-interactive until IN_PROGRESS). */
+#hero-select-overlay {
+    position: fixed;
+    z-index: 8500;
 }
 
 .spinner {

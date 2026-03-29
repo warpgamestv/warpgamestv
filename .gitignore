@@ -1,2 +1,5 @@
 .DS_Store
 **/.DS_Store
+
+# lumen-clash local dev (npm run dev / npm start)
+lumen-clash/node_modules/

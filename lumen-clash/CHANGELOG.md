@@ -1,5 +1,14 @@
 # Lumen Clash
 
+## v1.5.3 — Local menu clicks & profile header (2026-03-29)
+### Fixed
+- **Main menu felt dead on local dev**: `#main-menu-container` used **`pointer-events: none`** with only the header and center column set to **`auto`**, so clicks in **side margins** and other gaps hit the **Phaser canvas** (Phaser sets the canvas to **`pointer-events: auto`**). The menu shell is now fully clickable, canvases use **`pointer-events: none`** until battle (`.game-container--battle`), and **`syncGameContainerPointerEvents`** runs after the Phaser scene **`create()`**.
+- **Profile header after failed `/profile`**: On fetch error, the menu header still updates to at least **Player** instead of leaving the **“…”** placeholder.
+
+## v1.5.2 — Queue & hero select above the canvas (2026-03-28)
+### Fixed
+- **Blank queue / hero select (only Phaser hero visible)**: While the main menu was hidden, the game container used **`pointer-events: auto`**, which in WebKit/Safari often promotes the **WebGL canvas above** sibling HTML. Matchmaking and hero-select overlays sat **under** the canvas, so you saw a floating sprite with no spinner or lobby UI. The canvas is now interactive only during **`IN_PROGRESS`**; **`#matchmaking-overlay`** and **`#hero-select-overlay`** use **`position: fixed`** and a high **z-index** so they always paint on top.
+
 ## v1.5.1 — Matchmaking overlay visibility (2026-03-28)
 ### Fixed
 - **Queue / hero select hidden**: `#matchmaking-overlay` lived inside `#main-menu-container`, so when the menu was hidden after connecting, the spinner and hero-select flow disappeared and only the Phaser canvas showed (looked like an empty arena or battle view). Matchmaking is now a **sibling** of the main menu with a higher **z-index** so it stays visible until the match starts.

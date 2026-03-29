@@ -21,12 +21,13 @@ function getGameContainer() {
     return document.getElementById('game-container');
 }
 
-/** Canvas is decorative on the main menu; during matches nothing on the canvas is clicked (abilities are HTML). */
+/** Keep pointer-events off the canvas unless battle is active — otherwise WebKit can composite the WebGL layer above queue/hero-select HTML. Phaser sets the canvas to pointer-events:auto by default, which steals clicks in menu dead-zones (side margins). See `#game-container` / `.game-container--battle` in style.css. */
 function syncGameContainerPointerEvents() {
     const gc = getGameContainer();
     if (!gc) return;
-    const mainHidden = document.getElementById('main-menu-container').classList.contains('hidden');
-    gc.style.pointerEvents = mainHidden ? 'auto' : 'none';
+    const battle = !!(gameState && gameState.status === 'IN_PROGRESS');
+    gc.classList.toggle('game-container--battle', battle);
+    gc.style.pointerEvents = battle ? 'auto' : 'none';
 }
 
 function syncRootLayoutClasses() {
@@ -625,7 +626,10 @@ async function fetchPlayerProfile(silent = false) {
         updateMatchHistoryUI(data.matchHistory);
 
         fillProfileTitleSelect();
-    } catch (e) { console.error('Profile fetch failed', e); }
+    } catch (e) {
+        console.error('Profile fetch failed', e);
+        syncMainMenuHeaderProfile({ username: myUsername || 'Player', level: 1 });
+    }
 }
 
 function fillProfileTitleSelect() {
@@ -1085,6 +1089,7 @@ function create() {
     });
 
     // Connection is now triggered by the "Play" button, not on create()
+    syncGameContainerPointerEvents();
 }
 
 function update() {
@@ -1569,12 +1574,10 @@ function updateUI() {
             const iWon = me.health > 0 && opp.health <= 0;
             sfx.playGameOver(iWon);
         }
-    } else if (gameState.status !== 'HERO_SELECT') {
-        // If not game over, ensure splash is hidden (rematch started or quit)
+    } else {
+        // Rematch / odd states: hide splash (hero-select visibility is handled in the first updateUI block only)
         document.getElementById('xp-splash-overlay').classList.add('hidden');
         document.getElementById('xp-splash-overlay').classList.remove('active-showing');
-        document.getElementById('hero-select-overlay').classList.add('hidden');
-        clearHeroSelectCountdownTimer();
         if (gameState.status !== 'IN_PROGRESS') endMatchStatsSession();
     }
 

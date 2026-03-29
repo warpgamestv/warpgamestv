@@ -1,0 +1,14 @@
+{
+  "name": "lumen-clash-site",
+  "private": true,
+  "description": "Static site + local dev proxy to Lumen-Clash Worker (wrangler dev on 8790). See DEV.md.",
+  "scripts": {
+    "dev": "node server.js",
+    "backend": "node scripts/run-backend.cjs",
+    "start": "concurrently -k -n backend,web -c blue,green \"npm run backend\" \"wait-on tcp:127.0.0.1:8790 && npm run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "wait-on": "^7.2.0"
+  }
+}
