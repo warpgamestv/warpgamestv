@@ -1051,7 +1051,7 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 8500;
+    z-index: 99999;
     backdrop-filter: blur(10px);
     pointer-events: auto;
 }
@@ -1059,7 +1059,14 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
 /* Above Phaser WebGL (see syncGameContainerPointerEvents — canvas stays non-interactive until IN_PROGRESS). */
 #hero-select-overlay {
     position: fixed;
-    z-index: 8500;
+    z-index: 99999;
+}
+
+/* WebKit/Safari can composite WebGL above siblings; isolate + layer promotion keeps queue/hero UI on top in prod. */
+#matchmaking-overlay:not(.hidden),
+#hero-select-overlay:not(.hidden) {
+    isolation: isolate;
+    transform: translateZ(0);
 }
 
 .spinner {

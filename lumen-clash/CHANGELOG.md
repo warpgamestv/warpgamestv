@@ -1,5 +1,10 @@
 # Lumen Clash
 
+## v1.5.4 — Production parity (cache + overlay stacking) (2026-03-29)
+### Fixed
+- **Site looked like the old “floating hero” bug**: Browsers and CDNs often kept **cached** `game.js` / `style.css` after deploy. **Cache-busters** bumped (`style.css?v=32`, `game.js?v=60`, `background.css?v=3`). **`_headers`** (Cloudflare Pages) sets **short cache** for `/js/*` and `/css/*` (and `/lumen-clash/...` if the game lives under a subpath).
+- **Overlays**: `#matchmaking-overlay` / `#hero-select-overlay` **z-index** raised to **99999** with **`isolation: isolate`** and **`translateZ(0)`** so WebKit still paints queue/hero UI **above** WebGL in production.
+
 ## v1.5.3 — Local menu clicks & profile header (2026-03-29)
 ### Fixed
 - **Main menu felt dead on local dev**: `#main-menu-container` used **`pointer-events: none`** with only the header and center column set to **`auto`**, so clicks in **side margins** and other gaps hit the **Phaser canvas** (Phaser sets the canvas to **`pointer-events: auto`**). The menu shell is now fully clickable, canvases use **`pointer-events: none`** until battle (`.game-container--battle`), and **`syncGameContainerPointerEvents`** runs after the Phaser scene **`create()`**.
