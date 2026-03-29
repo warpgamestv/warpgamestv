@@ -1,5 +1,9 @@
 # Lumen Clash
 
+## v1.5.5 — game.js load fix (2026-03-29)
+### Fixed
+- **`ReferenceError: Cannot access 'gameState' before initialization`**: `syncGameContainerPointerEvents()` ran at parse time before `let gameState` was initialized (temporal dead zone). **`gameState`** is now declared next to **`game`** before the first sync. **`game.js?v=61`**.
+
 ## v1.5.4 — Production parity (cache + overlay stacking) (2026-03-29)
 ### Fixed
 - **Site looked like the old “floating hero” bug**: Browsers and CDNs often kept **cached** `game.js` / `style.css` after deploy. **Cache-busters** bumped (`style.css?v=32`, `game.js?v=60`, `background.css?v=3`). **`_headers`** (Cloudflare Pages) sets **short cache** for `/js/*` and `/css/*` (and `/lumen-clash/...` if the game lives under a subpath).

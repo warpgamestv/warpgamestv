@@ -16,6 +16,8 @@ const config = {
 };
 
 let game = null;
+/** Declared before `syncGameContainerPointerEvents` runs at load (avoid TDZ ReferenceError). */
+let gameState = null;
 
 function getGameContainer() {
     return document.getElementById('game-container');
@@ -75,7 +77,6 @@ initGame();
 
 let socket;
 let myPlayerId = null;
-let gameState = null;
 let prevMyHealth = -1;
 let prevOpponentHealth = -1;
 let reconnectAttempts = 0;
