@@ -13,25 +13,6 @@
     <link rel="stylesheet" href="css/style.css?v=32">
     <link rel="stylesheet" href="css/background.css?v=3">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-    <script>
-        // Ghost Hunter Debugger: Catch any click-stealers in the act
-        window.addEventListener('click', (e) => {
-            const overlay = document.getElementById('xp-splash-overlay');
-            const isActive = overlay && !overlay.classList.contains('hidden');
-            const style = window.getComputedStyle(e.target);
-            
-            console.log("[GhostHunter] Click Target:", e.target.tagName, 
-                        "ID:", e.target.id || "None", 
-                        "Z-Index:", style.zIndex,
-                        "PointerEvents:", style.pointerEvents);
-            
-            if (isActive) {
-                if (!overlay.contains(e.target) && e.target !== overlay) {
-                    console.warn("[GhostHunter] INTERCEPTED by non-splash element while results active!", e.target);
-                }
-            }
-        }, true);
-    </script>
 </head>
 <body>
     <!-- XP SPLASH / GAME OVER OVERLAY -->
@@ -609,6 +590,6 @@
             <button type="button" id="btn-disconnect-ok" class="menu-btn disconnect-ok-btn">Return to Menu</button>
         </div>
     </div>
-    <script src="js/game.js?v=61"></script>
+    <script src="js/game.js?v=62"></script>
 </body>
 </html>

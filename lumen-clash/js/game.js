@@ -88,7 +88,6 @@ let heroSelectLocked = false;
 let heroSelectPick = { charId: null, skin: 'Default' };
 let heroSelectCountdownUntil = 0;
 let heroSelectCountdownTimer = null;
-let heroSelectServerSnapshot = null;
 
 const matchStats = {
     active: false,
@@ -1173,8 +1172,7 @@ function syncHeroSelectUIFromState() {
     if (!overlay || !countdown || !readyStatus || !oppStatus || !readyBtn) return;
 
     const server = extractHeroSelectServerState();
-    if (server) heroSelectServerSnapshot = server;
-    const effective = heroSelectServerSnapshot || {
+    const effective = server || {
         meChar: heroSelectPick.charId,
         meSkin: heroSelectPick.skin || 'Default',
         meReady: heroSelectLocked,
@@ -1282,7 +1280,9 @@ function connectWebSocket(specificRoomId = null) {
             updateUI();
         }
         if (msg.type === 'HERO_SELECT_UPDATE') {
-            heroSelectServerSnapshot = msg.heroSelect || null;
+            if (gameState && msg.heroSelect) {
+                gameState.heroSelect = msg.heroSelect;
+            }
             syncHeroSelectUIFromState();
         }
         if (msg.type === 'EMOTE') {
@@ -1631,7 +1631,6 @@ document.getElementById('btn-quick-match').addEventListener('click', () => {
     document.getElementById('matchmaking-text').innerText = "Connecting to Server...";
     reportPresenceIfChanged(true);
     heroSelectLocked = false;
-    heroSelectServerSnapshot = null;
     heroSelectCountdownUntil = 0;
     clearHeroSelectCountdownTimer();
     const initialChar = CHARACTER_CLASSES[selectedCharacterIndex] ? CHARACTER_CLASSES[selectedCharacterIndex].id : 'aegisKnight';
