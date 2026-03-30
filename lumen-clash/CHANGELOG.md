@@ -1,10 +1,10 @@
 # Lumen Clash
 
-## v1.6.0-dev — Quests + Pass XP + Lumens (2026-03-29)
+## v1.6.0 — Quests + Pass XP + Lumens (2026-03-29)
 ### Added
-- **Backend** (deploy with `Lumen-Clash/backend`): Daily/weekly **quest** metrics, **Luminary Pass XP**, and **lumens** awarded on match end via extended **`/add-xp`**; **`/profile`** includes **`questCatalog`** and **`questMetrics`**.
-- **Activity** popover shows quest progress; **Luminary Pass** modal shows **Pass XP** and **banked Lumens** (`bp-pass-xp`, `bp-lumens-server`).
-- **Post-match splash**: **Quest completion** line when **`postGame.questCompleted`** is present; **Report player** opens **`POST /report`** modal (opponent **`uid`** + room). **`style.css?v=34`**, **`game.js?v=64`**.
+- **Backend** (`Lumen-Clash/backend`): Daily/weekly **quest** metrics (UTC day / ISO week), **Luminary Pass XP** (`luminaryPassXp` += match class XP), **banked lumens** (rank rewards + quest bonuses + **`POST /unlock-premium`** spend); extended **`POST /internal/add-xp`** from `GameRoom` with **matchStats**; **`/profile`** returns **`questCatalog`**, **`questMetrics`**, **`lumens`**, **`bpPremiumUnlocked`**. **`POST /report`** → **`ModerationHub`** Durable Object (last 500 entries). **`wrangler.toml`** routes **`/report`**, **`/unlock-premium`**; migration **v6** `ModerationHub`.
+- **Activity** popover shows quest progress; **Luminary Pass** modal shows **Pass XP** and **banked Lumens** (`bp-pass-xp`, `bp-lumens-server`); **Unlock Premium** deducts **100** server lumens via **`/unlock-premium`**.
+- **Post-match splash**: **Quest completion** line when **`postGame.questCompleted`** is present; **Report player** → **`POST /report`**. **`style.css?v=35`**, **`game.js?v=65`**.
 
 ## v1.5.5 — game.js load fix (2026-03-29)
 ### Fixed

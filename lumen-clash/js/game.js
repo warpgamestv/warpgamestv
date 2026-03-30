@@ -633,6 +633,7 @@ async function fetchPlayerProfile(silent = false) {
         const res = await fetch(`/profile?uid=${localUid}`);
         const data = await res.json();
         playerProfileData = data;
+        if (data.bpPremiumUnlocked) setBpPremiumUnlocked(true);
         myUsername = data.username || 'Player';
         
         document.getElementById('profile-username').innerText = myUsername;
@@ -2569,11 +2570,12 @@ function openBattlePass() {
     // Generate nodes for levels 1-20
     const accLevel = Math.max(1, Number(playerProfileData.level) || 1);
 
-    // Premium unlock UI (free-earned Lumens)
+    // Premium unlock UI (server banked Lumens; localStorage mirrors after unlock)
     const lumensEarned = bpLumensEarnedByRank(accLevel);
     const cost = BP_PREMIUM_UNLOCK_COST_LUMENS;
-    const premiumAlready = bpPremiumUnlocked();
-    const eligible = lumensEarned >= cost;
+    const serverLumens = Math.max(0, Number(playerProfileData.lumens) || 0);
+    const premiumAlready = bpPremiumUnlocked() || !!playerProfileData.bpPremiumUnlocked;
+    const eligible = serverLumens >= cost;
     const premiumActive = premiumAlready || eligible;
 
     const premiumStatus = document.getElementById('bp-premium-status');
@@ -2595,14 +2597,25 @@ function openBattlePass() {
         unlockBtn.classList.toggle('hidden', premiumAlready || !eligible);
         unlockBtn.disabled = premiumAlready || !eligible;
         unlockBtn.textContent = premiumAlready ? 'Premium unlocked' : 'Unlock Premium';
-        unlockBtn.onclick = () => {
-            if (bpPremiumUnlocked()) return;
-            if (bpLumensEarnedByRank(accLevel) < cost) return;
-            setBpPremiumUnlocked(true);
-            openBattlePass(); // re-render
+        unlockBtn.onclick = async () => {
+            if (bpPremiumUnlocked() || playerProfileData.bpPremiumUnlocked) return;
+            if (serverLumens < cost) return;
+            try {
+                const r = await fetch('/unlock-premium', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ uid: localUid })
+                });
+                const j = await r.json();
+                if (!j.ok) return;
+                if (j.stats) playerProfileData = { ...playerProfileData, ...j.stats };
+                setBpPremiumUnlocked(true);
+                openBattlePass();
+            } catch (e) {
+                console.error('unlock-premium failed', e);
+            }
         };
     }
-
     for (let i = 1; i <= 20; i++) {
         const node = document.createElement('div');
         node.className = 'bp-node';
@@ -3305,7 +3318,7 @@ function submitLumenReport(payload) {
     return fetch('/report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, reporterUid: localUid, clientVersion: '1.6.0-dev' })
+        body: JSON.stringify({ ...payload, reporterUid: localUid, clientVersion: '1.6.0' })
     }).then((r) => r.json());
 }
 
