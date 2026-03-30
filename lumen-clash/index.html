@@ -67,6 +67,13 @@
                 <div id="bp-splash-details" class="xp-splash-xp-details">Roster XP — Rank 1</div>
             </div>
 
+            <div id="ranked-splash-module" class="xp-module xp-splash-bp card-glass hidden">
+                <div class="xp-splash-row">
+                    <span class="xp-splash-bp-label">RANKED TIER <span id="ranked-splash-tier">Unranked</span></span>
+                    <span id="ranked-splash-delta" class="xp-splash-bp-xp">+0 MMR</span>
+                </div>
+            </div>
+
             <div class="xp-module xp-splash-matchstats card-glass">
                 <div class="xp-splash-matchstats-head">Match Breakdown</div>
                 <div class="xp-splash-matchstats-grid">
@@ -253,6 +260,7 @@
                 <div id="username-error" class="hidden"></div>
             </div>
             <p class="profile-level-text">Level: <span id="profile-level">...</span></p>
+            <p class="profile-level-text" style="color: #d4af37; font-size: 1.1rem; margin-top: 4px;">Rank: <span id="profile-ranked-tier" style="font-weight: bold;">Unranked (0/5)</span></p>
             <div class="xp-bar-bg profile-xp-bg"><div class="xp-bar-fill" id="profile-xp-fill"></div></div>
             <p class="profile-xp-details"><span id="profile-xp-text">0 / 300</span> roster XP</p>
             <p class="profile-xp-hint">Bar = progress across all classes (rank rises when any class levels up).</p>
@@ -334,6 +342,7 @@
         </div>
         <div class="lumen-panel lumen-panel--modes">
             <button type="button" id="btn-quick-match" class="menu-btn menu-btn-play-mode-primary">Quick Match</button>
+            <button type="button" id="btn-ranked-match" class="menu-btn menu-btn-play-mode-primary" style="background: linear-gradient(45deg, #d4af37, #b8860b);">Ranked Match</button>
             <button type="button" id="btn-private-choice" class="menu-btn secondary-btn menu-btn-play-mode-private">Private Match</button>
         </div>
         <button type="button" id="btn-close-play-mode" class="menu-btn secondary-btn btn-lumen-back btn-lumen-back--muted">Cancel ↩</button>

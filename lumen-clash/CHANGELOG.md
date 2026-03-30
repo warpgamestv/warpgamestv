@@ -1,5 +1,16 @@
 # Lumen Clash
 
+## v1.6.5 — Events System Overhaul (2026-03-29)
+### Changed
+- **Backend / Events**: Overhauled the global `EVENTS_CATALOG` to natively support pushing `grantedTitles` and `grantedCosmetics` directly into player accounts just for logging in during active windows. No hard-coded client logic.
+- **Frontend / Activity**: The Live Events popover now correctly parses and displays any real-time seasonal rewards (titles, cosmetics) granted to players alongside the normal XP and Lumen multipliers.
+- **Season 1**: Activated "Season 1: Neon Ascension" granting the "Pioneer" title to all active players.
+
+## v1.6.4 — Quests Slice 2: Match Telemetry Metrics (2026-03-29)
+### Added
+- **Backend / Quests**: Quest trackers now support and accumulate `damage` and `abilities` metrics sent via `/internal/add-xp`. Added three new quests to the global catalog: **d_dmg** ("Deal 1000 damage" - Daily), **d_abil** ("Use 15 abilities" - Daily), and **w_dmg** ("Deal 5000 damage" - Weekly).
+- **Frontend / Activity**: The main menu Activity popover now dynamically calculates and displays progress for quests based on damage output and ability usage.
+
 ## v1.6.3 — UI Consistency & Standardization (2026-03-29)
 ### Changed
 - **Modals**: Upgraded Battle Pass and Character Preview menus to use the new `.lumen-modal-screen` glassmorphism framework instead of legacy popup boxes.

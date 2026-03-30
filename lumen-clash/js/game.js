@@ -563,8 +563,21 @@ function renderEventsActivitySection() {
     if (!p || !p.activeEvents || !p.activeEvents.length) return '';
     const xm = p.eventXpMultiplier != null ? Number(p.eventXpMultiplier) : 1;
     const lm = p.eventLumenMultiplier != null ? Number(p.eventLumenMultiplier) : 1;
+    
+    let metaLines = [];
+    if (xm !== 1 || lm !== 1) {
+        metaLines.push(`Pass XP ×${xm.toFixed(2)} · Quest lumens ×${lm.toFixed(2)}`);
+    }
+    
+    let rewardLines = [];
+    p.activeEvents.forEach(e => {
+        if (e.grantedTitles && e.grantedTitles.length) rewardLines.push(`Title: ${e.grantedTitles.join(', ')}`);
+        if (e.grantedCosmetics && e.grantedCosmetics.length) rewardLines.push(`Unlocks: ${e.grantedCosmetics.join(', ')}`);
+    });
+    if (rewardLines.length) metaLines.push(rewardLines.join(' · '));
+
     const names = p.activeEvents.map((e) => e.name).join(' · ');
-    return `<div class="menu-activity-quest-block menu-activity-events"><h3 class="menu-activity-quest-head">Live events</h3><p class="menu-activity-event-line">${names}</p><p class="menu-activity-event-meta">Pass XP ×${xm.toFixed(2)} · Quest lumens ×${lm.toFixed(2)}</p></div>`;
+    return `<div class="menu-activity-quest-block menu-activity-events"><h3 class="menu-activity-quest-head">Live events</h3><p class="menu-activity-event-line">${names}</p><p class="menu-activity-event-meta">${metaLines.join('<br>')}</p></div>`;
 }
 
 function renderQuestActivitySection() {
@@ -576,7 +589,10 @@ function renderQuestActivitySection() {
     for (const q of p.questCatalog) {
         const bucket = q.slot === 'daily' ? dm : wm;
         const claimed = bucket.claimed && bucket.claimed[q.id];
-        const cur = q.metric === 'wins' ? (bucket.wins || 0) : (bucket.matches || 0);
+        let cur = bucket.matches || 0;
+        if (q.metric === 'wins') cur = bucket.wins || 0;
+        else if (q.metric === 'damage') cur = bucket.damage || 0;
+        else if (q.metric === 'abilities') cur = bucket.abilities || 0;
         const pct = Math.min(100, Math.round((cur / Math.max(1, q.target)) * 100));
         const done = !!claimed || cur >= q.target;
         rows.push(
@@ -649,6 +665,19 @@ async function fetchPlayerProfile(silent = false) {
         
         document.getElementById('profile-username').innerText = myUsername;
         document.getElementById('profile-level').innerText = data.level; // Account rank (from class levels)
+        
+        const rPlacements = data.rankedRecord ? data.rankedRecord.placements : 0;
+        const rMmr = data.rankedRecord ? data.rankedRecord.mmr : 1000;
+        let rTier = `Unranked (${rPlacements}/5)`;
+        if (rPlacements >= 5) {
+            if (rMmr < 1150) rTier = `Bronze (${rMmr})`;
+            else if (rMmr < 1300) rTier = `Silver (${rMmr})`;
+            else if (rMmr < 1500) rTier = `Gold (${rMmr})`;
+            else if (rMmr < 1850) rTier = `Platinum (${rMmr})`;
+            else rTier = `Diamond (${rMmr})`;
+        }
+        document.getElementById('profile-ranked-tier').innerText = rTier;
+
         document.getElementById('profile-wins').innerText = data.wins;
         document.getElementById('profile-losses').innerText = data.losses;
 
@@ -718,6 +747,19 @@ function updateProfileUI(data) {
     myUsername = data.username || 'Player';
     document.getElementById('profile-username').innerText = myUsername;
     document.getElementById('profile-level').innerText = data.level;
+    
+    const rPlacements = data.rankedRecord ? data.rankedRecord.placements : 0;
+    const rMmr = data.rankedRecord ? data.rankedRecord.mmr : 1000;
+    let rTier = `Unranked (${rPlacements}/5)`;
+    if (rPlacements >= 5) {
+        if (rMmr < 1150) rTier = `Bronze (${rMmr})`;
+        else if (rMmr < 1300) rTier = `Silver (${rMmr})`;
+        else if (rMmr < 1500) rTier = `Gold (${rMmr})`;
+        else if (rMmr < 1850) rTier = `Platinum (${rMmr})`;
+        else rTier = `Diamond (${rMmr})`;
+    }
+    document.getElementById('profile-ranked-tier').innerText = rTier;
+
     document.getElementById('profile-wins').innerText = data.wins;
     document.getElementById('profile-losses').innerText = data.losses;
 
@@ -1271,11 +1313,13 @@ function scheduleReconnect() {
     document.getElementById('matchmaking-text').innerText = `Reconnecting... (${reconnectAttempts}/3)`;
     clearReconnectTimer();
     reconnectTimer = setTimeout(() => {
-        connectWebSocket(lastRoomId);
+        connectWebSocket(lastRoomId, lastQueueType);
     }, delayMs);
 }
 
-function connectWebSocket(specificRoomId = null) {
+let lastQueueType = 'casual';
+
+function connectWebSocket(specificRoomId = null, queue = 'casual') {
     if (socket) {
         manualSocketClose = true;
         try {
@@ -1301,6 +1345,12 @@ function connectWebSocket(specificRoomId = null) {
     // Connect to Node.js proxy to bypass Firewall issues on Windows
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     let wsUrl = `${wsProtocol}//${window.location.host}/play?char=${encodeURIComponent(charId)}&uid=${encodeURIComponent(localUid)}&skin=${encodeURIComponent(skin)}`;
+    
+    lastQueueType = queue;
+    if (queue === 'ranked') {
+        wsUrl += `&queue=ranked`;
+    }
+
     if (specificRoomId) {
         wsUrl += `&roomId=${encodeURIComponent(specificRoomId)}`;
     }
@@ -1686,6 +1736,22 @@ document.getElementById('btn-quick-match').addEventListener('click', () => {
     setHeroSelectSkinOptions(initialChar, 'Default');
     updateHeroSelectCardClasses(initialChar);
     connectWebSocket();
+});
+
+document.getElementById('btn-ranked-match').addEventListener('click', () => {
+    if (typeof sfx !== 'undefined' && sfx.playClick) sfx.playClick();
+    document.getElementById('play-mode-modal').classList.add('hidden');
+    document.getElementById('matchmaking-overlay').classList.remove('hidden');
+    document.getElementById('matchmaking-text').innerText = "Finding Ranked Match...";
+    reportPresenceIfChanged(true);
+    heroSelectLocked = false;
+    heroSelectCountdownUntil = 0;
+    clearHeroSelectCountdownTimer();
+    const initialChar = CHARACTER_CLASSES[selectedCharacterIndex] ? CHARACTER_CLASSES[selectedCharacterIndex].id : 'aegisKnight';
+    heroSelectPick = { charId: initialChar, skin: 'Default' };
+    setHeroSelectSkinOptions(initialChar, 'Default');
+    updateHeroSelectCardClasses(initialChar);
+    connectWebSocket(null, 'ranked');
 });
 
 document.getElementById('btn-private-choice').addEventListener('click', () => {
@@ -2902,6 +2968,10 @@ async function showXPSplash(won, pg) {
     const statAbilities = document.getElementById('splash-stat-abilities');
     const statTurns = document.getElementById('splash-stat-turns');
 
+    const rankedMod = document.getElementById('ranked-splash-module');
+    const rankedTierEl = document.getElementById('ranked-splash-tier');
+    const rankedDeltaEl = document.getElementById('ranked-splash-delta');
+
     if (!splash) {
         console.error("[Splash] FATAL: Overlay element not found");
         console.groupEnd();
@@ -3031,6 +3101,27 @@ async function showXPSplash(won, pg) {
 
         const rosterEnd = sumRosterXpProgress(pg.classes);
         const rosterStartPct = rosterPctAfterSubtractingClassXp(pg, classId, xpGained);
+
+        if (pg.isRanked) {
+            rankedMod.classList.remove('hidden');
+            const sign = pg.rankedDelta >= 0 ? '+' : '';
+            rankedDeltaEl.innerText = `${sign}${pg.rankedDelta} MMR`;
+            rankedDeltaEl.style.color = pg.rankedDelta >= 0 ? '#00ff88' : '#ff4444';
+            
+            const rPlacements = pg.rankedRecord ? pg.rankedRecord.placements : 0;
+            const rMmr = pg.rankedRecord ? pg.rankedRecord.mmr : 1000;
+            let rTier = `Unranked (${rPlacements}/5)`;
+            if (rPlacements >= 5) {
+                if (rMmr < 1150) rTier = `Bronze (${rMmr})`;
+                else if (rMmr < 1300) rTier = `Silver (${rMmr})`;
+                else if (rMmr < 1500) rTier = `Gold (${rMmr})`;
+                else if (rMmr < 1850) rTier = `Platinum (${rMmr})`;
+                else rTier = `Diamond (${rMmr})`;
+            }
+            rankedTierEl.innerText = rTier;
+        } else {
+            rankedMod.classList.add('hidden');
+        }
 
         console.groupEnd();
         // Wait for pop-in animation
