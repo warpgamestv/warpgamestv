@@ -487,10 +487,14 @@ function computeDesiredPresence() {
     return 'menu';
 }
 
+let lastPresencePing = 0;
 async function reportPresenceIfChanged(force = false) {
     const state = computeDesiredPresence();
-    if (!force && state === lastReportedPresence) return;
+    const now = Date.now();
+    const needsPing = now - lastPresencePing >= 30000;
+    if (!force && !needsPing && state === lastReportedPresence) return;
     lastReportedPresence = state;
+    lastPresencePing = now;
     try {
         await fetch('/update-presence', {
             method: 'POST',
@@ -1989,23 +1993,23 @@ function updateSocialUI(data) {
     lastSocialSnapshot = data;
     const friends = data.friends || [];
     const requests = data.requests || [];
-    const duelInvites = data.duelInvites || [];
+    const invites = data.invites || [];
     
     document.getElementById('friends-count').innerText = `${friends.length}/100`;
 
-    // Update notification dot (friend requests + duel invites)
+    // Update notification dot (friend requests + invites)
     const dot = document.getElementById('social-dot');
-    if (requests.length > 0 || duelInvites.length > 0) dot.classList.remove('hidden');
+    if (requests.length > 0 || invites.length > 0) dot.classList.remove('hidden');
     else dot.classList.add('hidden');
 
     refreshMenuActivityBadge(data);
 
     const duelToast = document.getElementById('menu-duel-invite-toast');
     if (duelToast) {
-        if (duelInvites.length > 0) {
+        if (invites.length > 0) {
             duelToast.classList.remove('hidden');
             const t = duelToast.querySelector('.menu-duel-invite-toast-text');
-            if (t) t.textContent = duelInvites.length === 1 ? 'You have a duel invite from a friend.' : `You have ${duelInvites.length} duel invites.`;
+            if (t) t.textContent = invites.length === 1 ? 'You have a game invite from a friend.' : `You have ${invites.length} game invites.`;
         } else {
             duelToast.classList.add('hidden');
         }
@@ -2020,21 +2024,36 @@ function updateSocialUI(data) {
     const list = document.getElementById('friends-list');
     let html = '';
 
-    if (duelInvites.length > 0) {
-        html += `<div style="background: rgba(255, 200, 120, 0.08); padding: 10px; font-weight: bold; font-size: 0.9rem; color: #ffcc80; margin-bottom: 5px;">Duel invites (${duelInvites.length})</div>`;
-        duelInvites.forEach((d) => {
-            html += `
-                <div style="padding: 10px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; background: rgba(255, 180, 80, 0.06);">
-                    <div>
-                        <div style="font-weight: bold; color: #eee;">${d.fromUsername}</div>
-                        <div style="font-size: 0.75rem; color: #888;">Private match · code ${d.code}</div>
+    if (invites.length > 0) {
+        html += `<div style="background: rgba(255, 200, 120, 0.08); padding: 10px; font-weight: bold; font-size: 0.9rem; color: #ffcc80; margin-bottom: 5px;">Game Invites (${invites.length})</div>`;
+        invites.forEach((d) => {
+            if (d.type === 'duel') {
+                html += `
+                    <div style="padding: 10px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; background: rgba(255, 180, 80, 0.06);">
+                        <div>
+                            <div style="font-weight: bold; color: #eee;">${d.fromUsername}</div>
+                            <div style="font-size: 0.75rem; color: #888;">Private match · code ${d.code}</div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="acceptInvite('${d.fromUid}', 'duel')" style="background: #00ffcc; border: none; color: #000; border-radius: 4px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer; font-weight: bold;">Accept</button>
+                            <button onclick="declineInvite('${d.fromUid}', 'duel')" style="background: #444; border: none; color: #fff; border-radius: 4px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer;">Decline</button>
+                        </div>
                     </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button onclick="acceptDuelInvite('${d.fromUid}')" style="background: #00ffcc; border: none; color: #000; border-radius: 4px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer; font-weight: bold;">Accept</button>
-                        <button onclick="declineDuelInvite('${d.fromUid}')" style="background: #444; border: none; color: #fff; border-radius: 4px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer;">Decline</button>
+                `;
+            } else if (d.type === 'party') {
+                html += `
+                    <div style="padding: 10px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; background: rgba(200, 100, 255, 0.06);">
+                        <div>
+                            <div style="font-weight: bold; color: #eee;">${d.fromUsername}</div>
+                            <div style="font-size: 0.75rem; color: #888;">Party invite (2v2)</div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="acceptInvite('${d.fromUid}', 'party')" style="background: #cc66ff; border: none; color: #000; border-radius: 4px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer; font-weight: bold;">Accept</button>
+                            <button onclick="declineInvite('${d.fromUid}', 'party')" style="background: #444; border: none; color: #fff; border-radius: 4px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer;">Decline</button>
+                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            }
         });
         html += '<div style="height: 15px;"></div>';
     }
@@ -2060,7 +2079,7 @@ function updateSocialUI(data) {
     }
 
     // Friends Section
-    if (friends.length === 0 && requests.length === 0 && duelInvites.length === 0) {
+    if (friends.length === 0 && requests.length === 0 && invites.length === 0) {
         list.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">No friends yet. Add some to play together!</div>';
         return;
     }
@@ -2080,7 +2099,7 @@ function updateSocialUI(data) {
                         </div>
                     </div>
                     <div style="display: flex; flex-shrink: 0; flex-wrap: wrap; gap: 6px; justify-content: flex-end;">
-                        <button type="button" onclick="challengeFriend('${f.uid}')" style="background: rgba(0, 210, 255, 0.2); border: 1px solid rgba(0, 210, 255, 0.45); color: #9ef0ff; border-radius: 4px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; font-weight: bold;">Challenge</button>
+                        <button type="button" onclick="sendInvite('${f.uid}', 'duel')" style="background: rgba(0, 210, 255, 0.2); border: 1px solid rgba(0, 210, 255, 0.45); color: #9ef0ff; border-radius: 4px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; font-weight: bold;">Challenge</button>
                         <button onclick="removeFriend('${f.uid}')" style="background: none; border: none; color: #ff0055; opacity: 0.5; cursor: pointer; font-size: 0.8rem; padding: 5px;">Remove</button>
                     </div>
                 </div>
@@ -2092,12 +2111,12 @@ function updateSocialUI(data) {
     list.innerHTML = html;
 }
 
-window.challengeFriend = async (targetUid) => {
+window.sendInvite = async (targetUid, type = 'duel') => {
     try {
-        const res = await fetch('/friend-duel-invite', {
+        const res = await fetch('/friend-invite-send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid: localUid, targetUid })
+            body: JSON.stringify({ uid: localUid, targetUid, type })
         });
         const data = await parseJsonResponse(res);
         if (data.ok && data.roomId) {
@@ -2107,29 +2126,33 @@ window.challengeFriend = async (targetUid) => {
             reportPresenceIfChanged(true);
             connectWebSocket(data.roomId);
             fetchFriends(true);
+        } else if (data.ok && data.partyId) {
+            alert('Party created (stub)');
         } else {
-            alert(data.error || 'Could not send challenge');
+            alert(data.error || 'Could not send invite');
         }
     } catch (e) {
         alert(e.message || 'Connection error');
     }
 };
 
-window.acceptDuelInvite = async (fromUid) => {
+window.acceptInvite = async (fromUid, type) => {
     try {
-        const res = await fetch('/friend-duel-accept', {
+        const res = await fetch('/friend-invite-accept', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid: localUid, fromUid })
+            body: JSON.stringify({ uid: localUid, fromUid, type })
         });
         const data = await parseJsonResponse(res);
-        if (data.ok && data.roomId) {
+        if (data.ok && data.type === 'duel' && data.roomId) {
             document.getElementById('social-container').classList.add('hidden');
             document.getElementById('matchmaking-overlay').classList.remove('hidden');
             document.getElementById('matchmaking-text').innerText = 'Joining private match...';
             reportPresenceIfChanged(true);
             connectWebSocket(data.roomId);
             fetchFriends(true);
+        } else if (data.ok && data.type === 'party') {
+            alert('Joined party (stub)');
         } else {
             alert(data.error || 'Invite is no longer valid');
             fetchFriends();
@@ -2140,12 +2163,12 @@ window.acceptDuelInvite = async (fromUid) => {
     }
 };
 
-window.declineDuelInvite = async (fromUid) => {
+window.declineInvite = async (fromUid, type) => {
     try {
-        await fetch('/friend-duel-decline', {
+        await fetch('/friend-invite-decline', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ uid: localUid, fromUid })
+            body: JSON.stringify({ uid: localUid, fromUid, type })
         });
         fetchFriends();
     } catch (e) {}

@@ -1,5 +1,10 @@
 # Lumen Clash
 
+## v1.6.6 — Friends + Presence Hardening (2026-03-30)
+### Changed
+- **Client & Presence**: The frontend now utilizes a persistent 30-second heartbeat to reliably track online status even when players sit idly on the menu. The server strictly enforces a 60-second inactivity timeout before dropping a friend's status to Offline.
+- **Social Invites**: Abstracted the legacy "Duel Invite" system into a generalized cross-service `invite-send` and `invite-take` route. Payloads now explicitly parse `room` and `party` types to prepare for upcoming 2v2 functionality.
+
 ## v1.6.5 — Events System Overhaul (2026-03-29)
 ### Changed
 - **Backend / Events**: Overhauled the global `EVENTS_CATALOG` to natively support pushing `grantedTitles` and `grantedCosmetics` directly into player accounts just for logging in during active windows. No hard-coded client logic.
