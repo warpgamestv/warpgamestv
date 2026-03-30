@@ -3,3 +3,6 @@
 
 # lumen-clash local dev (npm run dev / npm start)
 lumen-clash/node_modules/
+
+# Local wiki conversion script (not part of site deploy)
+convert_wiki.ps1
