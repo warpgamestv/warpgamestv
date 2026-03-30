@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     
-    <link rel="stylesheet" href="css/style.css?v=32">
+    <link rel="stylesheet" href="css/style.css?v=34">
     <link rel="stylesheet" href="css/background.css?v=3">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
@@ -67,6 +67,7 @@
             </div>
 
             <p id="splash-series-line" class="splash-series-line hidden" aria-live="polite"></p>
+            <p id="splash-quest-line" class="splash-quest-line hidden" aria-live="polite"></p>
             <div class="xp-splash-actions xp-splash-actions--rematch">
                 <button type="button" id="btn-rematch" class="menu-btn xp-splash-btn-rematch">
                     <span id="btn-rematch-label">Challenge Again</span>
@@ -74,6 +75,9 @@
                 </button>
                 <button type="button" id="btn-rematch-bo3" class="menu-btn secondary-btn xp-splash-btn-bo3">Best of 3</button>
                 <button type="button" id="btn-splash-exit" class="menu-btn secondary-btn xp-splash-btn-exit">Main Menu</button>
+            </div>
+            <div class="xp-splash-actions xp-splash-actions--report">
+                <button type="button" id="btn-splash-report" class="menu-btn secondary-btn xp-splash-btn-report">Report player</button>
             </div>
         </div>
     </div>
@@ -154,7 +158,7 @@
                     <button type="button" id="btn-menu-activity-close" class="menu-activity-close" aria-label="Close activity">✕</button>
                 </div>
                 <div id="menu-activity-popover-body" class="menu-activity-popover-body"></div>
-                <p class="menu-activity-popover-footnote">Quests, seasonal rewards, and live events will show up here in a future update.</p>
+                <p class="menu-activity-popover-footnote">Seasonal events and bonus tracks will layer on top of daily &amp; weekly quests.</p>
             </div>
         </div>
 
@@ -508,6 +512,10 @@
                     <span id="bp-account-level" class="bp-rank-value">1</span>
                 </div>
             </div>
+            <div class="bp-server-economy" aria-label="Server-tracked Pass XP and Lumens">
+                <span>Pass XP <strong id="bp-pass-xp">0</strong></span>
+                <span>Banked Lumens <strong id="bp-lumens-server">0</strong></span>
+            </div>
             <div class="bp-premium-row" aria-label="Premium unlock progress">
                 <div class="bp-premium-card">
                     <div class="bp-premium-top">
@@ -582,6 +590,29 @@
     </div>
 
     <!-- DISCONNECT MODAL -->
+    <div id="report-player-modal" class="hidden lumen-modal-screen lumen-modal-screen--center report-player-modal">
+        <div class="lumen-panel lumen-panel--dialog card-glass report-player-dialog">
+            <p class="lumen-modal-eyebrow">Moderation</p>
+            <h2 class="modal-screen-title modal-screen-title--h2">Report player</h2>
+            <p class="report-modal-hint">Reports are reviewed manually. False or abusive reports may affect your account.</p>
+            <label class="report-modal-label" for="report-category">Category</label>
+            <select id="report-category" class="report-modal-select">
+                <option value="harassment">Harassment or hate</option>
+                <option value="cheating">Cheating or exploits</option>
+                <option value="username">Offensive name</option>
+                <option value="other">Other</option>
+            </select>
+            <label class="report-modal-label" for="report-details">Details (optional)</label>
+            <textarea id="report-details" class="report-details-input" rows="3" maxlength="2000" placeholder="What happened?"></textarea>
+            <p id="report-error" class="report-error hidden" role="alert"></p>
+            <p id="report-success" class="report-success hidden" role="status"></p>
+            <div class="report-modal-actions">
+                <button type="button" id="btn-report-cancel" class="menu-btn secondary-btn">Cancel</button>
+                <button type="button" id="btn-report-submit" class="menu-btn">Submit</button>
+            </div>
+        </div>
+    </div>
+
     <div id="disconnect-modal" class="hidden lumen-modal-screen lumen-modal-screen--center">
         <div class="lumen-panel lumen-panel--dialog disconnect-dialog card-glass">
             <p class="lumen-modal-eyebrow disconnect-eyebrow">Connection</p>
@@ -590,6 +621,6 @@
             <button type="button" id="btn-disconnect-ok" class="menu-btn disconnect-ok-btn">Return to Menu</button>
         </div>
     </div>
-    <script src="js/game.js?v=62"></script>
+    <script src="js/game.js?v=64"></script>
 </body>
 </html>

@@ -555,6 +555,69 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
     font-family: 'Outfit', sans-serif;
 }
 
+.menu-activity-quest-block {
+    margin: 0 0 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.menu-activity-quest-head {
+    margin: 0 0 10px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.78rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(0, 210, 255, 0.85);
+}
+
+.menu-activity-quest {
+    margin-bottom: 10px;
+}
+
+.menu-activity-quest-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.82rem;
+    margin-bottom: 4px;
+}
+
+.menu-activity-quest-pill {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: rgba(0, 210, 255, 0.12);
+    color: rgba(180, 230, 255, 0.9);
+}
+
+.menu-activity-quest-bar {
+    height: 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.menu-activity-quest-bar span {
+    display: block;
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #00d2ff, #7df9ff);
+    transition: width 0.35s ease;
+}
+
+.menu-activity-quest-meta {
+    margin-top: 4px;
+    font-size: 0.72rem;
+    color: rgba(160, 175, 210, 0.75);
+}
+
+.menu-activity-social-empty {
+    margin-top: 4px;
+}
+
 .main-menu-tagline {
     margin: 0;
     font-size: clamp(0.8rem, 1.5vw, 0.95rem);
@@ -1177,6 +1240,26 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+}
+
+.bp-server-economy {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px 16px;
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(0, 210, 255, 0.12);
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.86rem;
+    color: rgba(220, 228, 255, 0.9);
+}
+
+.bp-server-economy strong {
+    color: #7df9ff;
+    font-weight: 700;
 }
 
 .bp-modal-sub {
@@ -2017,6 +2100,98 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
 .splash-series-line.series-complete {
     color: #ffcc80;
     font-weight: 600;
+}
+
+.splash-quest-line {
+    margin: 10px 0 0;
+    padding: 8px 14px;
+    text-align: center;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.88rem;
+    color: rgba(120, 255, 200, 0.95);
+    max-width: 440px;
+    width: 100%;
+    line-height: 1.4;
+    border-radius: 10px;
+    background: rgba(0, 210, 255, 0.08);
+    border: 1px solid rgba(0, 210, 255, 0.2);
+}
+
+.xp-splash-actions--report {
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.report-player-modal {
+    z-index: 100001 !important;
+}
+
+.report-player-dialog {
+    max-width: 420px;
+    width: calc(100% - 32px);
+    text-align: left;
+}
+
+.report-modal-hint {
+    font-size: 0.85rem;
+    color: rgba(180, 195, 230, 0.85);
+    margin: 0 0 12px;
+    line-height: 1.45;
+}
+
+.report-modal-label {
+    display: block;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(0, 210, 255, 0.75);
+    margin-bottom: 6px;
+}
+
+.report-modal-select {
+    width: 100%;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.35);
+    color: #e8f0ff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+}
+
+.report-details-input {
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.35);
+    color: #e8f0ff;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.report-error {
+    font-size: 0.85rem;
+    color: #ff6688;
+    margin: 0 0 8px;
+}
+
+.report-success {
+    font-size: 0.88rem;
+    color: rgba(120, 255, 200, 0.95);
+    margin: 0 0 8px;
+}
+
+.report-modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 8px;
+    flex-wrap: wrap;
 }
 
 .menu-duel-invite-toast {

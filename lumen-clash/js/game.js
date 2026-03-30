@@ -82,6 +82,7 @@ let prevOpponentHealth = -1;
 let reconnectAttempts = 0;
 let reconnectTimer = null;
 let manualSocketClose = false;
+let lastReportContext = { reportedUid: null, roomId: null };
 let lastRoomId = null;
 let lastTurnSnapshot = null;
 let heroSelectLocked = false;
@@ -557,29 +558,55 @@ function refreshMenuActivityBadge(data) {
     }
 }
 
+function renderQuestActivitySection() {
+    const p = playerProfileData;
+    if (!p || !p.questCatalog || !p.questMetrics) return '';
+    const dm = p.questMetrics.daily || {};
+    const wm = p.questMetrics.weekly || {};
+    const rows = [];
+    for (const q of p.questCatalog) {
+        const bucket = q.slot === 'daily' ? dm : wm;
+        const claimed = bucket.claimed && bucket.claimed[q.id];
+        const cur = q.metric === 'wins' ? (bucket.wins || 0) : (bucket.matches || 0);
+        const pct = Math.min(100, Math.round((cur / Math.max(1, q.target)) * 100));
+        const done = !!claimed || cur >= q.target;
+        rows.push(
+            `<div class="menu-activity-quest"><div class="menu-activity-quest-label">${q.label}<span class="menu-activity-quest-pill">${q.slot}</span></div>` +
+                `<div class="menu-activity-quest-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="width:${pct}%"></span></div>` +
+                `<div class="menu-activity-quest-meta">${cur} / ${q.target}${done ? ' ✓' : ''}</div></div>`
+        );
+    }
+    return `<div class="menu-activity-quest-block"><h3 class="menu-activity-quest-head">Quests</h3>${rows.join('')}</div>`;
+}
+
 function renderMenuActivityPopoverBody() {
     const body = document.getElementById('menu-activity-popover-body');
     if (!body) return;
+    const questBlock = renderQuestActivitySection();
     const data = lastSocialSnapshot;
     if (!data) {
-        body.innerHTML = '<p class="menu-activity-empty">Loading activity…</p>';
+        body.innerHTML = questBlock
+            ? questBlock + '<p class="menu-activity-empty">Loading social…</p>'
+            : '<p class="menu-activity-empty">Loading activity…</p>';
         return;
     }
     const reqs = data.requests || [];
     const duels = data.duelInvites || [];
-    if (reqs.length === 0 && duels.length === 0) {
-        body.innerHTML = '<p class="menu-activity-empty">No friend requests or duel invites right now.</p>';
+    const hasSocial = reqs.length > 0 || duels.length > 0;
+    let socialHtml = '';
+    if (hasSocial) {
+        const bits = [];
+        if (reqs.length > 0) bits.push(`${reqs.length} friend request${reqs.length > 1 ? 's' : ''}`);
+        if (duels.length > 0) bits.push(`${duels.length} duel invite${duels.length > 1 ? 's' : ''}`);
+        socialHtml = `<button type="button" class="menu-activity-item">${bits.join(' · ')} — Open Social</button>`;
+    } else {
+        socialHtml = '<p class="menu-activity-empty menu-activity-social-empty">No friend requests or duel invites.</p>';
+    }
+    if (!questBlock) {
+        body.innerHTML = socialHtml;
         return;
     }
-    let html = '';
-    const bits = [];
-    if (reqs.length > 0) {
-        bits.push(`${reqs.length} friend request${reqs.length > 1 ? 's' : ''}`);
-    }
-    if (duels.length > 0) {
-        bits.push(`${duels.length} duel invite${duels.length > 1 ? 's' : ''}`);
-    }
-    body.innerHTML = `<button type="button" class="menu-activity-item">${bits.join(' · ')} — Open Social</button>`;
+    body.innerHTML = questBlock + socialHtml;
 }
 
 function closeMenuActivityPopover() {
@@ -598,6 +625,7 @@ function openMenuActivityPopover() {
     if (b) b.setAttribute('aria-expanded', 'true');
     renderMenuActivityPopoverBody();
     fetchFriends(true);
+    fetchPlayerProfile(true);
 }
 
 async function fetchPlayerProfile(silent = false) {
@@ -626,6 +654,8 @@ async function fetchPlayerProfile(silent = false) {
         updateMatchHistoryUI(data.matchHistory);
 
         fillProfileTitleSelect();
+
+        if (menuActivityPopoverOpen) renderMenuActivityPopoverBody();
     } catch (e) {
         console.error('Profile fetch failed', e);
         syncMainMenuHeaderProfile({ username: myUsername || 'Player', level: 1 });
@@ -2530,7 +2560,11 @@ function openBattlePass() {
     const track = document.getElementById('bp-track');
     const rankEl = document.getElementById('bp-account-level');
     rankEl.innerText = playerProfileData.level;
-    
+    const passXpEl = document.getElementById('bp-pass-xp');
+    const lumensSrvEl = document.getElementById('bp-lumens-server');
+    if (passXpEl) passXpEl.innerText = String(Math.max(0, Number(playerProfileData.luminaryPassXp) || 0));
+    if (lumensSrvEl) lumensSrvEl.innerText = String(Math.max(0, Number(playerProfileData.lumens) || 0));
+
     track.innerHTML = '';
     // Generate nodes for levels 1-20
     const accLevel = Math.max(1, Number(playerProfileData.level) || 1);
@@ -2756,6 +2790,9 @@ window.handleSplashExit = function() {
     closeMenuActivityPopover();
     reportPresenceIfChanged(true);
 
+    const rpm = document.getElementById('report-player-modal');
+    if (rpm) rpm.classList.add('hidden');
+
     if (!game) initGame();
     const layoutWhenReady = () => {
         if (playerLeftShape && playerLeftShape.scene) {
@@ -2911,6 +2948,23 @@ async function showXPSplash(won, pg) {
     }
     const rmStatus = document.getElementById('rematch-status');
     if (rmStatus) rmStatus.innerText = '';
+
+    lastReportContext = { roomId: lastRoomId || null, reportedUid: null };
+    if (typeof gameState !== 'undefined' && gameState && gameState.players && myPlayerId) {
+        const oid = myPlayerId === 'p1' ? 'p2' : 'p1';
+        const opp = gameState.players[oid];
+        if (opp && opp.uid) lastReportContext.reportedUid = opp.uid;
+    }
+    const qLine = document.getElementById('splash-quest-line');
+    if (qLine) {
+        if (pg && pg.questCompleted && pg.questCompleted.length) {
+            qLine.textContent = `Quests completed: ${pg.questCompleted.map((q) => q.label).join(' · ')}`;
+            qLine.classList.remove('hidden');
+        } else {
+            qLine.classList.add('hidden');
+            qLine.textContent = '';
+        }
+    }
 
     if (statDealt) statDealt.innerText = String(Math.max(0, Math.round(matchStats.damageDealt || 0)));
     if (statTaken) statTaken.innerText = String(Math.max(0, Math.round(matchStats.damageTaken || 0)));
@@ -3246,3 +3300,97 @@ if (btnCloseEmotePresets) {
      const el = document.getElementById(id);
      if (el) el.addEventListener('click', () => sfx.playClick(), true);
  });
+
+function submitLumenReport(payload) {
+    return fetch('/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, reporterUid: localUid, clientVersion: '1.6.0-dev' })
+    }).then((r) => r.json());
+}
+
+function closeReportPlayerModal() {
+    const m = document.getElementById('report-player-modal');
+    if (m) m.classList.add('hidden');
+    const err = document.getElementById('report-error');
+    const ok = document.getElementById('report-success');
+    if (err) {
+        err.classList.add('hidden');
+        err.textContent = '';
+    }
+    if (ok) {
+        ok.classList.add('hidden');
+        ok.textContent = '';
+    }
+}
+
+function openReportPlayerModal() {
+    const m = document.getElementById('report-player-modal');
+    if (!m) return;
+    const err = document.getElementById('report-error');
+    const ok = document.getElementById('report-success');
+    const det = document.getElementById('report-details');
+    if (err) {
+        err.classList.add('hidden');
+        err.textContent = '';
+    }
+    if (ok) {
+        ok.classList.add('hidden');
+        ok.textContent = '';
+    }
+    if (det) det.value = '';
+    m.classList.remove('hidden');
+}
+
+document.getElementById('btn-splash-report')?.addEventListener('click', () => {
+    if (typeof sfx !== 'undefined' && sfx.playClick) sfx.playClick();
+    openReportPlayerModal();
+});
+
+document.getElementById('btn-report-cancel')?.addEventListener('click', () => {
+    if (typeof sfx !== 'undefined' && sfx.playClick) sfx.playClick();
+    closeReportPlayerModal();
+});
+
+document.getElementById('btn-report-submit')?.addEventListener('click', async () => {
+    if (typeof sfx !== 'undefined' && sfx.playClick) sfx.playClick();
+    const cat = document.getElementById('report-category')?.value || 'other';
+    const details = (document.getElementById('report-details')?.value || '').trim();
+    const errEl = document.getElementById('report-error');
+    const okEl = document.getElementById('report-success');
+    if (okEl) {
+        okEl.classList.add('hidden');
+        okEl.textContent = '';
+    }
+    if (!lastReportContext.reportedUid) {
+        if (errEl) {
+            errEl.textContent = 'Could not identify the opponent for this match.';
+            errEl.classList.remove('hidden');
+        }
+        return;
+    }
+    if (errEl) errEl.classList.add('hidden');
+    try {
+        const res = await submitLumenReport({
+            reportedUid: lastReportContext.reportedUid,
+            category: cat,
+            roomId: lastReportContext.roomId,
+            details: details || undefined
+        });
+        if (res && res.ok) {
+            if (okEl) {
+                okEl.textContent = 'Report sent. Thank you.';
+                okEl.classList.remove('hidden');
+            }
+            setTimeout(() => closeReportPlayerModal(), 1200);
+        } else if (errEl) {
+            errEl.textContent = (res && res.error) || 'Could not send report. Try again later.';
+            errEl.classList.remove('hidden');
+        }
+    } catch (e) {
+        if (errEl) {
+            errEl.textContent = 'Network error. Is the Worker running?';
+            errEl.classList.remove('hidden');
+        }
+    }
+});

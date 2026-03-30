@@ -1,5 +1,11 @@
 # Lumen Clash
 
+## v1.6.0-dev — Quests + Pass XP + Lumens (2026-03-29)
+### Added
+- **Backend** (deploy with `Lumen-Clash/backend`): Daily/weekly **quest** metrics, **Luminary Pass XP**, and **lumens** awarded on match end via extended **`/add-xp`**; **`/profile`** includes **`questCatalog`** and **`questMetrics`**.
+- **Activity** popover shows quest progress; **Luminary Pass** modal shows **Pass XP** and **banked Lumens** (`bp-pass-xp`, `bp-lumens-server`).
+- **Post-match splash**: **Quest completion** line when **`postGame.questCompleted`** is present; **Report player** opens **`POST /report`** modal (opponent **`uid`** + room). **`style.css?v=34`**, **`game.js?v=64`**.
+
 ## v1.5.5 — game.js load fix (2026-03-29)
 ### Fixed
 - **`ReferenceError: Cannot access 'gameState' before initialization`**: `syncGameContainerPointerEvents()` ran at parse time before `let gameState` was initialized (temporal dead zone). **`gameState`** is now declared next to **`game`** before the first sync. **`game.js?v=61`**.

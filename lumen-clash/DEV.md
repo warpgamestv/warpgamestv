@@ -2,6 +2,8 @@
 
 The game expects **HTTP APIs and `WebSocket /play` on the same host** as the page. This folder includes a small **Node proxy** (`server.js`) that serves static files on **port 8083** and forwards API routes plus `/play` to **Wrangler dev** on **port 8790**.
 
+Full Worker setup and troubleshooting: **`Lumen-Clash/DEV.md`** in the backend repo.
+
 ## Layout
 
 By default, scripts assume the **Lumen-Clash** repo lives next to **warpgamestv** on your machine:

@@ -12,7 +12,7 @@ const API_ROUTES = [
     '/profile', '/set-username', '/leaderboard', '/add-friend', '/remove-friend', '/friends-status',
     '/create-private', '/join-private', '/update-presence', '/accept-friend', '/decline-friend',
     '/lobby-update', '/system-reset', '/reset-player', '/save-customization',
-    '/friend-duel-invite', '/friend-duel-decline', '/friend-duel-accept'
+    '/friend-duel-invite', '/friend-duel-decline', '/friend-duel-accept', '/report'
 ];
 
 const BACKEND_PORT = Number(process.env.LUMEN_BACKEND_PORT || 8790);
