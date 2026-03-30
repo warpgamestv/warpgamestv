@@ -614,6 +614,23 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
     color: rgba(160, 175, 210, 0.75);
 }
 
+
+.menu-activity-events {
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    padding-bottom: 8px;
+}
+.menu-activity-event-line {
+    font-size: 0.85rem;
+    color: rgba(220, 230, 255, 0.92);
+    margin: 6px 0 2px;
+    line-height: 1.35;
+}
+.menu-activity-event-meta {
+    font-size: 0.72rem;
+    color: rgba(167, 139, 250, 0.95);
+    margin: 0;
+}
 .menu-activity-social-empty {
     margin-top: 4px;
 }
@@ -2374,60 +2391,41 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
     border-color: #00d2ff;
 }
 
-/* ===== MODAL BASE SYSTEMS ===== */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(ellipse 100% 90% at 50% -20%, rgba(12, 20, 50, 0.75) 0%, rgba(2, 2, 12, 0.96) 100%);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
+/* ===== REFACTORED UI PANELS ===== */
+.profile-level-text { margin-top: 10px; font-family: 'Outfit', sans-serif; font-size: 0.9rem; }
+.profile-xp-bg { margin: 5px auto; }
+.profile-xp-details { font-size: 12px; margin-bottom: 10px; text-align: left; }
+.profile-xp-hint { font-size: 11px; margin: -6px 0 10px; opacity: 0.55; text-align: left; }
+.profile-winloss { font-size: 14px; color: #aaa; text-align: left; }
+.profile-section-title { width: 100%; max-width: 640px; text-align: left; margin-bottom: 5px; font-weight: bold; color: #4a00e0; font-family: 'Rajdhani', sans-serif; font-size: 1.1rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.profile-history-list { width: 100%; max-width: 640px; flex: 1; min-height: 80px; max-height: calc(100vh - 350px); overflow-y: auto; background: rgba(12, 14, 32, 0.72); border: 1px solid rgba(0, 210, 255, 0.15); border-radius: 12px; margin-bottom: 20px; }
 
-/* .modal.hidden is already covered by global .hidden, but keeping for specificity if needed */
-.modal.hidden {
-    display: none !important;
-}
+.social-add-friend-row { display: flex; gap: 10px; width: 100%; max-width: 640px; margin-bottom: 20px; }
+.social-input { flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(0, 210, 255, 0.3); border-radius: 12px; color: white; padding: 12px 16px; outline: none; font-family: 'Outfit', sans-serif; font-size: 1rem; transition: border-color 0.2s; box-sizing: border-box; }
+.social-input:focus { border-color: #00d2ff; }
+.social-add-btn { width: auto; padding: 0 24px; margin: 0; min-height: 44px; border-radius: 12px; font-size: 1rem; }
+.social-error-text { color: #ff4444; font-size: 0.85rem; margin-bottom: 10px; }
+.social-section-title { width: 100%; max-width: 640px; text-align: left; margin-bottom: 8px; font-weight: bold; color: #ffb8e8; display: flex; justify-content: space-between; font-family: 'Rajdhani', sans-serif; font-size: 1.1rem; letter-spacing: 0.05em; text-transform: uppercase; }
+.social-friends-count { font-size: 0.8rem; opacity: 0.8; font-family: 'Outfit', sans-serif; letter-spacing: 0; text-transform: none; }
+.social-friends-list { width: 100%; max-width: 640px; flex: 1; min-height: 80px; overflow-y: auto; background: rgba(12, 14, 32, 0.72); border: 1px solid rgba(255, 0, 204, 0.3); border-radius: 12px; margin-bottom: 20px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.2); }
 
-.modal-content {
-    background: rgba(15, 15, 30, 0.95);
-    border: 1px solid rgba(255, 204, 0, 0.3);
-    border-radius: 15px;
-    width: 90%;
-    max-width: 700px;
-    max-height: 90vh;
-    overflow-y: auto;
-    position: relative;
-    box-shadow: 0 0 50px rgba(0,0,0,0.8);
-    display: flex;
-    flex-direction: column;
-}
+.leaderboard-header { display: flex; width: 100%; max-width: 640px; padding: 12px 15px; background: rgba(74, 0, 224, 0.4); border: 1px solid rgba(0, 210, 255, 0.2); border-bottom: none; border-radius: 12px 12px 0 0; font-weight: bold; color: #e8f4ff; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em; font-family: 'Rajdhani', sans-serif; box-sizing: border-box; }
+.lb-header-rank { flex: 0.5; text-align: center; }
+.lb-header-player { flex: 2; text-align: left; padding-left: 10px; }
+.lb-header-level { flex: 1; text-align: center; }
+.lb-header-wins { flex: 1; text-align: right; }
+.leaderboard-list { width: 100%; max-width: 640px; flex: 1; max-height: calc(100vh - 180px); overflow-y: auto; background: rgba(12, 14, 32, 0.72); border: 1px solid rgba(0, 210, 255, 0.2); border-radius: 0 0 12px 12px; margin-bottom: 20px; }
+.empty-list-msg { padding: 20px; text-align: center; color: #888; font-family: 'Outfit', sans-serif; font-size: 0.9rem; }
 
-.close-modal {
-    position: absolute;
-    top: 15px;
-    right: 20px;
-    font-size: 2.2rem;
-    color: #fff;
-    cursor: pointer;
-    z-index: 2000;
-    opacity: 0.6;
-    transition: all 0.2s;
-    line-height: 1;
-    pointer-events: auto;
-}
-
-.close-modal:hover {
-    opacity: 1;
-    transform: scale(1.1);
-    text-shadow: 0 0 10px rgba(255,255,255,0.5);
-}
+.private-match-view { text-align: center; width: 100%; display: flex; flex-direction: column; align-items: center; }
+.private-match-hint { color: #aaa; margin-bottom: 20px; font-family: 'Outfit', sans-serif; }
+.private-room-code-display { font-size: 4rem; font-weight: bold; color: #ffb8e8; letter-spacing: 0.2em; text-shadow: 0 0 25px rgba(255,0,204,0.4); margin-bottom: 10px; font-family: ui-monospace, 'Cascadia Mono', 'Consolas', monospace; }
+.private-waiting-row { display: flex; align-items: center; justify-content: center; gap: 10px; color: #00d2ff; margin-bottom: 30px; font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 0.95rem; letter-spacing: 0.05em; }
+.spinner-small { width: 15px; height: 15px; border: 2px solid rgba(0,210,255,0.3); border-top-color: #00d2ff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+.private-match-sub-hint { color: #777; font-size: 0.8rem; max-width: 250px; margin: 0 auto; line-height: 1.4; font-family: 'Outfit', sans-serif; }
+.private-code-input { background: rgba(255,255,255,0.05); border: 2px solid #00d2ff; border-radius: 12px; color: white; padding: 15px; font-size: 2.2rem; width: 220px; text-align: center; margin-bottom: 25px; outline: none; letter-spacing: 0.2em; font-family: ui-monospace, 'Cascadia Mono', 'Consolas', monospace; transition: box-shadow 0.2s; box-sizing: border-box; }
+.private-code-input:focus { box-shadow: 0 0 15px rgba(0,210,255,0.3); border-color: #7df9ff; }
+.private-join-btn { width: auto; padding: 12px 40px; background: linear-gradient(135deg, #00d2ff, #4a00e0); border-color: rgba(125, 249, 255, 0.4); }
 
 /* ===== PREMIUM MODAL & BATTLE PASS ===== */
 .modal-header-premium {
@@ -2512,18 +2510,11 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
 .reward-name { font-size: 0.7rem; text-align: center; color: #aaa; padding: 0 5px; }
 
 /* ===== CHARACTER PREVIEW ===== */
-.modal-content-narrow {
+.lumen-panel--preview {
     background: rgba(15, 15, 25, 0.98);
     backdrop-filter: blur(25px);
-    margin: auto;
     padding: 0;
-    border-radius: 15px;
-    width: 420px;
-    max-width: 95%;
-    border: 1px solid rgba(0, 210, 255, 0.2);
     overflow: hidden;
-    position: relative;
-    box-shadow: 0 0 50px rgba(0,0,0,0.8);
 }
 
 .char-preview-card {
@@ -3314,7 +3305,7 @@ html.pref-menu-vfx-off #menu-background-layer::after {
     }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 768px) {
     .game-title {
         letter-spacing: 0.12em;
     }
@@ -3390,7 +3381,7 @@ html.pref-menu-vfx-off #menu-background-layer::after {
     }
 }
 
-@media (max-width: 700px) and (orientation: portrait) {
+@media (max-width: 768px) and (orientation: portrait) {
     #hud-top {
         position: absolute;
         top: 0;

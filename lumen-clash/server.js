@@ -1,12 +1,6 @@
-/**
- * Local dev server: static files + proxy HTTP API and WebSocket /play to wrangler dev (default 127.0.0.1:8790).
- * Run with: npm run dev
- * Start the Worker first: npm run backend (from repo root) or npm run start (runs both).
- */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const net = require('net');
 
 const API_ROUTES = [
     '/profile', '/set-username', '/leaderboard', '/add-friend', '/remove-friend', '/friends-status',
@@ -15,8 +9,7 @@ const API_ROUTES = [
     '/friend-duel-invite', '/friend-duel-decline', '/friend-duel-accept', '/report', '/unlock-premium', '/admin/reports', '/admin/moderate'
 ];
 
-const BACKEND_PORT = Number(process.env.LUMEN_BACKEND_PORT || 8790);
-const FRONTEND_PORT = Number(process.env.LUMEN_FRONTEND_PORT || 8083);
+const BACKEND_PORT = 8790;
 
 /** Stable pathname from Node req.url (leading slash, no trailing slash, decoded). */
 function pathnameFromReq(req) {
@@ -63,8 +56,9 @@ function proxyApiToBackend(req, res) {
 const server = http.createServer((req, res) => {
     const urlPath = pathnameFromReq(req);
 
+    // Special route for changelog outside the frontend folder
     if (urlPath === '/changelog') {
-        const changelogPath = path.join(__dirname, 'CHANGELOG.md');
+        const changelogPath = path.join(__dirname, '..', 'CHANGELOG.md');
         fs.readFile(changelogPath, (err, content) => {
             if (err) {
                 res.writeHead(404);
@@ -77,6 +71,7 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    // Proxy API first so POST/JSON routes never hit the filesystem (avoids odd readFile edge cases)
     if (isApiPath(urlPath)) {
         proxyApiToBackend(req, res);
         return;
@@ -109,7 +104,7 @@ const server = http.createServer((req, res) => {
         } else {
             res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate', 'Expires': '0' });
             if (isBinary) {
-                res.end(content);
+                res.end(content); // Don't apply UTF-8 encoding to binary files
             } else {
                 res.end(content, 'utf-8');
             }
@@ -117,43 +112,29 @@ const server = http.createServer((req, res) => {
     });
 });
 
-function forwardedHeadersRaw(req, backendPort) {
-    const hop = req.rawHeaders;
-    const lines = [];
-    for (let i = 0; i < hop.length; i += 2) {
-        const k = hop[i];
-        const v = hop[i + 1];
-        if (String(k).toLowerCase() === 'host') {
-            lines.push(`Host: 127.0.0.1:${backendPort}`);
-        } else {
-            lines.push(`${k}: ${v}`);
-        }
-    }
-    return lines.join('\r\n');
-}
-
+const net = require('net');
 server.on('upgrade', (req, socket, head) => {
+    console.log("UPGRADE TRIGGERED:", req.url);
     if (req.url.startsWith('/play')) {
-        const proxySocket = net.connect(BACKEND_PORT, '127.0.0.1', () => {
-            const hdr = forwardedHeadersRaw(req, BACKEND_PORT);
+        console.log("Connecting proxy to 8790...");
+        const proxySocket = net.connect(8790, '127.0.0.1', () => {
+            console.log("Connected to 8790! Forwarding headers...");
             proxySocket.write(
                 `${req.method} ${req.url} HTTP/${req.httpVersion}\r\n` +
-                hdr +
-                '\r\n\r\n'
+                req.rawHeaders.reduce((acc, v, i) => acc + (i % 2 === 0 ? v + ': ' : v + '\r\n'), '') +
+                '\r\n'
             );
             proxySocket.write(head);
             proxySocket.pipe(socket);
             socket.pipe(proxySocket);
         });
 
-        proxySocket.on('error', (err) => console.error('[ws proxy]', err.message));
-        socket.on('error', (err) => console.error('[ws client]', err.message));
+        proxySocket.on('error', (err) => console.error('Proxy Error:', err.message));
+        socket.on('error', (err) => console.error('Client Socket Error:', err.message));
     } else {
         socket.destroy();
     }
 });
 
-server.listen(FRONTEND_PORT, '127.0.0.1', () => {
-    console.log(`Lumen Clash dev: http://127.0.0.1:${FRONTEND_PORT}/`);
-    console.log(`  API + WS /play -> 127.0.0.1:${BACKEND_PORT} (wrangler dev)`);
-});
+server.listen(8083);
+console.log('Server running at http://127.0.0.1:8083/ (API proxy -> 127.0.0.1:' + BACKEND_PORT + ', includes friend-duel-*)');

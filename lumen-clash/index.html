@@ -4,15 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Lumen Clash</title>
+    <meta name="theme-color" content="#a78bfa">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.webmanifest">
     
     <!-- Google Fonts: Outfit (Body) & Rajdhani (Headings/Display) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     
-    <link rel="stylesheet" href="css/style.css?v=35">
-    <link rel="stylesheet" href="css/background.css?v=3">
+    <link rel="stylesheet" href="css/style.css?v=24">
+    <link rel="stylesheet" href="css/background.css?v=2">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <script>
+        // Ghost Hunter Debugger: Catch any click-stealers in the act
+        window.addEventListener('click', (e) => {
+            const overlay = document.getElementById('xp-splash-overlay');
+            const isActive = overlay && !overlay.classList.contains('hidden');
+            const style = window.getComputedStyle(e.target);
+            
+            console.log("[GhostHunter] Click Target:", e.target.tagName, 
+                        "ID:", e.target.id || "None", 
+                        "Z-Index:", style.zIndex,
+                        "PointerEvents:", style.pointerEvents);
+            
+            if (isActive) {
+                if (!overlay.contains(e.target) && e.target !== overlay) {
+                    console.warn("[GhostHunter] INTERCEPTED by non-splash element while results active!", e.target);
+                }
+            }
+        }, true);
+    </script>
 </head>
 <body>
     <!-- XP SPLASH / GAME OVER OVERLAY -->
@@ -67,7 +90,6 @@
             </div>
 
             <p id="splash-series-line" class="splash-series-line hidden" aria-live="polite"></p>
-            <p id="splash-quest-line" class="splash-quest-line hidden" aria-live="polite"></p>
             <div class="xp-splash-actions xp-splash-actions--rematch">
                 <button type="button" id="btn-rematch" class="menu-btn xp-splash-btn-rematch">
                     <span id="btn-rematch-label">Challenge Again</span>
@@ -75,9 +97,6 @@
                 </button>
                 <button type="button" id="btn-rematch-bo3" class="menu-btn secondary-btn xp-splash-btn-bo3">Best of 3</button>
                 <button type="button" id="btn-splash-exit" class="menu-btn secondary-btn xp-splash-btn-exit">Main Menu</button>
-            </div>
-            <div class="xp-splash-actions xp-splash-actions--report">
-                <button type="button" id="btn-splash-report" class="menu-btn secondary-btn xp-splash-btn-report">Report player</button>
             </div>
         </div>
     </div>
@@ -93,40 +112,6 @@
 
     <div id="game-container">
         <!-- Phaser injects canvas here -->
-    </div>
-
-    <!-- PRE-MATCH HERO SELECT -->
-    <div id="hero-select-overlay" class="hidden lumen-modal-screen lumen-modal-screen--center hero-select-overlay">
-        <div class="lumen-modal-head lumen-modal-head--compact">
-            <p class="lumen-modal-eyebrow">Match lobby</p>
-            <h2 class="modal-screen-title modal-screen-title--h2">Select Hero</h2>
-            <p id="hero-select-countdown" class="lumen-modal-sub">Waiting for players...</p>
-        </div>
-        <div class="lumen-panel hero-select-panel card-glass">
-            <div class="hero-select-grid">
-                <button type="button" class="hero-select-card" data-hero-select="aegisKnight">
-                    <span class="hero-select-name">Knight</span>
-                    <span class="hero-select-desc">Tank • High Health</span>
-                </button>
-                <button type="button" class="hero-select-card" data-hero-select="lumenSage">
-                    <span class="hero-select-name">Sage</span>
-                    <span class="hero-select-desc">Mage • Burst Damage</span>
-                </button>
-                <button type="button" class="hero-select-card" data-hero-select="voidWeaver">
-                    <span class="hero-select-name">Void Weaver</span>
-                    <span class="hero-select-desc">Assassin • High Speed</span>
-                </button>
-            </div>
-            <div class="hero-select-skin-row">
-                <label for="hero-select-skin" class="hero-select-skin-label">Skin</label>
-                <select id="hero-select-skin" class="premium-select hero-select-skin"></select>
-            </div>
-            <div class="hero-select-ready-row">
-                <button type="button" id="btn-hero-ready" class="menu-btn">Lock In</button>
-                <span id="hero-ready-status" class="hero-ready-status">Not ready</span>
-                <span id="hero-opponent-ready-status" class="hero-ready-status hero-ready-status--opponent">Opponent selecting...</span>
-            </div>
-        </div>
     </div>
 
     <!-- MAIN MENU UI -->
@@ -158,7 +143,7 @@
                     <button type="button" id="btn-menu-activity-close" class="menu-activity-close" aria-label="Close activity">✕</button>
                 </div>
                 <div id="menu-activity-popover-body" class="menu-activity-popover-body"></div>
-                <p class="menu-activity-popover-footnote">Seasonal events and bonus tracks will layer on top of daily &amp; weekly quests.</p>
+                <p class="menu-activity-popover-footnote">Quests, seasonal rewards, and live events will show up here in a future update.</p>
             </div>
         </div>
 
@@ -211,12 +196,11 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Outside main-menu-container so it stays visible when the menu is hidden during queue -->
-    <div id="matchmaking-overlay" class="hidden">
-        <div class="spinner"></div>
-        <h2 id="matchmaking-text">Finding Opponent...</h2>
+        <div id="matchmaking-overlay" class="hidden">
+            <div class="spinner"></div>
+            <h2 id="matchmaking-text">Finding Opponent...</h2>
+        </div>
     </div>
 
     <!-- CHARACTER MENU -->
@@ -258,7 +242,7 @@
             <h1 class="modal-screen-title">Player Profile</h1>
         </div>
         
-        <div id="player-profile-card" style="margin-bottom: 20px; width: 90%; max-width: 600px;">
+        <div id="player-profile-card" class="lumen-panel">
             <div id="username-display">
                 <span id="profile-username">...</span>
                 <button id="btn-edit-username" class="edit-btn" title="Edit Username">✏️</button>
@@ -268,28 +252,16 @@
                 <button id="btn-save-username" class="save-btn">Save</button>
                 <div id="username-error" class="hidden"></div>
             </div>
-            <p style="margin-top: 10px;">Level: <span id="profile-level">...</span></p>
-            <div class="xp-bar-bg" style="margin: 5px auto;"><div class="xp-bar-fill" id="profile-xp-fill"></div></div>
-            <p style="font-size:12px; margin-bottom:10px;"><span id="profile-xp-text">0 / 300</span> roster XP</p>
-            <p style="font-size:11px; margin:-6px 0 10px; opacity:0.55;">Bar = progress across all classes (rank rises when any class levels up).</p>
-            <p style="font-size:14px; color:#aaa;">Wins: <span id="profile-wins">0</span> | Losses: <span id="profile-losses">0</span></p>
-
-            <div class="profile-title-block">
-                <label class="profile-title-label" for="profile-select-title">Display title</label>
-                <p class="profile-title-hint">Unlocked titles come from your Luminary Pass rank. Equip one to show it under your name in the menu.</p>
-                <div class="profile-title-row">
-                    <select id="profile-select-title" class="premium-select profile-title-select" aria-describedby="profile-title-status">
-                        <option value="">No Title</option>
-                    </select>
-                    <button type="button" id="btn-save-profile-title" class="save-btn profile-title-save">Save</button>
-                </div>
-                <p id="profile-title-status" class="profile-title-status hidden" role="status" aria-live="polite"></p>
-            </div>
+            <p class="profile-level-text">Level: <span id="profile-level">...</span></p>
+            <div class="xp-bar-bg profile-xp-bg"><div class="xp-bar-fill" id="profile-xp-fill"></div></div>
+            <p class="profile-xp-details"><span id="profile-xp-text">0 / 300</span> roster XP</p>
+            <p class="profile-xp-hint">Bar = progress across all classes (rank rises when any class levels up).</p>
+            <p class="profile-winloss">Wins: <span id="profile-wins">0</span> | Losses: <span id="profile-losses">0</span></p>
         </div>
 
-        <div style="width: 90%; max-width: 600px; text-align: left; margin-bottom: 5px; font-weight: bold; color: #4a00e0;">Match History (Last 10)</div>
-        <div id="match-history-list" style="width: 90%; max-width: 600px; flex: 1; max-height: calc(100vh - 350px); overflow-y: auto; background: rgba(20, 20, 40, 0.8); border: 2px solid #4a00e0; border-radius: 8px; margin-bottom: 20px;">
-            <div style="padding: 20px; text-align: center; color: #888;">No matches played yet.</div>
+        <div class="profile-section-title">Match History (Last 10)</div>
+        <div id="match-history-list" class="profile-history-list">
+            <div class="empty-list-msg">No matches played yet.</div>
         </div>
 
         <button type="button" id="btn-close-profile" class="menu-btn secondary-btn btn-lumen-back">Back ↩</button>
@@ -302,18 +274,18 @@
             <h1 class="modal-screen-title">Social</h1>
         </div>
         
-        <div style="display: flex; gap: 10px; width: 90%; max-width: 600px; margin-bottom: 20px;">
-            <input type="text" id="input-friend-name" placeholder="Friend's username..." style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid #4a00e0; border-radius: 8px; color: white; padding: 10px; outline: none;">
-            <button id="btn-add-friend" class="action-btn" style="width: auto; padding: 0 20px; margin: 0;">Add</button>
+        <div class="social-add-friend-row">
+            <input type="text" id="input-friend-name" placeholder="Friend's username..." class="social-input">
+            <button id="btn-add-friend" class="action-btn social-add-btn">Add</button>
         </div>
-        <div id="social-error" class="hidden" style="color: #ff4444; font-size: 0.85rem; margin-bottom: 10px;"></div>
+        <div id="social-error" class="hidden social-error-text"></div>
 
-        <div style="width: 90%; max-width: 600px; text-align: left; margin-bottom: 5px; font-weight: bold; color: #ff00cc; display: flex; justify-content: space-between;">
+        <div class="social-section-title">
             <span>Friends</span>
-            <span id="friends-count" style="font-size: 0.8rem; opacity: 0.7;">0/100</span>
+            <span id="friends-count" class="social-friends-count">0/100</span>
         </div>
-        <div id="friends-list" style="width: 90%; max-width: 600px; flex: 1; overflow-y: auto; background: rgba(20, 20, 40, 0.8); border: 2px solid #ff00cc; border-radius: 8px; margin-bottom: 20px;">
-            <div style="padding: 20px; text-align: center; color: #888;">No friends yet. Add some to play together!</div>
+        <div id="friends-list" class="social-friends-list">
+            <div class="empty-list-msg">No friends yet. Add some to play together!</div>
         </div>
 
         <button type="button" id="btn-close-social" class="menu-btn secondary-btn btn-lumen-back">Back ↩</button>
@@ -333,22 +305,22 @@
         </div>
 
         <!-- Sub-view 2: Hosting -->
-        <div id="private-host-view" class="hidden" style="text-align: center;">
-            <p style="color: #aaa; margin-bottom: 20px;">Share this code with your friend:</p>
-            <div id="private-room-code" style="font-size: 4.5rem; font-weight: bold; color: #ff00cc; letter-spacing: 12px; text-shadow: 0 0 25px rgba(255,0,204,0.5); margin-bottom: 10px; font-family: monospace;">------</div>
-            <div style="display: flex; align-items: center; justify-content: center; gap: 10px; color: #00ffcc; margin-bottom: 30px;">
-                <div class="spinner-small" style="width: 15px; height: 15px; border: 2px solid rgba(0,255,204,0.3); border-top-color: #00ffcc; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
-                <span style="font-size: 0.9rem; letter-spacing: 1px;">WAITING FOR GUEST...</span>
+        <div id="private-host-view" class="hidden private-match-view">
+            <p class="private-match-hint">Share this code with your friend:</p>
+            <div id="private-room-code" class="private-room-code-display">------</div>
+            <div class="private-waiting-row">
+                <div class="spinner-small"></div>
+                <span>WAITING FOR GUEST...</span>
             </div>
-            <p style="color: #666; font-size: 0.8rem; max-width: 250px;">You will automatically join the battle as soon as your friend enters this code.</p>
+            <p class="private-match-sub-hint">You will automatically join the battle as soon as your friend enters this code.</p>
         </div>
 
         <!-- Sub-view 3: Joining -->
-        <div id="private-join-view" class="hidden" style="text-align: center;">
-            <p style="color: #aaa; margin-bottom: 15px;">Enter the 6-digit code:</p>
-            <input type="text" id="input-private-code" maxlength="6" placeholder="000000" style="background: rgba(255,255,255,0.05); border: 2px solid #00d2ff; border-radius: 12px; color: white; padding: 15px; font-size: 2.2rem; width: 220px; text-align: center; margin-bottom: 25px; outline: none; letter-spacing: 6px; font-family: monospace;">
+        <div id="private-join-view" class="hidden private-match-view">
+            <p class="private-match-hint">Enter the 6-digit code:</p>
+            <input type="text" id="input-private-code" maxlength="6" placeholder="000000" class="private-code-input">
             <br>
-            <button id="btn-submit-join" class="action-btn" style="width: auto; padding: 12px 40px; background: linear-gradient(45deg, #00d2ff, #3a7bd5);">Join Battle</button>
+            <button id="btn-submit-join" class="action-btn private-join-btn">Join Battle</button>
         </div>
 
         <button type="button" id="btn-close-private" class="menu-btn secondary-btn btn-lumen-back btn-lumen-back--muted">Back ↩</button>
@@ -433,16 +405,16 @@
             <h1 class="modal-screen-title">Global Top 50</h1>
         </div>
         
-        <div class="leaderboard-header" style="display: flex; width: 90%; max-width: 600px; padding: 10px 15px; background: rgba(74, 0, 224, 0.5); border-radius: 8px 8px 0 0; font-weight: bold; color: #fff; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">
-            <div style="flex: 0.5; text-align: center;">Rank</div>
-            <div style="flex: 2; text-align: left; padding-left: 10px;">Player</div>
-            <div style="flex: 1; text-align: center;">Level</div>
-            <div style="flex: 1; text-align: right;">Wins</div>
+        <div class="leaderboard-header">
+            <div class="lb-header-rank">Rank</div>
+            <div class="lb-header-player">Player</div>
+            <div class="lb-header-level">Level</div>
+            <div class="lb-header-wins">Wins</div>
         </div>
 
-        <div id="leaderboard-list" style="width: 90%; max-width: 600px; flex: 1; max-height: calc(100vh - 180px); overflow-y: auto; background: rgba(20, 20, 40, 0.8); border: 2px solid #4a00e0; border-top: none; border-radius: 0 0 8px 8px; margin-bottom: 20px;">
+        <div id="leaderboard-list" class="leaderboard-list">
             <!-- Rendered via JS -->
-            <div style="padding: 20px; text-align: center; color: #888;">Loading leaderboard...</div>
+            <div class="empty-list-msg">Loading leaderboard...</div>
         </div>
 
         <button type="button" id="btn-close-leaderboard" class="menu-btn secondary-btn btn-lumen-back">Back ↩</button>
@@ -501,58 +473,42 @@
         <span id="perf-ping">Ping —</span>
     </div>
 
-    <!-- Luminary Pass -->
-    <div id="battle-pass-modal" class="hidden lumen-modal-screen lumen-modal-screen--bp" role="dialog" aria-modal="true" aria-labelledby="bp-title">
+    <!-- Battle Pass Modal -->
+    <div id="battle-pass-modal" class="hidden lumen-modal-screen lumen-modal-screen--bp">
         <div class="lumen-modal-head">
-            <p class="lumen-modal-eyebrow">Seasonal rewards</p>
+            <p class="lumen-modal-eyebrow">Progression</p>
             <div class="bp-modal-title-row">
-                <h2 id="bp-title" class="modal-screen-title modal-screen-title--h2">Luminary Pass</h2>
-                <div class="bp-rank-badge" aria-label="Luminary Pass rank">
-                    <span class="bp-rank-label">Rank</span>
-                    <span id="bp-account-level" class="bp-rank-value">1</span>
-                </div>
-            </div>
-            <div class="bp-server-economy" aria-label="Server-tracked Pass XP and Lumens">
-                <span>Pass XP <strong id="bp-pass-xp">0</strong></span>
-                <span>Banked Lumens <strong id="bp-lumens-server">0</strong></span>
-            </div>
-            <div class="bp-premium-row" aria-label="Premium unlock progress">
-                <div class="bp-premium-card">
-                    <div class="bp-premium-top">
-                        <span id="bp-premium-status" class="bp-premium-status bp-premium-status--locked">Premium locked</span>
-                        <span class="bp-credits-pill" aria-label="Lumens earned">
-                            <span class="bp-credits-icon" aria-hidden="true">💠</span>
-                            <span id="bp-credits-earned">0</span>
-                            <span class="bp-credits-sep">/</span>
-                            <span id="bp-credits-cost">0</span>
-                            <span class="bp-credits-label">Lumens</span>
-                        </span>
-                    </div>
-                    <div class="bp-premium-meter" aria-hidden="true">
-                        <div id="bp-credits-fill" class="bp-premium-meter-fill" style="width:0%"></div>
-                    </div>
-                    <p class="bp-modal-sub bp-modal-sub--tight">Earn Lumens on the free track. When you’ve banked enough, unlock Premium—no store required.</p>
-                    <button type="button" id="btn-bp-unlock-premium" class="menu-btn bp-unlock-btn hidden">Unlock Premium</button>
+                <h1 class="modal-screen-title">🏆 LUMINARY PASS</h1>
+                <div class="account-level-badge">
+                    <span>Rank</span>
+                    <span id="bp-account-level">1</span>
                 </div>
             </div>
         </div>
-
-        <div class="lumen-panel lumen-panel--bp card-glass">
-            <div class="bp-track-container bp-track-container--panel">
-                <div id="bp-track" class="bp-track" aria-label="Luminary Pass rewards track">
+        
+        <div class="lumen-panel lumen-panel--bp bp-track-container--panel">
+            <div class="bp-track-container">
+                <div id="bp-track" class="bp-track">
                     <!-- Rewards generated via JS -->
                 </div>
             </div>
+            
+            <div class="bp-footer bp-modal-sub bp-modal-sub--tight">
+                <p>Earn XP with any character to rank up your Luminary Pass!</p>
+            </div>
         </div>
-
+        
         <button type="button" id="btn-close-bp" class="menu-btn secondary-btn btn-lumen-back" onclick="closeModal('battle-pass-modal')">Back ↩</button>
     </div>
 
     <!-- Character Preview & Customization Modal -->
-    <div id="character-preview-modal" class="modal hidden">
-        <div class="modal-content-narrow">
-            <span id="btn-close-cp" class="close-modal" onclick="closeModal('character-preview-modal')">&times;</span>
-            
+    <div id="character-preview-modal" class="hidden lumen-modal-screen lumen-modal-screen--center">
+        <div class="lumen-modal-head lumen-modal-head--compact">
+            <p class="lumen-modal-eyebrow">Customize</p>
+            <h1 class="modal-screen-title modal-screen-title--h2">Preview</h1>
+        </div>
+        
+        <div class="lumen-panel lumen-panel--dialog">
             <div class="char-preview-card">
                 <div class="char-preview-visual">
                     <div id="char-preview-sprite-container"></div>
@@ -574,6 +530,11 @@
                 </div>
 
                 <div class="char-customization">
+                    <label>Title Selection</label>
+                    <select id="select-title" class="premium-select">
+                        <option value="">No Title</option>
+                    </select>
+
                     <label>Skin Variant</label>
                     <div class="skin-selector">
                         <button class="skin-nav" onclick="prevSkin()">&lt;</button>
@@ -587,32 +548,10 @@
                 </div>
             </div>
         </div>
+        <button type="button" id="btn-close-cp" class="menu-btn secondary-btn btn-lumen-back btn-lumen-back--muted" onclick="closeModal('character-preview-modal')">Back ↩</button>
     </div>
 
     <!-- DISCONNECT MODAL -->
-    <div id="report-player-modal" class="hidden lumen-modal-screen lumen-modal-screen--center report-player-modal">
-        <div class="lumen-panel lumen-panel--dialog card-glass report-player-dialog">
-            <p class="lumen-modal-eyebrow">Moderation</p>
-            <h2 class="modal-screen-title modal-screen-title--h2">Report player</h2>
-            <p class="report-modal-hint">Reports are reviewed manually. False or abusive reports may affect your account.</p>
-            <label class="report-modal-label" for="report-category">Category</label>
-            <select id="report-category" class="report-modal-select">
-                <option value="harassment">Harassment or hate</option>
-                <option value="cheating">Cheating or exploits</option>
-                <option value="username">Offensive name</option>
-                <option value="other">Other</option>
-            </select>
-            <label class="report-modal-label" for="report-details">Details (optional)</label>
-            <textarea id="report-details" class="report-details-input" rows="3" maxlength="2000" placeholder="What happened?"></textarea>
-            <p id="report-error" class="report-error hidden" role="alert"></p>
-            <p id="report-success" class="report-success hidden" role="status"></p>
-            <div class="report-modal-actions">
-                <button type="button" id="btn-report-cancel" class="menu-btn secondary-btn">Cancel</button>
-                <button type="button" id="btn-report-submit" class="menu-btn">Submit</button>
-            </div>
-        </div>
-    </div>
-
     <div id="disconnect-modal" class="hidden lumen-modal-screen lumen-modal-screen--center">
         <div class="lumen-panel lumen-panel--dialog disconnect-dialog card-glass">
             <p class="lumen-modal-eyebrow disconnect-eyebrow">Connection</p>
@@ -621,6 +560,6 @@
             <button type="button" id="btn-disconnect-ok" class="menu-btn disconnect-ok-btn">Return to Menu</button>
         </div>
     </div>
-    <script src="js/game.js?v=65"></script>
+    <script src="js/game.js?v=51"></script>
 </body>
 </html>

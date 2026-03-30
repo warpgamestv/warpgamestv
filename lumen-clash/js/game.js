@@ -558,6 +558,15 @@ function refreshMenuActivityBadge(data) {
     }
 }
 
+function renderEventsActivitySection() {
+    const p = playerProfileData;
+    if (!p || !p.activeEvents || !p.activeEvents.length) return '';
+    const xm = p.eventXpMultiplier != null ? Number(p.eventXpMultiplier) : 1;
+    const lm = p.eventLumenMultiplier != null ? Number(p.eventLumenMultiplier) : 1;
+    const names = p.activeEvents.map((e) => e.name).join(' · ');
+    return `<div class="menu-activity-quest-block menu-activity-events"><h3 class="menu-activity-quest-head">Live events</h3><p class="menu-activity-event-line">${names}</p><p class="menu-activity-event-meta">Pass XP ×${xm.toFixed(2)} · Quest lumens ×${lm.toFixed(2)}</p></div>`;
+}
+
 function renderQuestActivitySection() {
     const p = playerProfileData;
     if (!p || !p.questCatalog || !p.questMetrics) return '';
@@ -582,11 +591,13 @@ function renderQuestActivitySection() {
 function renderMenuActivityPopoverBody() {
     const body = document.getElementById('menu-activity-popover-body');
     if (!body) return;
+    const eventsBlock = renderEventsActivitySection();
     const questBlock = renderQuestActivitySection();
+    const top = (eventsBlock || '') + (questBlock || '');
     const data = lastSocialSnapshot;
     if (!data) {
-        body.innerHTML = questBlock
-            ? questBlock + '<p class="menu-activity-empty">Loading social…</p>'
+        body.innerHTML = top
+            ? top + '<p class="menu-activity-empty">Loading social…</p>'
             : '<p class="menu-activity-empty">Loading activity…</p>';
         return;
     }
@@ -602,11 +613,11 @@ function renderMenuActivityPopoverBody() {
     } else {
         socialHtml = '<p class="menu-activity-empty menu-activity-social-empty">No friend requests or duel invites.</p>';
     }
-    if (!questBlock) {
+    if (!top) {
         body.innerHTML = socialHtml;
         return;
     }
-    body.innerHTML = questBlock + socialHtml;
+    body.innerHTML = top + socialHtml;
 }
 
 function closeMenuActivityPopover() {
@@ -1274,18 +1285,24 @@ function connectWebSocket(specificRoomId = null) {
     }
     manualSocketClose = false;
     if (specificRoomId) lastRoomId = specificRoomId;
-    // Append chosen character class
-    const charId = CHARACTER_CLASSES[selectedCharacterIndex].id;
-    persistLastSelectedCharacterId(charId);
-    if (!heroSelectPick.charId) {
-        heroSelectPick.charId = charId;
-        heroSelectPick.skin = 'Default';
+    // Server requires explicit hero (no default); prefer in-match pick over menu-only default.
+    const menuChar = CHARACTER_CLASSES[selectedCharacterIndex] ? CHARACTER_CLASSES[selectedCharacterIndex].id : null;
+    const charId = heroSelectPick.charId || menuChar;
+    if (!charId) {
+        console.warn('connectWebSocket: no hero');
+        const mm = document.getElementById('matchmaking-text');
+        if (mm) mm.innerText = 'Pick a hero before joining.';
+        return;
     }
+    heroSelectPick.charId = charId;
+    if (!heroSelectPick.skin) heroSelectPick.skin = 'Default';
+    const skin = heroSelectPick.skin || 'Default';
+    persistLastSelectedCharacterId(charId);
     // Connect to Node.js proxy to bypass Firewall issues on Windows
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    let wsUrl = `${wsProtocol}//${window.location.host}/play?char=${charId}&uid=${localUid}`;
+    let wsUrl = `${wsProtocol}//${window.location.host}/play?char=${encodeURIComponent(charId)}&uid=${encodeURIComponent(localUid)}&skin=${encodeURIComponent(skin)}`;
     if (specificRoomId) {
-        wsUrl += `&roomId=${specificRoomId}`;
+        wsUrl += `&roomId=${encodeURIComponent(specificRoomId)}`;
     }
     socket = new WebSocket(wsUrl);
 
@@ -3318,7 +3335,7 @@ function submitLumenReport(payload) {
     return fetch('/report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, reporterUid: localUid, clientVersion: '1.6.0' })
+        body: JSON.stringify({ ...payload, reporterUid: localUid, clientVersion: '1.6.1' })
     }).then((r) => r.json());
 }
 

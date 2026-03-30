@@ -1,5 +1,28 @@
 # Lumen Clash
 
+## v1.6.3 — UI Consistency & Standardization (2026-03-29)
+### Changed
+- **Modals**: Upgraded Battle Pass and Character Preview menus to use the new `.lumen-modal-screen` glassmorphism framework instead of legacy popup boxes.
+- **Typography & Panels**: Purged inline CSS (`style="..."`) from the Profile, Social, and Leaderboard menus. They now use standardized `lumen-panel` classes with correct fonts (`Rajdhani`, `Outfit`).
+- **Mobile Breakpoints**: Unified responsive layout thresholds. The main menu and battle HUD now both swap to portrait and compact tracking exactly at `768px` instead of mismatched widths.
+
+## v1.6.2 — Mandatory hero on `/play` + client parity (2026-03-29)
+### Added
+- **Backend**: `normalizePlayCharId()`; **`/play`** returns **400** if `char` is missing or invalid; **GameRoom** closes websocket **4001** if `char` fails validation (no default **`voidWeaver`** fallback).
+- **Client**: `connectWebSocket` builds **`/play`** with **`encodeURIComponent`** for `char`, `uid`, `skin`, `roomId`; prefers **`heroSelectPick`** over menu-only selection; **`game.js?v=67`** (site), **`game.js?v=51`** (local `frontend/`).
+
+### Docs
+- **`GEMINI_ANTIGRAVITY_HANDOFF.md`**: handoff prompt for continuing v1.6 roadmap work in Antigravity / Gemini.
+
+## v1.6.1 — Live events + PWA manifest (2026-03-29)
+### Added
+- **Backend**: Server-driven **`EVENTS_CATALOG`** (time windows); **`/profile`** (`get-stats`) returns **`eventsCatalog`**, **`activeEvents`**, **`eventXpMultiplier`**, **`eventLumenMultiplier`**. During an active event, **Luminary Pass XP** gain from matches uses the event multiplier; **quest lumen** payouts use the lumen multiplier. **`add-xp`** response includes **`passXpApplied`** and event fields for debugging.
+- **Web**: **`manifest.webmanifest`** (standalone, theme colors) + **`index.html`** meta (`theme-color`, Apple web app) for **Add to Home Screen** on mobile browsers.
+- **Activity** popover: **Live events** block when any event is active (names + multiplier summary).
+
+### Changed
+- **`game.js?v=66`**, **`style.css?v=36`**, report **`clientVersion` `1.6.1`**.
+
 ## v1.6.0 — Quests + Pass XP + Lumens (2026-03-29)
 ### Added
 - **Backend** (`Lumen-Clash/backend`): Daily/weekly **quest** metrics (UTC day / ISO week), **Luminary Pass XP** (`luminaryPassXp` += match class XP), **banked lumens** (rank rewards + quest bonuses + **`POST /unlock-premium`** spend); extended **`POST /internal/add-xp`** from `GameRoom` with **matchStats**; **`/profile`** returns **`questCatalog`**, **`questMetrics`**, **`lumens`**, **`bpPremiumUnlocked`**. **`POST /report`** → **`ModerationHub`** Durable Object (last 500 entries). **`wrangler.toml`** routes **`/report`**, **`/unlock-premium`**; migration **v6** `ModerationHub`.
