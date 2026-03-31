@@ -15,6 +15,29 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="css/style.css?v=24">
+    <style>
+        /* Override Main Menu Width limits to utilize full screen */
+        .main-menu-layout { max-width: 1600px !important; margin: 0 auto !important; width: 100% !important; padding: 20px 40px !important; }
+        @media (min-aspect-ratio: 21/9) { .main-menu-layout { max-width: 1800px !important; margin: 0 auto !important; } }
+
+        /* Override Center Menu Layout for Cleaner Spacing */
+        .main-menu-center { display: flex !important; flex-direction: column !important; justify-content: flex-end !important; padding: 0 40px 40px 40px !important; }
+        .character-panel { align-self: flex-end !important; text-align: left !important; max-width: 360px !important; padding: 24px !important; margin: 0 !important; }
+        .character-panel-eyebrow { text-align: left !important; }
+        #main-menu-container .character-panel .char-class { text-align: left !important; margin-bottom: 12px !important; }
+        #main-menu-container .character-panel .char-stats { text-align: left !important; }
+        .main-menu-play-zone { align-self: flex-end !important; padding-top: 0 !important; grid-row: auto !important; margin: 0 !important; }
+        .main-menu-center-footer { display: flex; width: 100%; justify-content: space-between; align-items: flex-end; gap: 20px; z-index: 10; position: relative; }
+
+        @media (max-width: 768px) {
+            .main-menu-center-footer { flex-direction: column; align-items: center; text-align: center; }
+            .character-panel { align-self: center !important; text-align: center !important; }
+            #main-menu-container .character-panel .char-class, 
+            #main-menu-container .character-panel .char-stats, 
+            .character-panel-eyebrow { text-align: center !important; }
+            .main-menu-center { padding: 0 10px 10px 10px !important; }
+        }
+    </style>
     <link rel="stylesheet" href="css/background.css?v=2">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <script>
@@ -103,6 +126,7 @@
                     <span id="rematch-status" class="rematch-status-line" aria-live="polite"></span>
                 </button>
                 <button type="button" id="btn-rematch-bo3" class="menu-btn secondary-btn xp-splash-btn-bo3">Best of 3</button>
+                <button type="button" id="btn-splash-report" class="menu-btn secondary-btn btn-splash-report">Report Player</button>
                 <button type="button" id="btn-splash-exit" class="menu-btn secondary-btn xp-splash-btn-exit">Main Menu</button>
             </div>
         </div>
@@ -135,24 +159,12 @@
                         <span id="menu-header-username" class="menu-header-username">…</span>
                         <span id="menu-header-rank" class="menu-header-rank">Rank 1</span>
                     </div>
-                    <button type="button" id="btn-menu-activity" class="menu-icon-btn" aria-label="Activity inbox" aria-expanded="false" aria-haspopup="true" aria-controls="menu-activity-popover" title="Activity">
-                        <span class="menu-icon-bell" aria-hidden="true">🔔</span>
-                        <span id="menu-activity-badge" class="menu-activity-badge hidden" aria-hidden="true">0</span>
-                    </button>
+                    <div id="spacer-to-replace-bell" style="width: 32px; height: 32px;"></div>
                 </div>
             </div>
         </header>
 
-        <div id="menu-activity-popover" class="menu-activity-popover hidden" role="region" aria-labelledby="menu-activity-title">
-            <div class="menu-activity-popover-inner card-glass">
-                <div class="menu-activity-popover-head">
-                    <h2 id="menu-activity-title" class="menu-activity-popover-title">Activity</h2>
-                    <button type="button" id="btn-menu-activity-close" class="menu-activity-close" aria-label="Close activity">✕</button>
-                </div>
-                <div id="menu-activity-popover-body" class="menu-activity-popover-body"></div>
-                <p class="menu-activity-popover-footnote">Quests, seasonal rewards, and live events will show up here in a future update.</p>
-            </div>
-        </div>
+
 
         <div id="menu-duel-invite-toast" class="menu-duel-invite-toast hidden" role="status">
             <span class="menu-duel-invite-toast-text">You have a pending duel invite.</span>
@@ -186,27 +198,93 @@
                     <span class="menu-nav-label">Settings</span>
                     <span class="menu-nav-hint">Audio &amp; controls</span>
                 </button>
+                <button type="button" id="btn-shop" class="menu-nav-item" style="border-left-color: #ff00cc; margin-top: 15px;">
+                    <span class="menu-nav-label" style="color: #ff00cc; font-weight: bold;">Lumen Shop</span>
+                    <span class="menu-nav-hint">Holdings: <span id="nav-lumen-count" style="color:#00ffcc;">0</span> L</span>
+                </button>
             </nav>
 
             <div class="main-menu-center">
-                <section class="character-panel card-glass" aria-labelledby="char-eyebrow">
-                    <p class="character-panel-eyebrow" id="char-eyebrow">Active combatant</p>
-                    <div class="char-class" id="menu-char-name">Knight</div>
-                    <div class="char-stats" id="menu-char-stats">Tank Class<br>High Health / Modest Damage</div>
-                </section>
+                <div class="main-menu-center-footer">
+                    <section class="character-panel card-glass" aria-labelledby="char-eyebrow">
+                        <p class="character-panel-eyebrow" id="char-eyebrow">Active combatant</p>
+                        <div class="char-class" id="menu-char-name">Knight</div>
+                        <div class="char-stats" id="menu-char-stats">Tank Class<br>High Health / Modest Damage</div>
+                    </section>
 
-                <div class="main-menu-play-zone">
-                    <button type="button" id="btn-play-game" class="menu-btn menu-btn-play">
-                        <span class="menu-btn-play-title">Play</span>
-                        <span class="menu-btn-play-sub">Find a match</span>
-                    </button>
+                    <div class="main-menu-play-zone">
+                        <button type="button" id="btn-play-game" class="menu-btn menu-btn-play">
+                            <span class="menu-btn-play-title">Play</span>
+                            <span class="menu-btn-play-sub">Find a match</span>
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            <aside class="main-menu-right card-glass" style="width: min(320px, 34vw); flex-shrink: 0; padding: 20px; display: flex; flex-direction: column;">
+                <h2 style="font-size: 1.2rem; margin-bottom: 15px; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px;">Quests &amp; Events</h2>
+                <div id="menu-activity-popover-body" class="menu-activity-popover-body" style="flex: 1; overflow-y: auto;"></div>
+            </aside>
         </div>
 
-        <div id="matchmaking-overlay" class="hidden">
-            <div class="spinner"></div>
-            <h2 id="matchmaking-text">Finding Opponent...</h2>
+    </div> <!-- End Main Menu Container -->
+
+    <div id="matchmaking-overlay" class="hidden">
+        <div class="spinner"></div>
+        <h2 id="matchmaking-text">Finding Opponent...</h2>
+    </div>
+
+    <!-- HERO SELECT OVERLAY -->
+    <div id="hero-select-overlay" class="hidden" style="
+        position: fixed; top: 0; left: 0; width: 100%; height: 100vh; height: 100dvh;
+        background: rgba(5, 5, 20, 0.95); z-index: 99999; isolation: isolate; transform: translateZ(0);
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        font-family: 'Outfit', 'Inter', sans-serif; color: #fff; gap: 20px; padding: 40px;">
+        <h1 style="font-size: 2rem; letter-spacing: 2px; text-transform: uppercase; color: #00ffcc; text-shadow: 0 0 20px #00ffcc55; margin: 0;">
+            Hero Select
+        </h1>
+        <div id="hero-select-countdown" style="font-size: 1.4rem; color: #ffd700; margin-bottom: 10px;">30</div>
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
+            <div class="hero-select-card" data-hero-select="aegisKnight" style="
+                cursor: pointer; padding: 20px 28px; border-radius: 12px; text-align: center; min-width: 160px;
+                background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.15); transition: all 0.2s;">
+                <div style="font-size: 2rem;">🛡️</div>
+                <h3 style="margin: 8px 0 4px; font-size: 1.1rem; color: #4fc3f7;">Knight</h3>
+                <p style="font-size: 0.8rem; color: #aaa; margin: 0;">Tank · High HP</p>
+            </div>
+            <div class="hero-select-card" data-hero-select="lumenSage" style="
+                cursor: pointer; padding: 20px 28px; border-radius: 12px; text-align: center; min-width: 160px;
+                background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.15); transition: all 0.2s;">
+                <div style="font-size: 2rem;">✨</div>
+                <h3 style="margin: 8px 0 4px; font-size: 1.1rem; color: #e1bee7;">Sage</h3>
+                <p style="font-size: 0.8rem; color: #aaa; margin: 0;">Mage · Burst Damage</p>
+            </div>
+            <div class="hero-select-card" data-hero-select="voidWeaver" style="
+                cursor: pointer; padding: 20px 28px; border-radius: 12px; text-align: center; min-width: 160px;
+                background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.15); transition: all 0.2s;">
+                <div style="font-size: 2rem;">🕳️</div>
+                <h3 style="margin: 8px 0 4px; font-size: 1.1rem; color: #ce93d8;">Void Weaver</h3>
+                <p style="font-size: 0.8rem; color: #aaa; margin: 0;">Assassin · Agile</p>
+            </div>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <label style="font-size: 0.9rem; color: #aaa;">Skin:</label>
+            <select id="hero-select-skin" style="
+                padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.1);
+                color: #fff; border: 1px solid rgba(255,255,255,0.2); font-size: 0.9rem;">
+                <option value="Default">Default</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 30px; align-items: center; margin-top: 10px;">
+            <span id="hero-ready-status" style="color: #ff9800; font-size: 0.95rem;">Not ready</span>
+            <button id="btn-hero-ready" type="button" style="
+                padding: 14px 40px; border-radius: 10px; border: none; cursor: pointer;
+                font-size: 1.1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+                background: linear-gradient(135deg, #00e676, #00bfa5); color: #000;
+                transition: all 0.2s; box-shadow: 0 4px 20px rgba(0, 230, 118, 0.3);">
+                Lock In
+            </button>
+            <span id="hero-opponent-ready-status" style="color: #aaa; font-size: 0.95rem;">Opponent selecting...</span>
         </div>
     </div>
 
@@ -341,11 +419,48 @@
             <h2 class="modal-screen-title modal-screen-title--h2">Select Battle Mode</h2>
         </div>
         <div class="lumen-panel lumen-panel--modes">
-            <button type="button" id="btn-quick-match" class="menu-btn menu-btn-play-mode-primary">Quick Match</button>
-            <button type="button" id="btn-ranked-match" class="menu-btn menu-btn-play-mode-primary" style="background: linear-gradient(45deg, #d4af37, #b8860b);">Ranked Match</button>
+            <button type="button" id="btn-quick-match-1v1" class="menu-btn menu-btn-play-mode-primary" style="background: linear-gradient(45deg, #00d2ff, #3a7bd5);">1v1 Casual</button>
+            <button type="button" id="btn-quick-match-2v2" class="menu-btn menu-btn-play-mode-primary" style="background: linear-gradient(45deg, #ff00cc, #4a00e0);">2v2 Casual</button>
+            <button type="button" id="btn-ranked-match" class="menu-btn menu-btn-play-mode-primary" style="background: linear-gradient(45deg, #d4af37, #b8860b);">1v1 Ranked</button>
             <button type="button" id="btn-private-choice" class="menu-btn secondary-btn menu-btn-play-mode-private">Private Match</button>
         </div>
         <button type="button" id="btn-close-play-mode" class="menu-btn secondary-btn btn-lumen-back btn-lumen-back--muted">Cancel ↩</button>
+    </div>
+
+    <!-- PARTY LOBBY MENU -->
+    <div id="party-lobby-container" class="hidden lumen-modal-screen lumen-modal-screen--center">
+        <div class="lumen-modal-head lumen-modal-head--compact">
+            <p class="lumen-modal-eyebrow">Party Mode</p>
+            <h2 class="modal-screen-title modal-screen-title--h2">Squad Lobby</h2>
+        </div>
+        
+        <div class="lumen-panel lumen-panel--dialog">
+            <div id="party-members-list" class="party-members-grid">
+                <!-- JS will inject party members -->
+            </div>
+            
+            <div class="party-actions" style="margin-top: 20px; text-align: center;">
+                <p id="party-status-text" style="color: #ffaa00; margin-bottom: 15px;">Waiting for Leader...</p>
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button type="button" id="btn-party-ready" class="menu-btn" style="flex: 1;">Ready up!</button>
+                    <button type="button" id="btn-party-find-match" class="action-btn hidden" style="flex: 1;" disabled>Find 2v2 Match</button>
+                </div>
+            </div>
+        </div>
+        <button type="button" id="btn-leave-party" class="menu-btn secondary-btn btn-lumen-back btn-lumen-back--muted">Leave Party ↩</button>
+    </div>
+
+    <!-- SHOP MENU -->
+    <div id="shop-container" class="hidden lumen-modal-screen lumen-modal-screen--center">
+        <div class="lumen-modal-head" style="max-width: 900px;">
+            <p class="lumen-modal-eyebrow">Store</p>
+            <h1 class="modal-screen-title">Lumen Shop</h1>
+        </div>
+        <p class="lumen-modal-sub" style="max-width: 900px; text-align: left; width: 100%;">Spend your hard-earned <span style="color:#00ffcc; font-weight:bold;">Lumens</span> dropping from Quests and leveling up!</p>
+        <div id="shop-grid" class="shop-grid" style="width: 100%; max-width: 900px; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; margin: 20px 0; max-height: 500px; overflow-y: auto;">
+            <!-- JS updates this -->
+        </div>
+        <button type="button" id="btn-close-shop" class="menu-btn secondary-btn btn-lumen-back">Back ↩</button>
     </div>
 
     <!-- SETTINGS MENU -->
@@ -383,6 +498,24 @@
             </div>
         </div>
         <button type="button" id="btn-close-settings" class="menu-btn secondary-btn btn-lumen-back">Back ↩</button>
+    </div>
+
+    <!-- BANNED MODAL -->
+    <div id="banned-modal" class="hidden lumen-modal-screen lumen-modal-screen--center" style="z-index: 1000000; background: rgba(0, 0, 0, 0.9);">
+        <div class="lumen-modal-head lumen-modal-head--compact">
+            <p class="lumen-modal-eyebrow" style="color: #ff4444;">Access Denied</p>
+            <h2 class="modal-screen-title modal-screen-title--h2" style="color: #ff4444;">Account Banned</h2>
+        </div>
+        <div class="lumen-panel lumen-panel--dialog" style="text-align: center; border-color: #ff4444;">
+            <p id="banned-reason-text" style="font-size: 1.1rem; margin-bottom: 20px;">Your account has been suspended for violating game rules.</p>
+            <div id="banned-countdown-container" class="banned-countdown-box">
+                <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 8px;">Ban expires in:</p>
+                <div id="banned-countdown-timer" style="font-size: 2rem; font-weight: bold; color: #ff4444; font-family: 'Rajdhani', sans-serif;">-- : -- : --</div>
+            </div>
+            <p id="banned-perm-text" class="hidden" style="font-size: 1.2rem; font-weight: bold; color: #ff4444;">PERMANENT BAN</p>
+            <p style="margin-top: 20px; font-size: 0.85rem; color: #777;">If you believe this is an error, please contact support.</p>
+        </div>
+        <button type="button" id="btn-banned-exit" class="menu-btn secondary-btn" style="margin-top: 20px;">Exit Game</button>
     </div>
 
     <!-- EMOTE PRESETS MODAL -->
@@ -432,10 +565,19 @@
     <!-- GAME UI -->
     <div id="ui-container" class="hidden">
         <div id="hud-top">
-            <div class="player-hud" id="hud-left">
-                <h2 id="name-left">You (Void Weaver)</h2>
-                <div class="health-bar-bg"><div class="health-bar-fill" id="hp-left"></div></div>
-                <div class="status-indicators" id="status-left"></div>
+            <div class="team-hud" id="team-left">
+                <div class="player-hud" id="hud-p1" onclick="if(window.selectTarget) window.selectTarget('p1')">
+                    <h2 id="name-p1">You (Void Weaver)</h2>
+                    <div class="health-bar-bg"><div class="health-bar-fill" id="hp-p1"></div></div>
+                    <div class="status-indicators" id="status-p1"></div>
+                    <button type="button" class="btn-report-hud" data-player-id="p1" title="Report Player">Report</button>
+                </div>
+                <div class="player-hud hidden" id="hud-p2" onclick="if(window.selectTarget) window.selectTarget('p2')">
+                    <h2 id="name-p2">Ally</h2>
+                    <div class="health-bar-bg"><div class="health-bar-fill" id="hp-p2"></div></div>
+                    <div class="status-indicators" id="status-p2"></div>
+                    <button type="button" class="btn-report-hud" data-player-id="p2" title="Report Player">Report</button>
+                </div>
             </div>
             <div id="hud-center">
                 <div id="status-message">Connecting...</div>
@@ -443,11 +585,21 @@
                     <div id="timer-bar"></div>
                     <span id="timer-text">15s</span>
                 </div>
+                <div id="target-prompt" class="hidden" style="color: #00ffcc; text-shadow: 0 0 5px #00ffcc; font-weight: bold; margin-top: 5px; font-size: 0.8rem; text-align: center;">Select Target!</div>
             </div>
-            <div class="player-hud" id="hud-right">
-                <h2 id="name-right">Opponent (Void Weaver)</h2>
-                <div class="health-bar-bg"><div class="health-bar-fill" id="hp-right"></div></div>
-                <div class="status-indicators" id="status-right"></div>
+            <div class="team-hud" id="team-right">
+                <div class="player-hud" id="hud-p3" onclick="if(window.selectTarget) window.selectTarget('p3')">
+                    <h2 id="name-p3">Opponent (Void Weaver)</h2>
+                    <div class="health-bar-bg"><div class="health-bar-fill" id="hp-p3"></div></div>
+                    <div class="status-indicators" id="status-p3"></div>
+                    <button type="button" class="btn-report-hud" data-player-id="p3" title="Report Player">Report</button>
+                </div>
+                <div class="player-hud hidden" id="hud-p4" onclick="if(window.selectTarget) window.selectTarget('p4')">
+                    <h2 id="name-p4">Opponent 2</h2>
+                    <div class="health-bar-bg"><div class="health-bar-fill" id="hp-p4"></div></div>
+                    <div class="status-indicators" id="status-p4"></div>
+                    <button type="button" class="btn-report-hud" data-player-id="p4" title="Report Player">Report</button>
+                </div>
             </div>
         </div>
         <div id="hud-bottom">
@@ -569,6 +721,34 @@
             <button type="button" id="btn-disconnect-ok" class="menu-btn disconnect-ok-btn">Return to Menu</button>
         </div>
     </div>
+    <!-- REPORT PLAYER MODAL -->
+    <div id="report-player-modal" class="hidden lumen-modal-screen lumen-modal-screen--center report-player-modal">
+        <div class="lumen-panel lumen-panel--dialog report-player-dialog card-glass">
+            <p class="lumen-modal-eyebrow">Moderation</p>
+            <h2 class="modal-screen-title modal-screen-title--h2">Report Player</h2>
+            <p class="report-modal-hint">Submit a report for review by game moderators.</p>
+            
+            <label class="report-modal-label">Category</label>
+            <select id="report-category" class="report-modal-select">
+                <option value="harassment">Harassment</option>
+                <option value="cheating">Cheating / Exploits</option>
+                <option value="spam">Spam</option>
+                <option value="other">Other</option>
+            </select>
+
+            <label class="report-modal-label">Details</label>
+            <textarea id="report-details" class="report-details-input" placeholder="Optional details..." rows="3"></textarea>
+            
+            <div id="report-error" class="report-error hidden"></div>
+            <div id="report-success" class="report-success hidden"></div>
+
+            <div class="report-modal-actions" style="display: flex; gap: 10px; margin-top: 15px;">
+                <button type="button" id="btn-report-submit" class="menu-btn" style="flex: 1;">Submit Report</button>
+                <button type="button" id="btn-report-cancel" class="menu-btn secondary-btn" style="flex: 0.6;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script src="js/game.js?v=52"></script>
 </body>
 </html>

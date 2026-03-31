@@ -584,6 +584,39 @@ function renderEventsActivitySection() {
     return `<div class="menu-activity-quest-block menu-activity-events"><h3 class="menu-activity-quest-head">Live events</h3><p class="menu-activity-event-line">${names}</p><p class="menu-activity-event-meta">${metaLines.join('<br>')}</p></div>`;
 }
 
+window.claimQuest = async function(questId, btn) {
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = '...';
+    }
+    try {
+        const res = await fetch('/claim-quest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: localUid, questId })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            if (window.sfx) window.sfx.playLevelUp(); // confetti sound equivalent
+            await fetchPlayerProfile(true);
+        } else if (data.error === 'Your account is banned from matchmaking.') {
+            showBannedModal(data.bannedUntil);
+        } else {
+            console.error('Claim failed', data.error);
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = 'Error';
+            }
+        }
+    } catch (e) {
+        console.error('Claim error', e);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = 'Error';
+        }
+    }
+};
+
 function renderQuestActivitySection() {
     const p = playerProfileData;
     if (!p || !p.questCatalog || !p.questMetrics) return '';
@@ -599,10 +632,18 @@ function renderQuestActivitySection() {
         else if (q.metric === 'abilities') cur = bucket.abilities || 0;
         const pct = Math.min(100, Math.round((cur / Math.max(1, q.target)) * 100));
         const done = !!claimed || cur >= q.target;
+        
+        let claimBtnHtml = '';
+        if (claimed) {
+            claimBtnHtml = `<span class="quest-status-claimed">✓ Claimed</span>`;
+        } else if (done) {
+            claimBtnHtml = `<button type="button" class="btn-claim-quest" onclick="claimQuest('${q.id}', this)">Claim</button>`;
+        }
+        
         rows.push(
             `<div class="menu-activity-quest"><div class="menu-activity-quest-label">${q.label}<span class="menu-activity-quest-pill">${q.slot}</span></div>` +
                 `<div class="menu-activity-quest-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="width:${pct}%"></span></div>` +
-                `<div class="menu-activity-quest-meta">${cur} / ${q.target}${done ? ' ✓' : ''}</div></div>`
+                `<div class="menu-activity-quest-meta" style="display:flex; justify-content:space-between; align-items:center;"><span>${cur} / ${q.target}</span> ${claimBtnHtml}</div></div>`
         );
     }
     return `<div class="menu-activity-quest-block"><h3 class="menu-activity-quest-head">Quests</h3>${rows.join('')}</div>`;
@@ -614,49 +655,20 @@ function renderMenuActivityPopoverBody() {
     const eventsBlock = renderEventsActivitySection();
     const questBlock = renderQuestActivitySection();
     const top = (eventsBlock || '') + (questBlock || '');
-    const data = lastSocialSnapshot;
-    if (!data) {
-        body.innerHTML = top
-            ? top + '<p class="menu-activity-empty">Loading social…</p>'
-            : '<p class="menu-activity-empty">Loading activity…</p>';
-        return;
-    }
-    const reqs = data.requests || [];
-    const duels = data.duelInvites || [];
-    const hasSocial = reqs.length > 0 || duels.length > 0;
-    let socialHtml = '';
-    if (hasSocial) {
-        const bits = [];
-        if (reqs.length > 0) bits.push(`${reqs.length} friend request${reqs.length > 1 ? 's' : ''}`);
-        if (duels.length > 0) bits.push(`${duels.length} duel invite${duels.length > 1 ? 's' : ''}`);
-        socialHtml = `<button type="button" class="menu-activity-item">${bits.join(' · ')} — Open Social</button>`;
-    } else {
-        socialHtml = '<p class="menu-activity-empty menu-activity-social-empty">No friend requests or duel invites.</p>';
-    }
+
     if (!top) {
-        body.innerHTML = socialHtml;
+        body.innerHTML = '<p class="menu-activity-empty">No active quests or events.</p>';
         return;
     }
-    body.innerHTML = top + socialHtml;
+    body.innerHTML = top;
 }
 
 function closeMenuActivityPopover() {
     menuActivityPopoverOpen = false;
-    const pop = document.getElementById('menu-activity-popover');
-    if (pop) pop.classList.add('hidden');
-    const b = document.getElementById('btn-menu-activity');
-    if (b) b.setAttribute('aria-expanded', 'false');
 }
 
 function openMenuActivityPopover() {
     menuActivityPopoverOpen = true;
-    const pop = document.getElementById('menu-activity-popover');
-    if (pop) pop.classList.remove('hidden');
-    const b = document.getElementById('btn-menu-activity');
-    if (b) b.setAttribute('aria-expanded', 'true');
-    renderMenuActivityPopoverBody();
-    fetchFriends(true);
-    fetchPlayerProfile(true);
 }
 
 async function fetchPlayerProfile(silent = false) {
@@ -700,7 +712,14 @@ async function fetchPlayerProfile(silent = false) {
 
         fillProfileTitleSelect();
 
-        if (menuActivityPopoverOpen) renderMenuActivityPopoverBody();
+        renderMenuActivityPopoverBody();
+        
+        if (data.banned) {
+            showBannedModal(data.bannedUntil);
+        } else {
+            const modal = document.getElementById('banned-modal');
+            if (modal) modal.classList.add('hidden');
+        }
     } catch (e) {
         console.error('Profile fetch failed', e);
         syncMainMenuHeaderProfile({ username: myUsername || 'Player', level: 1 });
@@ -867,21 +886,31 @@ function textureKeyForClassAndSkin(classId, skinLabel) {
     return classId;
 }
 
-function availableSkinsForChar(charId, accountRank) {
-    const r = Math.max(1, Number(accountRank) || 1);
-    const skins = ['Default'];
+function getAllSkinsForChar(charId) {
+    const skins = [{ name: 'Default', reqItem: null, reqLevel: 0 }];
     if (charId === 'voidWeaver') {
-        if (r >= 3) skins.push('Verdant');
-        if (r >= 10) skins.push('Abyssal');
-        if (r >= 20) skins.push('Lumen Legend');
+        skins.push({ name: 'Verdant', reqItem: null, reqLevel: 3 });
+        skins.push({ name: 'Abyssal', reqItem: null, reqLevel: 10 });
+        skins.push({ name: 'Lumen Legend', reqItem: null, reqLevel: 20 });
+        skins.push({ name: 'Gold', reqItem: 'Gold', reqLevel: 0 });
     }
     if (charId === 'aegisKnight') {
-        if (r >= 6) skins.push('Crimson');
+        skins.push({ name: 'Crimson', reqItem: null, reqLevel: 6 });
     }
     if (charId === 'lumenSage') {
-        if (r >= 11) skins.push('Astral');
+        skins.push({ name: 'Astral', reqItem: null, reqLevel: 11 });
     }
     return skins;
+}
+
+function availableSkinsForChar(charId, accountRank) {
+    const r = Math.max(1, Number(accountRank) || 1);
+    const all = getAllSkinsForChar(charId);
+    return all.filter(s => {
+        if (s.reqLevel > r) return false;
+        if (s.reqItem && !(playerProfileData && playerProfileData.unlockedCosmetics && playerProfileData.unlockedCosmetics.includes(s.reqItem))) return false;
+        return true;
+    }).map(s => s.name);
 }
 
 /** Sum of (class xp) / sum of (level×100) — matches how ranks grow from class levels, not lifetime stats.xp */
@@ -1095,6 +1124,8 @@ function preload() {
 
 let playerLeftShape;
 let playerRightShape;
+let playerLeftShape2;  // 2v2 ally
+let playerRightShape2; // 2v2 enemy 2
 let phaserLayoutBattleMode = false;
 
 function menuHeroTextureKey(charId) {
@@ -1120,12 +1151,29 @@ function refreshPhaserCharacterLayout() {
     if (inBattle) {
         playerRightShape.setVisible(true);
         const spriteY = ch * 0.35;
-        playerLeftShape.setPosition(cw * 0.25, spriteY);
-        playerRightShape.setPosition(cw * 0.75, spriteY);
+        playerLeftShape.setPosition(cw * 0.22, spriteY);
+        playerRightShape.setPosition(cw * 0.78, spriteY);
+        
+        // 2v2 secondary sprites — staggered behind primaries
+        if (playerLeftShape2 && playerRightShape2) {
+            const has4 = gameState && gameState.players && Object.keys(gameState.players).length > 2;
+            playerLeftShape2.setVisible(has4);
+            playerRightShape2.setVisible(has4);
+            if (has4) {
+                playerLeftShape2.setPosition(cw * 0.12, spriteY + ch * 0.08);
+                playerRightShape2.setPosition(cw * 0.88, spriteY + ch * 0.08);
+                playerLeftShape2.setScale(playerLeftShape.scaleX * 0.8, playerLeftShape.scaleY * 0.8);
+                playerRightShape2.setScale(playerRightShape.scaleX * 0.8, playerRightShape.scaleY * 0.8);
+                playerLeftShape2.setAlpha(0.85);
+                playerRightShape2.setAlpha(0.85);
+            }
+        }
     } else {
         playerRightShape.setVisible(false);
+        if (playerLeftShape2) playerLeftShape2.setVisible(false);
+        if (playerRightShape2) playerRightShape2.setVisible(false);
         const narrowPortrait = document.documentElement.classList.contains('layout-portrait') && cw < 900;
-        const spriteX = narrowPortrait ? cw * 0.5 : cw * 0.4;
+        const spriteX = cw * 0.5; // Centered
         const spriteY = narrowPortrait ? ch * 0.34 : ch * 0.4;
         playerLeftShape.setPosition(spriteX, spriteY);
     }
@@ -1161,14 +1209,19 @@ function create() {
     const startTex = menuHeroTextureKey(startCharId);
 
     playerLeftShape = this.add.sprite(cw * 0.4, ch * 0.4, startTex);
-
     playerRightShape = this.add.sprite(cw * 0.75, ch * 0.35, 'voidWeaver');
+    playerRightShape.setFlipX(true);
+    playerLeftShape2 = this.add.sprite(cw * 0.15, ch * 0.45, 'aegisKnight');
+    playerRightShape2 = this.add.sprite(cw * 0.85, ch * 0.45, 'voidWeaver');
+    playerRightShape2.setFlipX(true);
+    playerLeftShape2.setVisible(false);
+    playerRightShape2.setVisible(false);
 
     refreshPhaserCharacterLayout();
 
     // Tweens for idle breathing effect
     this.tweens.add({
-        targets: [playerLeftShape, playerRightShape],
+        targets: [playerLeftShape, playerRightShape, playerLeftShape2, playerRightShape2],
         y: '-=15',
         duration: 2000,
         yoyo: true,
@@ -1178,6 +1231,9 @@ function create() {
 
     // Connection is now triggered by the "Play" button, not on create()
     syncGameContainerPointerEvents();
+    
+    // Final sync: ensure sprites match latest server state if match already started
+    if (typeof updateUI === 'function') updateUI();
 }
 
 function update() {
@@ -1342,6 +1398,12 @@ function connectWebSocket(specificRoomId = null, queue = 'casual') {
         if (mm) mm.innerText = 'Pick a hero before joining.';
         return;
     }
+
+    if (playerProfileData && playerProfileData.banned) {
+        showBannedModal(playerProfileData.bannedUntil);
+        document.getElementById('matchmaking-overlay').classList.add('hidden');
+        return;
+    }
     heroSelectPick.charId = charId;
     if (!heroSelectPick.skin) heroSelectPick.skin = 'Default';
     const skin = heroSelectPick.skin || 'Default';
@@ -1351,9 +1413,7 @@ function connectWebSocket(specificRoomId = null, queue = 'casual') {
     let wsUrl = `${wsProtocol}//${window.location.host}/play?char=${encodeURIComponent(charId)}&uid=${encodeURIComponent(localUid)}&skin=${encodeURIComponent(skin)}`;
     
     lastQueueType = queue;
-    if (queue === 'ranked') {
-        wsUrl += `&queue=ranked`;
-    }
+    wsUrl += `&queue=${queue}`;
 
     if (specificRoomId) {
         wsUrl += `&roomId=${encodeURIComponent(specificRoomId)}`;
@@ -1379,6 +1439,7 @@ function connectWebSocket(specificRoomId = null, queue = 'casual') {
                 prevOpponentHealth = -1;
             }
             gameState = msg.state;
+            // Always sync whenever a state arrives to prevent sprite mismatches
             updateUI();
         }
         if (msg.type === 'HERO_SELECT_UPDATE') {
@@ -1425,7 +1486,7 @@ function connectWebSocket(specificRoomId = null, queue = 'casual') {
         console.log("WebSocket closed", event);
         if (manualSocketClose) return;
         if (event.code === 4000) {
-            connectWebSocket();
+            connectWebSocket(null, lastQueueType || 'casual');
             return;
         }
 
@@ -1505,20 +1566,23 @@ function updateUI() {
         document.getElementById('hero-select-overlay').classList.remove('hidden');
         document.getElementById('emote-bar').classList.add('hidden');
         syncHeroSelectUIFromState();
+        syncSpritesToLatestPlayers();
         reportPresenceIfChanged(true);
     } else if (gameState.status === 'WAITING_FOR_PLAYERS') {
-        const playerCount = gameState && gameState.players ? Object.keys(gameState.players).length : 0;
         document.getElementById('ui-container').classList.add('hidden');
-        document.getElementById('main-menu-container').classList.add('hidden');
-        if (playerCount < 2) {
-            document.getElementById('hero-select-overlay').classList.add('hidden');
-            document.getElementById('matchmaking-overlay').classList.remove('hidden');
-            document.getElementById('matchmaking-text').innerText = "Waiting for Opponent...";
-        } else {
+        
+        if (gameState.isPrivate) {
+            document.getElementById('main-menu-container').classList.add('hidden');
             document.getElementById('matchmaking-overlay').classList.add('hidden');
             document.getElementById('hero-select-overlay').classList.remove('hidden');
             syncHeroSelectUIFromState();
+        } else {
+            // Keep background visible behind the translucent matching screen
+            document.getElementById('main-menu-container').classList.remove('hidden');
+            document.getElementById('hero-select-overlay').classList.add('hidden');
+            document.getElementById('matchmaking-overlay').classList.remove('hidden');
         }
+        syncSpritesToLatestPlayers();
         reportPresenceIfChanged(true);
     } else if (gameState.status !== 'GAME_OVER') {
         document.getElementById('ui-container').classList.add('hidden');
@@ -1528,65 +1592,104 @@ function updateUI() {
     // Update Health Bars & Animations
     if (gameState.status === 'IN_PROGRESS' && myPlayerId) {
         if (!matchStats.active) resetMatchStats();
-        const opponentId = myPlayerId === 'p1' ? 'p2' : 'p1';
 
-        const myPlayer = gameState.players[myPlayerId];
-        const oppPlayer = gameState.players[opponentId];
-
-        // Self (Left)
-        const myHpPct = (myPlayer.health / myPlayer.maxHealth) * 100;
-        document.getElementById('hp-left').style.width = `${Math.max(0, myHpPct)}%`;
-
-        document.getElementById('name-left').innerText = `${myUsername} (${myPlayer.class})`;
-        if (playerLeftShape && myPlayer.classId) {
-            let textureKey = textureKeyForClassAndSkin(myPlayer.classId, myPlayer.equippedSkin || 'Default');
-            if (playerLeftShape.active && playerLeftShape.texture.key !== textureKey) {
-                playerLeftShape.setTexture(textureKey);
-                applyPhaserCharacterScales(playerLeftShape.scene);
-            }
+        // Map players to slots depending on team
+        const is2v2 = Object.keys(gameState.players).length > 2;
+        
+        let layoutSlots;
+        if (is2v2) {
+            const isTeamB = myPlayerId === 'p3' || myPlayerId === 'p4';
+            const teamA = ['p1', 'p2'];
+            const teamB = ['p3', 'p4'];
+            const myTeam = isTeamB ? teamB : teamA;
+            const enemyTeam = isTeamB ? teamA : teamB;
+            layoutSlots = {
+                'hud-p1': { id: myTeam[0], isEnemy: false },
+                'hud-p2': { id: myTeam[1], isEnemy: false },
+                'hud-p3': { id: enemyTeam[0], isEnemy: true },
+                'hud-p4': { id: enemyTeam[1], isEnemy: true }
+            };
+        } else {
+            // 1v1: me on left (hud-p1), opponent on right (hud-p3)
+            const oppId = myPlayerId === 'p1' ? 'p2' : 'p1';
+            layoutSlots = {
+                'hud-p1': { id: myPlayerId, isEnemy: false },
+                'hud-p3': { id: oppId, isEnemy: true }
+            };
         }
 
-        if (prevMyHealth !== -1 && myPlayer.health < prevMyHealth && playerLeftShape && playerLeftShape.active && game && game.scene) {
-            matchStats.damageTaken += (prevMyHealth - myPlayer.health);
-            const scene = game.scene.scenes[0];
-            if (scene) {
-                triggerDamageFeedback(scene, playerLeftShape, playerRightShape, '+=10', '-=50');
-            }
-            sfx.playHit();
-        }
-        prevMyHealth = myPlayer.health;
+        let myTeamHealth = 0;
+        let oppTeamHealth = 0;
 
-        // Opponent (Right)
-        const oppHpPct = (oppPlayer.health / oppPlayer.maxHealth) * 100;
-        document.getElementById('hp-right').style.width = `${Math.max(0, oppHpPct)}%`;
-
-        document.getElementById('name-right').innerText = `${oppPlayer.username || 'Opponent'} (${oppPlayer.class})`;
-        if (playerRightShape && oppPlayer.classId) {
-            let textureKey = textureKeyForClassAndSkin(oppPlayer.classId, oppPlayer.equippedSkin || 'Default');
-            if (playerRightShape.active && playerRightShape.texture.key !== textureKey) {
-                playerRightShape.setTexture(textureKey);
-                applyPhaserCharacterScales(playerRightShape.scene);
+        for (const [slotId, slotInfo] of Object.entries(layoutSlots)) {
+            const player = gameState.players[slotInfo.id];
+            const hudEl = document.getElementById(slotId);
+            if (!hudEl) continue;
+            
+            if (!player) {
+                hudEl.classList.add('hidden');
+                continue;
             }
-        }
+            hudEl.classList.remove('hidden');
 
-        if (prevOpponentHealth !== -1 && oppPlayer.health < prevOpponentHealth && playerRightShape && playerRightShape.active && game && game.scene) {
-            matchStats.damageDealt += (prevOpponentHealth - oppPlayer.health);
-            const scene = game.scene.scenes[0];
-            if (scene) {
-                triggerDamageFeedback(scene, playerRightShape, playerLeftShape, '-=10', '+=50');
+            const isMe = player.id === myPlayerId;
+            const hpPct = (player.health / player.maxHealth) * 100;
+            const hpEl = document.getElementById(slotId.replace('hud-', 'hp-'));
+            const nameEl = document.getElementById(slotId.replace('hud-', 'name-'));
+            const statusEl = document.getElementById(slotId.replace('hud-', 'status-'));
+
+            if (hpEl) hpEl.style.width = `${Math.max(0, hpPct)}%`;
+            if (nameEl) {
+                let suffix = '';
+                if (isMe) suffix = ' (You)';
+                nameEl.innerText = `${player.username || 'Player'} - ${player.class}${suffix}`;
             }
-            sfx.playHit();
+
+            // Sync Phaser Avatars
+            if (slotId === 'hud-p1' && playerLeftShape && player.classId) {
+                let textureKey = textureKeyForClassAndSkin(player.classId, player.equippedSkin || 'Default');
+                if (playerLeftShape.active && playerLeftShape.texture.key !== textureKey) {
+                    playerLeftShape.setTexture(textureKey);
+                    applyPhaserCharacterScales(playerLeftShape.scene);
+                }
+            } else if (slotId === 'hud-p3' && playerRightShape && player.classId) {
+                let textureKey = textureKeyForClassAndSkin(player.classId, player.equippedSkin || 'Default');
+                if (playerRightShape.active && playerRightShape.texture.key !== textureKey) {
+                    playerRightShape.setTexture(textureKey);
+                    applyPhaserCharacterScales(playerRightShape.scene);
+                }
+            } else if (slotId === 'hud-p2' && playerLeftShape2 && player.classId) {
+                let textureKey = textureKeyForClassAndSkin(player.classId, player.equippedSkin || 'Default');
+                if (playerLeftShape2.active && playerLeftShape2.texture.key !== textureKey) {
+                    playerLeftShape2.setTexture(textureKey);
+                }
+            } else if (slotId === 'hud-p4' && playerRightShape2 && player.classId) {
+                let textureKey = textureKeyForClassAndSkin(player.classId, player.equippedSkin || 'Default');
+                if (playerRightShape2.active && playerRightShape2.texture.key !== textureKey) {
+                    playerRightShape2.setTexture(textureKey);
+                }
+            }
+
+            // Accumulate team health for win/loss
+            if (slotInfo.isEnemy) oppTeamHealth += Math.max(0, player.health);
+            else myTeamHealth += Math.max(0, player.health);
+
+            // Render status badges
+            statusEl.innerHTML = '';
+            if (player.shield && player.shield.active) statusEl.innerHTML += `<span class="status-badge shield">🛡 ${player.shield.percent}%</span>`;
+            if (player.dodge) statusEl.innerHTML += `<span class="status-badge dodge">⚡ Dodge</span>`;
         }
-        prevOpponentHealth = oppPlayer.health;
 
         if (lastTurnSnapshot !== null && lastTurnSnapshot !== gameState.turn) {
             matchStats.turnSwaps += 1;
         }
         lastTurnSnapshot = gameState.turn;
+
+        // Note: For hit-effects in 2v2, we currently skip the intense tracking to simplify, since simultaneous hits get complex.
     }
 
     if (gameState.status === 'WAITING_FOR_PLAYERS') {
-        document.getElementById('status-message').innerText = "Waiting for opponent...";
+        document.getElementById('status-message').innerText = "Waiting for players...";
         document.getElementById('turn-timer').classList.add('hidden');
         document.querySelectorAll('.ability-btn').forEach(b => b.disabled = true);
     } else if (gameState.status === 'HERO_SELECT') {
@@ -1595,15 +1698,25 @@ function updateUI() {
         document.getElementById('ability-bar').classList.add('hidden');
         document.querySelectorAll('.ability-btn').forEach(b => b.disabled = true);
     } else if (gameState.status === 'IN_PROGRESS') {
-        const isMyTurn = (myPlayerId === 'p1' && gameState.turn === 0) || (myPlayerId === 'p2' && gameState.turn === 1);
+        document.getElementById('main-menu-container').classList.add('hidden');
+        document.getElementById('hero-select-overlay').classList.add('hidden');
+        document.getElementById('matchmaking-overlay').classList.add('hidden');
+        document.getElementById('game-container').classList.remove('hidden');
+        document.getElementById('ui-container').classList.remove('hidden');
+        document.getElementById('emote-bar').classList.remove('hidden');
+
+        const is2v2 = Object.keys(gameState.players).length > 2;
+        const myPlayer = gameState.players[myPlayerId];
         
-        document.getElementById('status-message').innerText = isMyTurn ? "Your Turn!" : "Opponent's Turn...";
+        // In 2v2, turns are simultaneous. Everyone can act if alive and haven't acted yet.
+        // Pending actions aren't directly sent to clients yet to prevent peeking, but we can assume 'isMyTurn=true' continuously.
+        const isMyTurn = is2v2 ? (myPlayer && myPlayer.health > 0) : ((myPlayerId === 'p1' && gameState.turn === 0) || (myPlayerId === 'p2' && gameState.turn === 1));
+
+        document.getElementById('status-message').innerText = isMyTurn ? "Your Turn!" : "Waiting...";
         
         document.getElementById('ability-bar').classList.remove('hidden');
         document.getElementById('btn-return').classList.add('hidden');
 
-        // Update ability buttons
-        const myPlayer = gameState.players[myPlayerId];
         if (myPlayer && myPlayer.abilities) {
             document.querySelectorAll('.ability-btn').forEach((btn, i) => {
                 const ab = myPlayer.abilities[i];
@@ -1622,38 +1735,34 @@ function updateUI() {
             });
         }
 
-        // Update status indicators (shield/dodge badges)
-        const oppId = myPlayerId === 'p1' ? 'p2' : 'p1';
-        function renderStatusBadges(player, elId) {
-            const el = document.getElementById(elId);
-            el.innerHTML = '';
-            if (player.shield && player.shield.active) {
-                el.innerHTML += `<span class="status-badge shield">🛡 ${player.shield.percent}%</span>`;
-            }
-            if (player.dodge) {
-                el.innerHTML += `<span class="status-badge dodge">⚡ Dodge</span>`;
-            }
-        }
-        if (myPlayer) renderStatusBadges(myPlayer, 'status-left');
-        if (gameState.players[oppId]) renderStatusBadges(gameState.players[oppId], 'status-right');
-
-        // Turn timer
         if (gameState.turnDeadline) {
             document.getElementById('turn-timer').classList.remove('hidden');
             updateTurnTimer();
         }
 
-        // Highlight active player HUD
-        document.getElementById('hud-left').classList.toggle('active-turn', isMyTurn);
-        document.getElementById('hud-right').classList.toggle('active-turn', !isMyTurn);
+        // Highlight active sides
+        if (!is2v2) {
+            document.getElementById('team-left').classList.toggle('active-turn', isMyTurn);
+            document.getElementById('team-right').classList.toggle('active-turn', !isMyTurn);
+        } else {
+            document.getElementById('team-left').classList.add('active-turn');
+            document.getElementById('team-right').classList.add('active-turn');
+        }
     } else if (gameState.status === 'GAME_OVER') {
         let winnerMsg = "Game Over - Draw";
+        
+        const isTeamB = myPlayerId === 'p3' || myPlayerId === 'p4';
+        const teamA = [gameState.players['p1'], gameState.players['p2']].filter(Boolean);
+        const teamB = [gameState.players['p3'], gameState.players['p4']].filter(Boolean);
+        
+        const myTeamAlive = isTeamB ? teamB.some(p => p.health > 0) : teamA.some(p => p.health > 0);
+        const enemyTeamAlive = isTeamB ? teamA.some(p => p.health > 0) : teamB.some(p => p.health > 0);
+        
+        if (myTeamAlive && !enemyTeamAlive) winnerMsg = "Victory!";
+        else if (!myTeamAlive && enemyTeamAlive) winnerMsg = "Defeat!";
+
         const me = gameState.players[myPlayerId];
-        const opp = gameState.players[myPlayerId === 'p1' ? 'p2' : 'p1'];
-        if (me && opp) {
-            if (me.health > 0 && opp.health <= 0) winnerMsg = "You Win!";
-            if (opp.health > 0 && me.health <= 0) winnerMsg = "You Lose!";
-        }
+        const opp = gameState.players[myPlayerId === 'p1' ? 'p2' : 'p1']; // purely for sounds
 
         document.getElementById('status-message').innerText = winnerMsg;
         document.getElementById('ability-bar').classList.add('hidden');
@@ -1661,15 +1770,16 @@ function updateUI() {
         document.getElementById('turn-timer').classList.add('hidden');
 
         // Trigger XP Splash once
-        if (me && me.postGame && !document.getElementById('xp-splash-overlay').classList.contains('active-showing')) {
-            const won = me.health > 0;
+        const canShowSplash = me && (me.postGame || (winnerMsg !== "Game Over - Draw"));
+        if (canShowSplash && !document.getElementById('xp-splash-overlay').classList.contains('active-showing')) {
+            const won = me && me.health > 0;
             // The active-showing class ensures we only trigger this ONCE per game completion
             document.getElementById('xp-splash-overlay').classList.add('active-showing');
             
             // GO NUCLEAR: Clear game to prevent click interception
             destroyGame();
             
-            showXPSplash(won, me.postGame);
+            showXPSplash(won, me ? me.postGame : null).catch(e => console.error("[Splash] Critical fail", e));
         }
 
         // Play game-over sound once
@@ -1717,6 +1827,46 @@ document.getElementById('btn-close-char-menu').addEventListener('click', () => {
     document.getElementById('character-menu-container').classList.add('hidden');
 });
 
+// Hero Select card clicks
+document.querySelectorAll('.hero-select-card').forEach(card => {
+    card.addEventListener('click', () => {
+        if (heroSelectLocked) return;
+        const charId = card.getAttribute('data-hero-select');
+        heroSelectPick.charId = charId;
+        updateHeroSelectCardClasses(charId);
+        setHeroSelectSkinOptions(charId, 'Default');
+        heroSelectPick.skin = 'Default';
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ action: 'hero-pick', charId, skin: 'Default' }));
+        }
+    });
+});
+
+// Hero Select skin dropdown
+const heroSkinSel = document.getElementById('hero-select-skin');
+if (heroSkinSel) {
+    heroSkinSel.addEventListener('change', () => {
+        if (heroSelectLocked) return;
+        heroSelectPick.skin = heroSkinSel.value;
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ action: 'hero-pick', charId: heroSelectPick.charId, skin: heroSkinSel.value }));
+        }
+    });
+}
+
+// Hero Select Lock In button
+document.getElementById('btn-hero-ready').addEventListener('click', () => {
+    if (heroSelectLocked) return;
+    heroSelectLocked = true;
+    const readyBtn = document.getElementById('btn-hero-ready');
+    if (readyBtn) { readyBtn.disabled = true; readyBtn.innerText = 'Locked'; }
+    const readyStatus = document.getElementById('hero-ready-status');
+    if (readyStatus) readyStatus.innerText = 'Locked in';
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ action: 'hero-ready' }));
+    }
+});
+
 document.getElementById('btn-play-game').addEventListener('click', () => {
     closeMenuActivityPopover();
     initGame();
@@ -1727,26 +1877,17 @@ document.getElementById('btn-close-play-mode').addEventListener('click', () => {
     document.getElementById('play-mode-modal').classList.add('hidden');
 });
 
-document.getElementById('btn-quick-match').addEventListener('click', () => {
-    document.getElementById('play-mode-modal').classList.add('hidden');
-    document.getElementById('matchmaking-overlay').classList.remove('hidden');
-    document.getElementById('matchmaking-text').innerText = "Connecting to Server...";
-    reportPresenceIfChanged(true);
-    heroSelectLocked = false;
-    heroSelectCountdownUntil = 0;
-    clearHeroSelectCountdownTimer();
-    const initialChar = CHARACTER_CLASSES[selectedCharacterIndex] ? CHARACTER_CLASSES[selectedCharacterIndex].id : 'aegisKnight';
-    heroSelectPick = { charId: initialChar, skin: 'Default' };
-    setHeroSelectSkinOptions(initialChar, 'Default');
-    updateHeroSelectCardClasses(initialChar);
-    connectWebSocket();
-});
-
-document.getElementById('btn-ranked-match').addEventListener('click', () => {
+function startMatchmaking(queueType) {
     if (typeof sfx !== 'undefined' && sfx.playClick) sfx.playClick();
     document.getElementById('play-mode-modal').classList.add('hidden');
     document.getElementById('matchmaking-overlay').classList.remove('hidden');
-    document.getElementById('matchmaking-text').innerText = "Finding Ranked Match...";
+    
+    let mmText = "Finding Match...";
+    if (queueType === '2v2') mmText = "Finding 2v2 Match...";
+    if (queueType === 'ranked') mmText = "Finding Ranked Match...";
+    if (queueType === 'casual') mmText = "Finding 1v1 Match...";
+    document.getElementById('matchmaking-text').innerText = mmText;
+    
     reportPresenceIfChanged(true);
     heroSelectLocked = false;
     heroSelectCountdownUntil = 0;
@@ -1755,8 +1896,12 @@ document.getElementById('btn-ranked-match').addEventListener('click', () => {
     heroSelectPick = { charId: initialChar, skin: 'Default' };
     setHeroSelectSkinOptions(initialChar, 'Default');
     updateHeroSelectCardClasses(initialChar);
-    connectWebSocket(null, 'ranked');
-});
+    connectWebSocket(null, queueType);
+}
+
+document.getElementById('btn-quick-match-1v1').addEventListener('click', () => startMatchmaking('casual'));
+document.getElementById('btn-quick-match-2v2').addEventListener('click', () => startMatchmaking('2v2'));
+document.getElementById('btn-ranked-match').addEventListener('click', () => startMatchmaking('ranked'));
 
 document.getElementById('btn-private-choice').addEventListener('click', () => {
     document.getElementById('play-mode-modal').classList.add('hidden');
@@ -1833,6 +1978,70 @@ document.getElementById('btn-battle-pass').addEventListener('click', () => {
     openBattlePass();
 });
 
+document.getElementById('btn-shop').addEventListener('click', () => {
+    document.getElementById('shop-container').classList.remove('hidden');
+    renderShop();
+    if (typeof sfx !== 'undefined' && sfx.playClick) sfx.playClick();
+});
+
+document.getElementById('btn-close-shop').addEventListener('click', () => {
+    document.getElementById('shop-container').classList.add('hidden');
+    if (typeof sfx !== 'undefined' && sfx.playClick) sfx.playClick();
+});
+
+window.buyShopItem = async function(itemId) {
+    if (typeof sfx !== 'undefined' && sfx.playClick) sfx.playClick();
+    try {
+        const res = await fetch('/shop/purchase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: localUid, itemId })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            playerProfileData = data.stats;
+            renderShop();
+            updateRosterStats();
+        } else {
+            alert("Shop Error: " + data.error);
+        }
+    } catch (e) { console.error(e); }
+};
+
+function renderShop() {
+    const grid = document.getElementById('shop-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    const catalog = playerProfileData && playerProfileData.shopCatalog ? playerProfileData.shopCatalog : [];
+    const lumens = playerProfileData ? playerProfileData.lumens || 0 : 0;
+    
+    document.getElementById('nav-lumen-count').innerText = lumens;
+
+    catalog.forEach(item => {
+        const titleOwned = item.type === 'title' && playerProfileData.unlockedTitles && playerProfileData.unlockedTitles.includes(item.name);
+        const cosmeticOwned = item.type !== 'title' && playerProfileData.unlockedCosmetics && playerProfileData.unlockedCosmetics.includes(item.name);
+        const owned = titleOwned || cosmeticOwned;
+        const canAfford = lumens >= item.price;
+        
+        let icon = '🎁';
+        if (item.type === 'emote') icon = item.name;
+        if (item.type === 'title') icon = '🏅';
+        if (item.type === 'skin') icon = '🎭';
+
+        grid.innerHTML += `
+            <div class="shop-card ${owned ? 'owned' : ''}" style="background: rgba(0,0,0,0.5); padding: 15px; border-radius: 8px; text-align: center; border: 1px solid ${owned ? '#555' : (canAfford ? '#ff00cc' : '#333')}; transition: border 0.3s;">
+                <div style="font-size: 2rem; margin-bottom: 10px;">${icon}</div>
+                <h3 style="font-size: 1.1rem; margin-bottom: 5px; color: ${owned ? '#888' : '#fff'};">${item.name}</h3>
+                <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 15px; text-transform: uppercase;">${item.type}</p>
+                ${owned 
+                    ? `<button disabled class="menu-btn secondary-btn" style="width: 100%; padding: 10px; opacity: 0.5;">Owned</button>` 
+                    : `<button class="menu-btn" style="width: 100%; padding: 10px; background: ${canAfford ? 'linear-gradient(45deg, #ff00cc, #4a00e0)' : '#333'}; color: ${canAfford ? '#fff' : '#888'}; border: none;" onclick="buyShopItem('${item.id}')" ${canAfford ? '' : 'disabled'}>${item.price} L</button>`
+                }
+            </div>
+        `;
+    });
+}
+
 document.getElementById('btn-save-customization').addEventListener('click', () => {
     saveCustomization();
 });
@@ -1892,6 +2101,10 @@ updateMenuCharacterDisplay();
 // Update character card levels/xp from profile
 function updateRosterStats() {
     if (!playerProfileData) return;
+    
+    const lCount = document.getElementById('nav-lumen-count');
+    if (lCount) lCount.innerText = playerProfileData.lumens || 0;
+
     document.querySelectorAll('.char-card').forEach(card => {
         const charId = card.getAttribute('data-char');
         const pClass = playerProfileData.classes[charId] || { level: 1, xp: 0 };
@@ -2099,6 +2312,7 @@ function updateSocialUI(data) {
                         </div>
                     </div>
                     <div style="display: flex; flex-shrink: 0; flex-wrap: wrap; gap: 6px; justify-content: flex-end;">
+                        <button type="button" onclick="sendInvite('${f.uid}', 'party')" style="background: rgba(204, 102, 255, 0.2); border: 1px solid rgba(204, 102, 255, 0.45); color: #e6b3ff; border-radius: 4px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; font-weight: bold;">+ Party</button>
                         <button type="button" onclick="sendInvite('${f.uid}', 'duel')" style="background: rgba(0, 210, 255, 0.2); border: 1px solid rgba(0, 210, 255, 0.45); color: #9ef0ff; border-radius: 4px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; font-weight: bold;">Challenge</button>
                         <button onclick="removeFriend('${f.uid}')" style="background: none; border: none; color: #ff0055; opacity: 0.5; cursor: pointer; font-size: 0.8rem; padding: 5px;">Remove</button>
                     </div>
@@ -2127,7 +2341,7 @@ window.sendInvite = async (targetUid, type = 'duel') => {
             connectWebSocket(data.roomId);
             fetchFriends(true);
         } else if (data.ok && data.partyId) {
-            alert('Party created (stub)');
+            connectParty(data.partyId);
         } else {
             alert(data.error || 'Could not send invite');
         }
@@ -2151,8 +2365,8 @@ window.acceptInvite = async (fromUid, type) => {
             reportPresenceIfChanged(true);
             connectWebSocket(data.roomId);
             fetchFriends(true);
-        } else if (data.ok && data.type === 'party') {
-            alert('Joined party (stub)');
+        } else if (data.ok && data.type === 'party' && data.partyId) {
+            connectParty(data.partyId);
         } else {
             alert(data.error || 'Invite is no longer valid');
             fetchFriends();
@@ -2318,22 +2532,170 @@ document.getElementById('btn-submit-join').addEventListener('click', async () =>
     }
 });
 
+// ==========================================
+// PARTY MATCH LOGIC
+// ==========================================
+let partySocket = null;
+let currentPartyData = null;
+
+function connectParty(partyId) {
+    if (partySocket) partySocket.close();
+    
+    document.getElementById('social-container').classList.add('hidden');
+    document.getElementById('play-mode-modal').classList.add('hidden');
+    document.getElementById('party-lobby-container').classList.remove('hidden');
+    
+    const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const encodedUser = encodeURIComponent(myUsername);
+    partySocket = new WebSocket(`${wsProto}//${location.host}/join-party?partyId=${partyId}&uid=${localUid}&username=${encodedUser}`);
+    
+    partySocket.onopen = () => {
+        console.log("Party WS Connected");
+    };
+    partySocket.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'state') {
+            currentPartyData = msg.state;
+            renderPartyUI();
+        } else if (msg.type === 'error') {
+            alert(msg.message);
+        } else if (msg.type === 'match_found') {
+            partySocket.close();
+            partySocket = null;
+            document.getElementById('party-lobby-container').classList.add('hidden');
+            document.getElementById('matchmaking-overlay').classList.remove('hidden');
+            document.getElementById('matchmaking-text').innerText = "Joining 2v2 Match...";
+            // Use same GameRoom WS flow for the 2v2
+            connectWebSocket(msg.roomId);
+        }
+    };
+    partySocket.onclose = () => {
+        if (document.getElementById('party-lobby-container').classList.contains('hidden')) return;
+        document.getElementById('party-lobby-container').classList.add('hidden');
+        document.getElementById('main-menu-container').classList.remove('hidden');
+        currentPartyData = null;
+    };
+}
+
+function renderPartyUI() {
+    if (!currentPartyData) return;
+    const grid = document.getElementById('party-members-list');
+    grid.innerHTML = '';
+    
+    const members = currentPartyData.members || [];
+    members.forEach(m => {
+        const isLeader = m.uid === currentPartyData.leader;
+        const isReady = m.isReady;
+        grid.innerHTML += `
+            <div class="party-member-card ${isLeader ? 'leader' : ''} ${isReady ? 'ready' : ''}">
+                ${isLeader ? '<div class="party-member-leader-crown">👑</div>' : ''}
+                <div class="party-member-name">${m.username}</div>
+                <div class="party-member-status">${isReady ? 'Ready' : 'Not Ready'}</div>
+            </div>
+        `;
+    });
+    
+    // Pad with empty cards
+    for (let i = members.length; i < 4; i++) {
+        grid.innerHTML += `
+            <div class="party-member-card" style="opacity: 0.5; border-style: dashed;">
+                <div class="party-member-name">Empty</div>
+                <div class="party-member-status">Waiting...</div>
+            </div>
+        `;
+    }
+    
+    const isMeLeader = localUid === currentPartyData.leader;
+    const myMemberInfo = members.find(m => m.uid === localUid);
+    const amIReady = myMemberInfo ? myMemberInfo.isReady : false;
+    
+    const btnReady = document.getElementById('btn-party-ready');
+    const btnFindMatch = document.getElementById('btn-party-find-match');
+    const statusText = document.getElementById('party-status-text');
+    
+    btnReady.innerText = amIReady ? 'Unready' : 'Ready up!';
+    
+    if (isMeLeader) {
+        btnFindMatch.classList.remove('hidden');
+        const allReady = members.every(m => m.isReady);
+        btnFindMatch.disabled = !allReady || members.length < 2; 
+        statusText.innerText = allReady ? "Ready to find match!" : "Waiting for all to be ready...";
+        if (allReady) statusText.style.color = "#00ffcc";
+        else statusText.style.color = "#ffaa00";
+    } else {
+        btnFindMatch.classList.add('hidden');
+        statusText.innerText = "Waiting for Leader...";
+        statusText.style.color = "#ffaa00";
+    }
+}
+
+document.getElementById('btn-party-ready')?.addEventListener('click', () => {
+    if (typeof sfx !== 'undefined' && sfx.playClick) sfx.playClick();
+    if (partySocket && partySocket.readyState === WebSocket.OPEN) {
+        const myMemberInfo = currentPartyData?.members.find(m => m.uid === localUid);
+        if (myMemberInfo) {
+            partySocket.send(JSON.stringify({ action: 'set_ready', isReady: !myMemberInfo.isReady }));
+        }
+    }
+});
+
+document.getElementById('btn-party-find-match')?.addEventListener('click', () => {
+    if (typeof sfx !== 'undefined' && sfx.playClick) sfx.playClick();
+    if (partySocket && partySocket.readyState === WebSocket.OPEN) {
+        partySocket.send(JSON.stringify({ action: 'find_match' }));
+        document.getElementById('party-status-text').innerText = "Entering 2v2 Matchmaking...";
+    }
+});
+
+document.getElementById('btn-leave-party')?.addEventListener('click', () => {
+    if (typeof sfx !== 'undefined' && sfx.playClick) sfx.playClick();
+    if (partySocket) {
+        partySocket.close();
+        partySocket = null;
+    }
+    document.getElementById('party-lobby-container').classList.add('hidden');
+    document.getElementById('main-menu-container').classList.remove('hidden');
+    currentPartyData = null;
+});
+
 // Ability bar click handler
+window.targetModeIndex = -1;
+
+window.selectTarget = function(targetId) {
+    if (window.targetModeIndex !== -1 && socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ action: 'ability', abilityIndex: window.targetModeIndex, targetId }));
+        if (matchStats.active) matchStats.abilitiesUsed += 1;
+        if (typeof sfx !== 'undefined' && sfx.playAttack) sfx.playAttack();
+        
+        // Hide prompt
+        window.targetModeIndex = -1;
+        document.getElementById('target-prompt').classList.add('hidden');
+        document.querySelectorAll('.player-hud').forEach(el => el.style.border = '2px solid transparent');
+        
+        document.getElementById('status-message').innerText = "Action Locked In!";
+    }
+};
+
 document.querySelectorAll('.ability-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         if (socket && socket.readyState === WebSocket.OPEN) {
             const idx = parseInt(btn.dataset.index);
-            socket.send(JSON.stringify({ action: 'ability', abilityIndex: idx }));
-            if (matchStats.active) matchStats.abilitiesUsed += 1;
-            sfx.playAttack();
-            // Quick attack animation
-            if (playerLeftShape && idx <= 1) {
-                game.scene.scenes[0].tweens.add({
-                    targets: playerLeftShape,
-                    x: playerLeftShape.x + 50,
-                    duration: 100,
-                    yoyo: true
+            const is2v2 = gameState && Object.keys(gameState.players).length > 2;
+
+            if (is2v2) {
+                // Enter target select mode
+                window.targetModeIndex = idx;
+                document.getElementById('target-prompt').classList.remove('hidden');
+                document.querySelectorAll('.player-hud').forEach(el => {
+                    el.style.border = '2px solid #00ffcc';
+                    el.style.cursor = 'pointer';
                 });
+            } else {
+                // 1v1 auto-target
+                socket.send(JSON.stringify({ action: 'ability', abilityIndex: idx, targetId: (myPlayerId === 'p1' ? 'p2' : 'p1') }));
+                if (matchStats.active) matchStats.abilitiesUsed += 1;
+                if (typeof sfx !== 'undefined' && sfx.playAttack) sfx.playAttack();
+                // Sequence attack animation omitted to stay lean
             }
         }
     });
@@ -2784,28 +3146,60 @@ function openCharacterPreview(charId) {
 }
 
 function updateSkinPreview() {
-    const skins = availableSkinsForChar(currentPreviewCharId, playerProfileData.level);
+    const skins = getAllSkinsForChar(currentPreviewCharId);
+    const equipped = (playerProfileData && playerProfileData.equippedSkins && playerProfileData.equippedSkins[currentPreviewCharId]) || 'Default';
     
-    const equipped = playerProfileData.equippedSkins[currentPreviewCharId] || 'Default';
-    currentSkinIndex = skins.indexOf(equipped);
+    currentSkinIndex = skins.findIndex(s => s.name === equipped);
     if (currentSkinIndex === -1) currentSkinIndex = 0;
 
-    document.getElementById('current-skin-name').innerText = skins[currentSkinIndex];
+    applySkinPreviewState();
+}
+
+function applySkinPreviewState() {
+    const skins = getAllSkinsForChar(currentPreviewCharId);
+    if (skins.length === 0) return;
+    const skin = skins[currentSkinIndex];
+    document.getElementById('current-skin-name').innerText = skin.name;
     refreshCharacterPreviewImg();
+
+    const r = playerProfileData ? Math.max(1, Number(playerProfileData.level) || 1) : 1;
+    let unlocked = true;
+    let lockReason = '';
+    
+    if (skin.reqLevel && r < skin.reqLevel) {
+        unlocked = false;
+        lockReason = `Requires Lv. ${skin.reqLevel}`;
+    } else if (skin.reqItem) {
+        if (!(playerProfileData && playerProfileData.unlockedCosmetics && playerProfileData.unlockedCosmetics.includes(skin.reqItem))) {
+            unlocked = false;
+            lockReason = `Shop Item`;
+        }
+    }
+
+    const btn = document.getElementById('btn-save-customization');
+    if (!unlocked) {
+        btn.disabled = true;
+        btn.innerHTML = `${lockReason}`;
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = 'Save Selection';
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+    }
 }
 
 function nextSkin() {
-    const skins = availableSkinsForChar(currentPreviewCharId, playerProfileData.level);
+    const skins = getAllSkinsForChar(currentPreviewCharId);
     currentSkinIndex = (currentSkinIndex + 1) % skins.length;
-    document.getElementById('current-skin-name').innerText = skins[currentSkinIndex];
-    refreshCharacterPreviewImg();
+    applySkinPreviewState();
 }
 
 function prevSkin() {
-    const skins = availableSkinsForChar(currentPreviewCharId, playerProfileData.level);
+    const skins = getAllSkinsForChar(currentPreviewCharId);
     currentSkinIndex = (currentSkinIndex - 1 + skins.length) % skins.length;
-    document.getElementById('current-skin-name').innerText = skins[currentSkinIndex];
-    refreshCharacterPreviewImg();
+    applySkinPreviewState();
 }
 
 async function saveCustomization() {
@@ -2973,6 +3367,10 @@ async function showXPSplash(won, pg) {
     console.group("[Splash] Initialization");
     console.log("Won:", won);
     console.log("PostGame Data:", pg);
+
+    if (!pg) {
+        console.warn("[Splash] Proceeding with minimal data (no postGame stats)");
+    }
     
     const splash = document.getElementById('xp-splash-overlay');
     const title = document.getElementById('splash-title');
@@ -3096,18 +3494,18 @@ async function showXPSplash(won, pg) {
 
     // Data handling with defensive aliases
     try {
-        const classId = pg.lastMatchClassId || pg.classId || 'voidWeaver';
+        const classId = pg ? (pg.lastMatchClassId || pg.classId || 'voidWeaver') : 'voidWeaver';
         console.log("Target ClassId:", classId);
         
-        const charData = (pg.classes && pg.classes[classId]) || 
-                         (pg.classes && pg.classes['aegisKnight']) || 
+        const charData = (pg && pg.classes && pg.classes[classId]) || 
+                         (pg && pg.classes && pg.classes['aegisKnight']) || 
                          { level: 1, xp: 0 };
         
         console.log("Target CharData:", charData);
         
         const charLevel = charData.level || 1;
         const charXp = (charData.xp !== undefined) ? charData.xp : 0;
-        const xpGained = pg.xpGained || (won ? 50 : 10);
+        const xpGained = pg ? (pg.xpGained || (won ? 50 : 10)) : (won ? 30 : 10);
         const charNeed = Math.max(100, charLevel * 100);
         const endCharPct = classLevelProgress(charData).pct;
         const preClassXp = Math.max(0, charXp - xpGained);
@@ -3117,12 +3515,12 @@ async function showXPSplash(won, pg) {
         console.log("Calculated: Level", charLevel, "XP", charXp, "Gained", xpGained);
 
         xpGainedEl.innerText = xpGained;
-        levelEl.innerText = pg.leveledUp ? Math.max(1, charLevel - 1) : charLevel;
+        levelEl.innerText = (pg && pg.leveledUp) ? Math.max(1, charLevel - 1) : charLevel;
 
-        bpRankEl.innerText = pg.level || 1;
+        bpRankEl.innerText = (pg && pg.level) || 1;
         bpXpGained.innerText = `+${xpGained} XP (${charName})`;
 
-        const rosterEnd = sumRosterXpProgress(pg.classes);
+        const rosterEnd = sumRosterXpProgress(pg ? pg.classes : null);
         const rosterStartPct = rosterPctAfterSubtractingClassXp(pg, classId, xpGained);
 
         if (pg.isRanked) {
@@ -3387,24 +3785,40 @@ function renderEmotePresetsModal() {
     // Render pool
     const poolEl = document.getElementById('emote-pool');
     poolEl.innerHTML = '';
+    
+    // First 8 emotes are free, the rest must be unlocked
+    const freeEmotes = ALL_EMOTES.slice(0, 8);
+    
     ALL_EMOTES.forEach(emote => {
         const btn = document.createElement('button');
-        btn.className = 'emote-pool-btn' + (activeEmotes.includes(emote) ? ' in-use' : '');
-        btn.innerText = emote;
-        btn.addEventListener('click', () => {
-            // Replace the active slot with this emote (swap if already in use)
-            const existingIdx = activeEmotes.indexOf(emote);
-            if (existingIdx !== -1) {
-                // Swap
-                activeEmotes[existingIdx] = activeEmotes[editingSlot];
-            }
-            activeEmotes[editingSlot] = emote;
-            saveEmotePresets(activeEmotes);
-            sfx.playClick();
-            // Advance to next slot
-            editingSlot = (editingSlot + 1) % 4;
-            renderEmotePresetsModal();
-        });
+        const inUse = activeEmotes.includes(emote);
+        
+        const unlocked = freeEmotes.includes(emote) || (playerProfileData && playerProfileData.unlockedCosmetics && playerProfileData.unlockedCosmetics.includes(emote));
+        
+        if (!unlocked) {
+            btn.className = 'emote-pool-btn locked-emote';
+            btn.innerHTML = `${emote}<br><span style="font-size:0.5rem; color:#ff00cc;">LOCKED</span>`;
+            btn.disabled = true;
+            btn.style.opacity = '0.4';
+            btn.style.cursor = 'not-allowed';
+        } else {
+            btn.className = 'emote-pool-btn' + (inUse ? ' in-use' : '');
+            btn.innerText = emote;
+            btn.addEventListener('click', () => {
+                // Replace the active slot with this emote (swap if already in use)
+                const existingIdx = activeEmotes.indexOf(emote);
+                if (existingIdx !== -1) {
+                    // Swap
+                    activeEmotes[existingIdx] = activeEmotes[editingSlot];
+                }
+                activeEmotes[editingSlot] = emote;
+                saveEmotePresets(activeEmotes);
+                if (typeof sfx !== 'undefined' && sfx.playClick) sfx.playClick();
+                // Advance to next slot
+                editingSlot = (editingSlot + 1) % 4;
+                renderEmotePresetsModal();
+            });
+        }
         poolEl.appendChild(btn);
     });
 }
@@ -3488,7 +3902,29 @@ function openReportPlayerModal() {
 
 document.getElementById('btn-splash-report')?.addEventListener('click', () => {
     if (typeof sfx !== 'undefined' && sfx.playClick) sfx.playClick();
+    if (typeof lastReportContext !== 'undefined' && !lastReportContext.reportedUid && gameState && myPlayerId) {
+        // Fallback for splash: try to guess opponent if not set
+        const oid = myPlayerId === 'p1' ? 'p2' : 'p1';
+        const opp = gameState.players[oid];
+        if (opp) lastReportContext.reportedUid = opp.uid;
+    }
     openReportPlayerModal();
+});
+
+// HUD Report Buttons
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-report-hud');
+    if (btn) {
+        e.stopPropagation();
+        if (typeof sfx !== 'undefined' && sfx.playClick) sfx.playClick();
+        const pId = btn.getAttribute('data-player-id');
+        if (gameState && gameState.players && gameState.players[pId]) {
+            const p = gameState.players[pId];
+            lastReportContext.reportedUid = p.uid;
+            lastReportContext.roomId = lastRoomId;
+            openReportPlayerModal();
+        }
+    }
 });
 
 document.getElementById('btn-report-cancel')?.addEventListener('click', () => {
@@ -3537,4 +3973,85 @@ document.getElementById('btn-report-submit')?.addEventListener('click', async ()
             errEl.classList.remove('hidden');
         }
     }
+});
+function syncSpritesToLatestPlayers() {
+    if (!gameState || !gameState.players || !myPlayerId) return;
+    const myP = gameState.players[myPlayerId];
+    const oppId = myPlayerId === 'p1' ? 'p2' : 'p1';
+    const oppP = gameState.players[oppId];
+
+    if (myP && myP.classId && playerLeftShape) {
+        let tex = textureKeyForClassAndSkin(myP.classId, myP.equippedSkin || 'Default');
+        if (playerLeftShape.active) {
+            playerLeftShape.setTexture(tex);
+            applyPhaserCharacterScales(playerLeftShape.scene);
+        }
+    }
+    if (oppP && oppP.classId && playerRightShape) {
+        let tex = textureKeyForClassAndSkin(oppP.classId, oppP.equippedSkin || 'Default');
+        if (playerRightShape.active) {
+            playerRightShape.setTexture(tex);
+            applyPhaserCharacterScales(playerRightShape.scene);
+        }
+    }
+}
+
+// ============================================================
+// BANNED NOTIFICATION SYSTEM
+// ============================================================
+let bannedTimer = null;
+
+function showBannedModal(until) {
+    const modal = document.getElementById('banned-modal');
+    if (!modal) return;
+
+    modal.classList.remove('hidden');
+    
+    // Hide other overlays that might conflict
+    document.getElementById('matchmaking-overlay')?.classList.add('hidden');
+    document.getElementById('play-mode-modal')?.classList.add('hidden');
+
+    const timer = document.getElementById('banned-countdown-timer');
+    const container = document.getElementById('banned-countdown-container');
+    const permText = document.getElementById('banned-perm-text');
+
+    if (bannedTimer) clearInterval(bannedTimer);
+
+    if (!until) {
+        // Permanent ban
+        if (container) container.classList.add('hidden');
+        if (permText) permText.classList.remove('hidden');
+        if (timer) timer.innerText = '-- : -- : --';
+    } else {
+        // Temporary ban
+        if (container) container.classList.remove('hidden');
+        if (permText) permText.classList.add('hidden');
+
+        const updateTimer = () => {
+            const now = Date.now();
+            const diff = until - now;
+            if (diff <= 0) {
+                if (timer) timer.innerText = '00 : 00 : 00';
+                clearInterval(bannedTimer);
+                // Optionally auto-refresh profile to clear ban UI
+                fetchPlayerProfile(true);
+                return;
+            }
+            const hours = Math.floor(diff / 3600000);
+            const mins = Math.floor((diff % 3600000) / 60000);
+            const secs = Math.floor((diff % 60000) / 1000);
+            if (timer) {
+                timer.innerText = `${String(hours).padStart(2, '0')} : ${String(mins).padStart(2, '0')} : ${String(secs).padStart(2, '0')}`;
+            }
+        };
+        updateTimer();
+        bannedTimer = setInterval(updateTimer, 1000);
+    }
+}
+
+// Exit button for banned modal
+document.getElementById('btn-banned-exit')?.addEventListener('click', () => {
+    // For a web app, we can just clear UIDs or just refresh to a safe state
+    // But since the ban is server-side, a simple reload is cleanest
+    window.location.reload();
 });

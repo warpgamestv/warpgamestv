@@ -1,5 +1,16 @@
 # Lumen Clash
 
+## v1.6.7 — Moderation Dashboard & Ban Notifications (2026-03-31)
+### Added
+- **Moderation Dashboard**: Integrated a robust admin interface for player management, featuring real-time lookup, temporary bans (24h/7d), and permanent bans.
+- **Banned Player UI**: Implemented a persistent "Access Denied" modal for banned players that includes a real-time countdown timer showing when access will be restored.
+- **Backend Automations**: The `PlayerProfile` system now automatically handles ban expirations and state cleanup without manual intervention.
+
+### Fixed
+- **Victory Screen Visibility**: Resolved a race condition where the match result overlay would fail to appear if post-game telemetry was delayed.
+- **Rematch Sprite Sync**: Ensured that character models in the Phaser scene correctly update to match player selections during rematches, even when switching classes.
+- **Report Button Restoration**: Restored the visibility and interaction of the report button on mobile HUDs and the victory splash screen.
+
 ## v1.6.6 — Friends + Presence Hardening (2026-03-30)
 ### Changed
 - **Client & Presence**: The frontend now utilizes a persistent 30-second heartbeat to reliably track online status even when players sit idly on the menu. The server strictly enforces a 60-second inactivity timeout before dropping a friend's status to Offline.

@@ -115,8 +115,8 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-#hud-left .health-bar-fill { background: linear-gradient(90deg, #00d2ff, #3a7bd5); }
-#hud-right .health-bar-fill { background: linear-gradient(90deg, #ff0055, #ff00aa); }
+#team-left .health-bar-fill { background: linear-gradient(90deg, #00d2ff, #3a7bd5); }
+#team-right .health-bar-fill { background: linear-gradient(90deg, #ff0055, #ff00aa); }
 
 #hud-center {
     display: flex;
@@ -3206,11 +3206,11 @@ html.pref-a11y-contrast #status-message {
 }
 
 /* Blue vs amber (distinct for red/green confusion); you vs opponent */
-html.pref-a11y-hp-alt #hud-left .health-bar-fill {
+html.pref-a11y-hp-alt #team-left .health-bar-fill {
     background: linear-gradient(90deg, #2ea8ff, #7bdcff) !important;
     box-shadow: 0 0 8px rgba(46, 168, 255, 0.45);
 }
-html.pref-a11y-hp-alt #hud-right .health-bar-fill {
+html.pref-a11y-hp-alt #team-right .health-bar-fill {
     background: linear-gradient(90deg, #ffb020, #ffe08a) !important;
     box-shadow: 0 0 8px rgba(255, 176, 32, 0.4);
 }
@@ -3497,3 +3497,12 @@ html.pref-menu-vfx-off #menu-background-layer::after {
         padding: 4px 7px;
     }
 }
+.btn-report-hud { position: absolute; top: 6px; right: 8px; background: rgba(255, 20, 20, 0.15); border: 1px solid rgba(255, 255, 255, 0.15); color: rgba(255, 255, 255, 0.6); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; cursor: pointer; opacity: 0.4; transition: all 0.2s ease; text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em; pointer-events: auto; z-index: 100; }
+.player-hud:hover .btn-report-hud { opacity: 1; background: rgba(255, 20, 20, 0.4); color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+@media (max-width: 768px) { .btn-report-hud { opacity: 0.8; } }
+.btn-report-hud:active { transform: scale(0.92); }
+.banned-modal { background: rgba(0, 0, 0, 0.95) !important; color: #fff; }
+.banned-countdown-box { background: rgba(255, 68, 68, 0.05); border: 1px solid rgba(255, 68, 68, 0.2); border-radius: 12px; padding: 20px; margin: 20px 0; box-shadow: inset 0 0 20px rgba(255, 68, 68, 0.1); }
+#banned-countdown-timer { text-shadow: 0 0 15px rgba(255, 68, 68, 0.4); letter-spacing: 2px; }
+.char-card-xp-bar { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin: 8px 0; overflow: hidden; }
+.char-card-xp-bar .fill { height: 100%; background: #00d2ff; transition: width 0.3s ease; }
