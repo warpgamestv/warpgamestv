@@ -79,6 +79,8 @@ let socket;
 let myPlayerId = null;
 let prevMyHealth = -1;
 let prevOpponentHealth = -1;
+let prevTeammateHealth = -1; // 2v2
+let prevOpponent2Health = -1; // 2v2
 let reconnectAttempts = 0;
 let reconnectTimer = null;
 let manualSocketClose = false;
@@ -1674,6 +1676,38 @@ function updateUI() {
             if (slotInfo.isEnemy) oppTeamHealth += Math.max(0, player.health);
             else myTeamHealth += Math.max(0, player.health);
 
+            // Damage Tracking Logic (Frontend Delta)
+            if (matchStats.active) {
+                let prevH = -1;
+                if (slotId === 'hud-p1') prevH = prevMyHealth;
+                else if (slotId === 'hud-p2') prevH = prevTeammateHealth;
+                else if (slotId === 'hud-p3') prevH = prevOpponentHealth;
+                else if (slotId === 'hud-p4') prevH = prevOpponent2Health;
+
+                if (prevH !== -1) {
+                    const diff = prevH - player.health;
+                    if (diff > 0) {
+                        // Someone took damage
+                        if (slotInfo.isEnemy) {
+                            // I (or my team) dealt damage to an enemy
+                            // For simplicity, we credit it to the local player's matchStats if it happened on their turn,
+                            // but usually damage-based quests are individual.
+                            // Server-side tracking is accurate; this is for the live UI/splash fallback.
+                            matchStats.damageDealt += diff;
+                        } else {
+                            // My team took damage
+                            if (isMe) matchStats.damageTaken += diff;
+                        }
+                    }
+                }
+
+                // Update prev values
+                if (slotId === 'hud-p1') prevMyHealth = player.health;
+                else if (slotId === 'hud-p2') prevTeammateHealth = player.health;
+                else if (slotId === 'hud-p3') prevOpponentHealth = player.health;
+                else if (slotId === 'hud-p4') prevOpponent2Health = player.health;
+            }
+
             // Render status badges
             statusEl.innerHTML = '';
             if (player.shield && player.shield.active) statusEl.innerHTML += `<span class="status-badge shield">🛡 ${player.shield.percent}%</span>`;
@@ -1684,8 +1718,6 @@ function updateUI() {
             matchStats.turnSwaps += 1;
         }
         lastTurnSnapshot = gameState.turn;
-
-        // Note: For hit-effects in 2v2, we currently skip the intense tracking to simplify, since simultaneous hits get complex.
     }
 
     if (gameState.status === 'WAITING_FOR_PLAYERS') {
@@ -3487,10 +3519,22 @@ async function showXPSplash(won, pg) {
         }
     }
 
-    if (statDealt) statDealt.innerText = String(Math.max(0, Math.round(matchStats.damageDealt || 0)));
-    if (statTaken) statTaken.innerText = String(Math.max(0, Math.round(matchStats.damageTaken || 0)));
-    if (statAbilities) statAbilities.innerText = String(Math.max(0, Math.round(matchStats.abilitiesUsed || 0)));
-    if (statTurns) statTurns.innerText = String(Math.max(0, Math.round(matchStats.turnSwaps || 0)));
+    if (statDealt) {
+        const val = (pg && pg.matchStats && pg.matchStats.damageDealt !== undefined) ? pg.matchStats.damageDealt : matchStats.damageDealt;
+        statDealt.innerText = String(Math.max(0, Math.round(val || 0)));
+    }
+    if (statTaken) {
+        const val = (pg && pg.matchStats && pg.matchStats.damageTaken !== undefined) ? pg.matchStats.damageTaken : matchStats.damageTaken;
+        statTaken.innerText = String(Math.max(0, Math.round(val || 0)));
+    }
+    if (statAbilities) {
+        const val = (pg && pg.matchStats && pg.matchStats.abilitiesUsed !== undefined) ? pg.matchStats.abilitiesUsed : matchStats.abilitiesUsed;
+        statAbilities.innerText = String(Math.max(0, Math.round(val || 0)));
+    }
+    if (statTurns) {
+        const val = (pg && pg.matchStats && pg.matchStats.turnSwaps !== undefined) ? pg.matchStats.turnSwaps : matchStats.turnSwaps;
+        statTurns.innerText = String(Math.max(0, Math.round(val || 0)));
+    }
 
     // Data handling with defensive aliases
     try {

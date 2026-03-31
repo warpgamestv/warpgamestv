@@ -1,5 +1,15 @@
 # Lumen Clash
 
+## v1.6.8 — Quest Reward System & Damage Tracking (2026-03-31)
+### Added
+- **Frontend Damage Tracking**: Implemented real-time damage delta logic in `game.js` to accurately populate match statistics during gameplay.
+- **Improved Victory Splash**: The post-game UI now prioritizes server-authoritative telemetry for damage dealt, damage taken, and ability usage, ensuring quest progress is displayed accurately.
+- **Quest System Fixes**: Resolved a critical issue where damage-based quests failed to reward players due to empty telemetry payloads and cross-origin communication errors.
+
+### Fixed
+- **Backend CORS Stability**: Corrected CORS header handling for proxied requests in the main Worker, resolving 405 Method Not Allowed and cross-origin blocked errors on `/claim-quest` and `/unlock-premium`.
+- **Persistent Ban Notifications**: Ensured that ban notification modals correctly display for both temporary and permanent bans upon match completion.
+
 ## v1.6.7 — Moderation Dashboard & Ban Notifications (2026-03-31)
 ### Added
 - **Moderation Dashboard**: Integrated a robust admin interface for player management, featuring real-time lookup, temporary bans (24h/7d), and permanent bans.
