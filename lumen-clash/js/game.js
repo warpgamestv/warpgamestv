@@ -511,6 +511,7 @@ document.addEventListener('visibilitychange', () => reportPresenceIfChanged(true
 // Presence / Social Heartbeat (Reverted to 10s Separate Polls)
 function pollMenuData() {
     reportPresenceIfChanged();
+    fetchPublicConfig();
     // Only poll if on main menu
     const isMainMenu = !document.getElementById('main-menu-container').classList.contains('hidden');
     if (isMainMenu) {
@@ -527,6 +528,7 @@ function pollMenuData() {
 }
 setInterval(pollMenuData, 10000); // Back to 10s
 pollMenuData();
+fetchPublicConfig();
 
 console.log("Auto-update heartbeat active (10s separate)");
 
@@ -534,6 +536,34 @@ console.log("Auto-update heartbeat active (10s separate)");
 let myUsername = 'Player';
 let lastSocialSnapshot = null;
 let menuActivityPopoverOpen = false;
+let currentAnnouncementMessage = '';
+let lastPartyReadyCount = 0;
+
+function renderAnnouncementBar(message) {
+    const bar = document.getElementById('global-announcement-bar');
+    const text = document.getElementById('global-announcement-text');
+    if (!bar || !text) return;
+    const nextMessage = (message || '').trim();
+    if (!nextMessage) {
+        bar.classList.add('hidden');
+        text.textContent = '';
+        currentAnnouncementMessage = '';
+        return;
+    }
+    if (currentAnnouncementMessage !== nextMessage) {
+        text.textContent = nextMessage + '   •   ' + nextMessage + '   •   ';
+        currentAnnouncementMessage = nextMessage;
+    }
+    bar.classList.remove('hidden');
+}
+
+async function fetchPublicConfig() {
+    try {
+        const res = await fetch('/public-config');
+        const data = await res.json();
+        renderAnnouncementBar(data && data.announcement && data.announcement.active ? data.announcement.message : '');
+    } catch (e) {}
+}
 
 function syncMainMenuHeaderProfile(data) {
     const nameEl = document.getElementById('menu-header-username');
@@ -597,7 +627,10 @@ window.claimQuest = async function(questId, btn) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ uid: localUid, questId })
         });
-        const data = await res.json();
+        const contentType = (res.headers.get('content-type') || '').toLowerCase();
+        const data = contentType.includes('application/json')
+            ? await res.json()
+            : { ok: false, error: await res.text() || `Request failed (${res.status})` };
         if (data.ok) {
             if (window.sfx) window.sfx.playLevelUp(); // confetti sound equivalent
             await fetchPlayerProfile(true);
@@ -607,15 +640,17 @@ window.claimQuest = async function(questId, btn) {
             console.error('Claim failed', data.error);
             if (btn) {
                 btn.disabled = false;
-                btn.innerText = 'Error';
+                btn.innerText = 'Claim';
             }
+            alert(data.error || 'Could not claim quest right now.');
         }
     } catch (e) {
         console.error('Claim error', e);
         if (btn) {
             btn.disabled = false;
-            btn.innerText = 'Error';
+            btn.innerText = 'Claim';
         }
+        alert('Could not claim quest right now.');
     }
 };
 
@@ -625,7 +660,39 @@ function renderQuestActivitySection() {
     const dm = p.questMetrics.daily || {};
     const wm = p.questMetrics.weekly || {};
     const rows = [];
-    for (const q of p.questCatalog) {
+    const orderedQuests = [...p.questCatalog].sort((a, b) => {
+        const aBucket = a.slot === 'daily' ? dm : wm;
+        const bBucket = b.slot === 'daily' ? dm : wm;
+
+        const metricValue = (bucket, quest) => {
+            if (quest.metric === 'wins') return bucket.wins || 0;
+            if (quest.metric === 'damage') return bucket.damage || 0;
+            if (quest.metric === 'abilities') return bucket.abilities || 0;
+            return bucket.matches || 0;
+        };
+
+        const aClaimed = !!(aBucket.claimed && aBucket.claimed[a.id]);
+        const bClaimed = !!(bBucket.claimed && bBucket.claimed[b.id]);
+        const aCur = metricValue(aBucket, a);
+        const bCur = metricValue(bBucket, b);
+        const aDone = aCur >= a.target;
+        const bDone = bCur >= b.target;
+
+        const sortRank = (claimed, done) => {
+            if (!claimed && !done) return 0;
+            if (!claimed && done) return 1;
+            return 2;
+        };
+
+        const rankDiff = sortRank(aClaimed, aDone) - sortRank(bClaimed, bDone);
+        if (rankDiff !== 0) return rankDiff;
+
+        const aPct = aCur / Math.max(1, a.target);
+        const bPct = bCur / Math.max(1, b.target);
+        return bPct - aPct;
+    });
+
+    for (const q of orderedQuests) {
         const bucket = q.slot === 'daily' ? dm : wm;
         const claimed = bucket.claimed && bucket.claimed[q.id];
         let cur = bucket.matches || 0;
@@ -2586,19 +2653,19 @@ function connectParty(partyId) {
     };
     partySocket.onmessage = (e) => {
         const msg = JSON.parse(e.data);
-        if (msg.type === 'state') {
+        if (msg.type === 'state' || msg.type === 'PARTY_STATE') {
             currentPartyData = msg.state;
             renderPartyUI();
         } else if (msg.type === 'error') {
-            alert(msg.message);
-        } else if (msg.type === 'match_found') {
+            alert(msg.message || msg.error || 'Party error');
+        } else if (msg.type === 'match_found' || msg.type === 'MATCH_FOUND') {
             partySocket.close();
             partySocket = null;
             document.getElementById('party-lobby-container').classList.add('hidden');
             document.getElementById('matchmaking-overlay').classList.remove('hidden');
             document.getElementById('matchmaking-text').innerText = "Joining 2v2 Match...";
             // Use same GameRoom WS flow for the 2v2
-            connectWebSocket(msg.roomId);
+            connectWebSocket(msg.roomId, '2v2');
         }
     };
     partySocket.onclose = () => {
@@ -2606,6 +2673,7 @@ function connectParty(partyId) {
         document.getElementById('party-lobby-container').classList.add('hidden');
         document.getElementById('main-menu-container').classList.remove('hidden');
         currentPartyData = null;
+        lastPartyReadyCount = 0;
     };
 }
 
@@ -2615,14 +2683,27 @@ function renderPartyUI() {
     grid.innerHTML = '';
     
     const members = currentPartyData.members || [];
+    const leaderUid = currentPartyData.leader || currentPartyData.leaderUid;
+    const readyCount = members.filter(m => m.isReady).length;
+    if (readyCount > lastPartyReadyCount && typeof sfx !== 'undefined' && typeof sfx.playLevelUp === 'function') {
+        sfx.playLevelUp();
+    }
+    lastPartyReadyCount = readyCount;
     members.forEach(m => {
-        const isLeader = m.uid === currentPartyData.leader;
-        const isReady = m.isReady;
+        const isLeader = m.uid === leaderUid;
+        const isReady = !!m.isReady;
+        const isMe = m.uid === localUid;
+        const badges = [
+            isLeader ? '<span class="party-member-badge party-member-badge--leader">Leader</span>' : '',
+            isReady ? '<span class="party-member-badge party-member-badge--ready">Ready</span>' : '',
+            isMe ? '<span class="party-member-badge party-member-badge--you">You</span>' : ''
+        ].filter(Boolean).join('');
         grid.innerHTML += `
-            <div class="party-member-card ${isLeader ? 'leader' : ''} ${isReady ? 'ready' : ''}">
+            <div class="party-member-card ${isLeader ? 'leader' : ''} ${isReady ? 'ready party-member-card--pulse' : ''}">
                 ${isLeader ? '<div class="party-member-leader-crown">👑</div>' : ''}
+                <div class="party-member-badges">${badges}</div>
                 <div class="party-member-name">${m.username}</div>
-                <div class="party-member-status">${isReady ? 'Ready' : 'Not Ready'}</div>
+                <div class="party-member-status">${isReady ? 'Ready to queue' : 'Waiting to ready up'}</div>
             </div>
         `;
     });
@@ -2637,7 +2718,7 @@ function renderPartyUI() {
         `;
     }
     
-    const isMeLeader = localUid === currentPartyData.leader;
+    const isMeLeader = localUid === leaderUid;
     const myMemberInfo = members.find(m => m.uid === localUid);
     const amIReady = myMemberInfo ? myMemberInfo.isReady : false;
     
@@ -2651,13 +2732,14 @@ function renderPartyUI() {
         btnFindMatch.classList.remove('hidden');
         const allReady = members.every(m => m.isReady);
         btnFindMatch.disabled = !allReady || members.length < 2; 
-        statusText.innerText = allReady ? "Ready to find match!" : "Waiting for all to be ready...";
-        if (allReady) statusText.style.color = "#00ffcc";
-        else statusText.style.color = "#ffaa00";
+        statusText.innerText = allReady ? `Squad ready (${readyCount}/${members.length})` : `Ready players: ${readyCount}/${members.length}`;
+        statusText.classList.toggle('party-status-text--ready', allReady);
+        statusText.style.color = allReady ? "#00ffcc" : "#ffaa00";
     } else {
         btnFindMatch.classList.add('hidden');
-        statusText.innerText = "Waiting for Leader...";
+        statusText.innerText = `Waiting for Leader... (${readyCount}/${members.length} ready)`;
         statusText.style.color = "#ffaa00";
+        statusText.classList.remove('party-status-text--ready');
     }
 }
 
@@ -2688,6 +2770,7 @@ document.getElementById('btn-leave-party')?.addEventListener('click', () => {
     document.getElementById('party-lobby-container').classList.add('hidden');
     document.getElementById('main-menu-container').classList.remove('hidden');
     currentPartyData = null;
+    lastPartyReadyCount = 0;
 });
 
 // Ability bar click handler

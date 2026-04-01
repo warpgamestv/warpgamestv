@@ -60,6 +60,41 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
     pointer-events: auto !important;
 }
 
+.global-announcement-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 100001;
+    background: linear-gradient(90deg, rgba(8, 16, 40, 0.94), rgba(16, 40, 82, 0.94), rgba(8, 16, 40, 0.94));
+    border-bottom: 1px solid rgba(0, 210, 255, 0.35);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.global-announcement-track {
+    white-space: nowrap;
+    overflow: hidden;
+    padding: 8px 0;
+}
+
+.global-announcement-text {
+    display: inline-block;
+    padding-left: 100%;
+    font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #9cecff;
+    text-shadow: 0 0 12px rgba(0, 210, 255, 0.35);
+    animation: announcement-marquee 16s linear infinite;
+}
+
+@keyframes announcement-marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+}
+
 #ui-container {
     position: absolute;
     top: 0;
@@ -3506,3 +3541,10 @@ html.pref-menu-vfx-off #menu-background-layer::after {
 #banned-countdown-timer { text-shadow: 0 0 15px rgba(255, 68, 68, 0.4); letter-spacing: 2px; }
 .char-card-xp-bar { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin: 8px 0; overflow: hidden; }
 .char-card-xp-bar .fill { height: 100%; background: #00d2ff; transition: width 0.3s ease; }
+.party-member-card--pulse { box-shadow: 0 0 0 1px rgba(0, 255, 204, 0.2), 0 0 24px rgba(0, 255, 204, 0.28); transform: translateY(-2px); }
+.party-member-badges { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 8px; }
+.party-member-badge { font-size: 0.65rem; font-weight: 700; padding: 3px 7px; border-radius: 999px; letter-spacing: 0.05em; text-transform: uppercase; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.06); }
+.party-member-badge--leader { color: #ffd36e; border-color: rgba(255, 211, 110, 0.4); background: rgba(255, 211, 110, 0.12); }
+.party-member-badge--ready { color: #87ffe0; border-color: rgba(135, 255, 224, 0.4); background: rgba(0, 255, 204, 0.12); }
+.party-member-badge--you { color: #c6c9ff; }
+.party-status-text--ready { color: #00ffcc !important; text-shadow: 0 0 16px rgba(0, 255, 204, 0.25); }

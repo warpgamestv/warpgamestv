@@ -1,5 +1,17 @@
 # Lumen Clash
 
+## v1.7.0 â€” Admin Live Ops + Announcements (2026-03-31)
+### Added
+- **Admin Control Center**: Added a protected `/admin` hub with tabbed navigation into reports, events, flags, and announcements.
+- **Admin Events Management**: The `/admin/events` page now supports queueing events, starting them immediately, stopping them manually, returning them to schedule mode, and deleting them.
+- **Feature Flags**: Added `/admin/flags` with persistent toggles for quests, shop, premium unlocks, reports, friend invites, ranked queue, and 2v2 queue.
+- **Global Announcements**: Added `/admin/announcements` plus a player-facing scrolling marquee fed by backend-managed announcement state.
+
+### Changed
+- **Backend / Live Ops Persistence**: Event catalogs, feature flags, and announcements are now stored through the global admin Durable Object so changes survive refreshes and immediately affect live backend logic.
+- **2v2 Party Lobby Polish**: Improved party-lobby readiness feedback with clearer ready counts, ready badges, pulse feedback, and more tolerant party websocket message handling between client and server.
+- **Client Polling**: The frontend now polls a lightweight public config feed to keep live announcements in sync without requiring a full refresh.
+
 ## v1.6.8 — Quest Reward System & Damage Tracking (2026-03-31)
 ### Added
 - **Frontend Damage Tracking**: Implemented real-time damage delta logic in `game.js` to accurately populate match statistics during gameplay.
