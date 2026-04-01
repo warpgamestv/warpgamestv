@@ -61,22 +61,22 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
 }
 
 .global-announcement-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
+    position: relative;
     width: 100%;
-    z-index: 100001;
     background: linear-gradient(90deg, rgba(8, 16, 40, 0.94), rgba(16, 40, 82, 0.94), rgba(8, 16, 40, 0.94));
     border-bottom: 1px solid rgba(0, 210, 255, 0.35);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
     overflow: hidden;
+    margin: 0 auto 10px;
+    max-width: 1400px;
+    border-radius: 12px;
     pointer-events: none;
 }
 
 .global-announcement-track {
     white-space: nowrap;
     overflow: hidden;
-    padding: 8px 0;
+    padding: 10px 0;
 }
 
 .global-announcement-text {
@@ -88,6 +88,10 @@ h1, h2, h3, .game-title, .action-btn, .menu-btn, .ability-name, .lb-rank {
     color: #9cecff;
     text-shadow: 0 0 12px rgba(0, 210, 255, 0.35);
     animation: announcement-marquee 16s linear infinite;
+}
+
+#main-menu-container .global-announcement-bar.hidden {
+    display: none !important;
 }
 
 @keyframes announcement-marquee {

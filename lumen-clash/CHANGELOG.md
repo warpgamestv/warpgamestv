@@ -4,7 +4,7 @@
 ### Added
 - **Admin Control Center**: Added a protected `/admin` hub with tabbed navigation into reports, events, flags, and announcements.
 - **Admin Events Management**: The `/admin/events` page now supports queueing events, starting them immediately, stopping them manually, returning them to schedule mode, and deleting them.
-- **Feature Flags**: Added `/admin/flags` with persistent toggles for quests, shop, premium unlocks, reports, friend invites, ranked queue, and 2v2 queue.
+- **Feature Flags**: Added `/admin/flags` with persistent toggles for quests, shop, premium unlocks, reports, friend invites, casual queue, ranked queue, 2v2 queue, private matches, and party mode.
 - **Global Announcements**: Added `/admin/announcements` plus a player-facing scrolling marquee fed by backend-managed announcement state.
 
 ### Changed
