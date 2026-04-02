@@ -2,13 +2,13 @@
 
 ## v1.7.0 â€” Admin Live Ops + Announcements (2026-03-31)
 ### Added
-- **Admin Control Center**: Added a protected `/admin` hub with tabbed navigation into reports, events, flags, and announcements.
-- **Admin Events Management**: The `/admin/events` page now supports queueing events, starting them immediately, stopping them manually, returning them to schedule mode, and deleting them.
-- **Feature Flags**: Added `/admin/flags` with persistent toggles for quests, shop, premium unlocks, reports, friend invites, casual queue, ranked queue, 2v2 queue, private matches, and party mode.
-- **Global Announcements**: Added `/admin/announcements` plus a player-facing scrolling marquee fed by backend-managed announcement state.
+- **Admin Control Center**: Added expanded live-ops tools for reports, events, feature controls, and player-facing announcements.
+- **Admin Events Management**: Live events can now be scheduled, started, stopped, resumed, and cleaned up from the internal operations tools.
+- **Feature Flags**: Added persistent live toggles for quests, shop, premium unlocks, reports, invites, matchmaking, private matches, and party systems.
+- **Global Announcements**: Added a live announcement system plus a player-facing scrolling marquee for important updates.
 
 ### Changed
-- **Backend / Live Ops Persistence**: Event catalogs, feature flags, and announcements are now stored through the global admin Durable Object so changes survive refreshes and immediately affect live backend logic.
+- **Backend / Live Ops Persistence**: Event catalogs, feature flags, and announcements now persist reliably and apply immediately to live gameplay systems.
 - **2v2 Party Lobby Polish**: Improved party-lobby readiness feedback with clearer ready counts, ready badges, pulse feedback, and more tolerant party websocket message handling between client and server.
 - **Client Polling**: The frontend now polls a lightweight public config feed to keep live announcements in sync without requiring a full refresh.
 
@@ -20,13 +20,13 @@
 
 ### Fixed
 - **Backend CORS Stability**: Corrected CORS header handling for proxied requests in the main Worker, resolving 405 Method Not Allowed and cross-origin blocked errors on `/claim-quest` and `/unlock-premium`.
-- **Persistent Ban Notifications**: Ensured that ban notification modals correctly display for both temporary and permanent bans upon match completion.
+- **Access Restriction Notifications**: Ensured that account restriction messaging displays correctly after match completion when needed.
 
 ## v1.6.7 — Moderation Dashboard & Ban Notifications (2026-03-31)
 ### Added
-- **Moderation Dashboard**: Integrated a robust admin interface for player management, featuring real-time lookup, temporary bans (24h/7d), and permanent bans.
-- **Banned Player UI**: Implemented a persistent "Access Denied" modal for banned players that includes a real-time countdown timer showing when access will be restored.
-- **Backend Automations**: The `PlayerProfile` system now automatically handles ban expirations and state cleanup without manual intervention.
+- **Moderation Tools**: Added internal player-safety tooling to help handle reports and account actions more consistently.
+- **Restricted Account UI**: Added a persistent "Access Denied" modal with clearer messaging for affected accounts.
+- **Account State Handling**: Improved reliability around account restriction timing and cleanup.
 
 ### Fixed
 - **Victory Screen Visibility**: Resolved a race condition where the match result overlay would fail to appear if post-game telemetry was delayed.
@@ -74,9 +74,9 @@
 
 ## v1.6.0 — Quests + Pass XP + Lumens (2026-03-29)
 ### Added
-- **Backend** (`Lumen-Clash/backend`): Daily/weekly **quest** metrics (UTC day / ISO week), **Luminary Pass XP** (`luminaryPassXp` += match class XP), **banked lumens** (rank rewards + quest bonuses + **`POST /unlock-premium`** spend); extended **`POST /internal/add-xp`** from `GameRoom` with **matchStats**; **`/profile`** returns **`questCatalog`**, **`questMetrics`**, **`lumens`**, **`bpPremiumUnlocked`**. **`POST /report`** → **`ModerationHub`** Durable Object (last 500 entries). **`wrangler.toml`** routes **`/report`**, **`/unlock-premium`**; migration **v6** `ModerationHub`.
+- **Backend** (`Lumen-Clash/backend`): Daily/weekly **quest** metrics (UTC day / ISO week), **Luminary Pass XP** (`luminaryPassXp` += match class XP), **banked lumens** (rank rewards + quest bonuses + premium unlock spend), extended match telemetry support, and expanded profile data for quests, lumens, and pass unlock state. Added player report intake and supporting live-service plumbing for the new systems.
 - **Activity** popover shows quest progress; **Luminary Pass** modal shows **Pass XP** and **banked Lumens** (`bp-pass-xp`, `bp-lumens-server`); **Unlock Premium** deducts **100** server lumens via **`/unlock-premium`**.
-- **Post-match splash**: **Quest completion** line when **`postGame.questCompleted`** is present; **Report player** → **`POST /report`**. **`style.css?v=35`**, **`game.js?v=65`**.
+- **Post-match splash**: **Quest completion** line when **`postGame.questCompleted`** is present; **Report player** support added to the results flow. **`style.css?v=35`**, **`game.js?v=65`**.
 
 ## v1.5.5 — game.js load fix (2026-03-29)
 ### Fixed
