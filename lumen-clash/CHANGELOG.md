@@ -1,5 +1,42 @@
 # Lumen Clash
 
+## v1.7.2 - Guild Recruitment Browser (2026-04-03)
+### Added
+- **Guild Recruitment Studio**: Guilds can now publish a recruitment pitch, choose a recruitment status, declare a preferred mode focus, and set a playstyle so the browser feels more intentional.
+- **Guild Bulletins**: Leaders and approved recruiters can now publish a short guild bulletin that appears in the guild view and on guild browser cards.
+- **Recruiter Role**: Guild leaders can now designate approved members as `Recruiter`, giving them recruitment permissions without handing over full guild-admin settings.
+
+### Changed
+- **Guild Browser**: The public guild directory now supports search, recruiting-only filtering, smarter sorting, richer recruitment cards, and clearer states for current guild, invite-only guilds, and closed recruitment.
+- **Guild Join Rules**: Public guild joins now respect recruitment status, so invite-only and closed guilds no longer behave like fully open listings.
+- **Guild Menu Flow**: Players who are already in a guild now stay focused on their own guild page, while solo players get a cleaner `Create Guild` vs `Join Guild` entry flow instead of seeing every option at once.
+- **Guild Menu Refresh Retention**: Background social refreshes now preserve the guild panel scroll position so browsing longer guild views or directories no longer snaps back to the top.
+- **Guild Menu Refresh Stability**: Guild refresh protection now restores guild scroll and field focus after the menu repaint, using non-scrolling focus restoration so the guild view does not jump while you browse or type.
+- **Guild Menu Scroll Preservation**: Refresh protection now restores the full guild view scroll stack, including the outer Social modal and guild tab container, so long guild pages stay anchored even when the parent modal is the active scroll area.
+- **Passive Guild Polling**: Background social polls now stop rebuilding the guild tab when the guild payload has not actually changed, which prevents unnecessary guild-page resets while you are reading or browsing.
+
+## v1.7.1 — Guild Foundation + Social Expansion (2026-04-02)
+### Added
+- **Guild Foundations**: Added the first guild systems pass with guild creation, guild join codes, guild membership, guild XP, and guild level tracking.
+- **Guild Social Panel**: The Social menu now includes a dedicated guild tab for creating a guild, joining one, leaving it, and reviewing roster, progression, leader, founding date, contribution totals, and other guild details in one place.
+- **Guild Visibility Improvements**: Players in a guild now get a clearer guild summary card from the Friends side, and the Social menu will surface the Guild view automatically when guild data is first detected.
+- **Guild Leave / Disband Flow**: Leaving a guild now clearly warns when the last remaining member will disband it, and the client surfaces that disband result after the leave action completes.
+- **Guild Management & Directory**: Guilds now support descriptions, icon and banner presets, public/private visibility, leader/officer management tools, and a player-facing public guild directory for browsing open guilds.
+- **Guild Chat**: Added a first-pass guild chat feed directly inside the Social menu so guild members can coordinate in-game.
+- **Profile Guild Identity**: Player profiles now surface the current guild name and tag for faster identity checks.
+- **Guild Invites**: Friends can now invite each other directly into guilds from the Social menu, with accept and decline flows integrated into the existing invite inbox.
+
+### Changed
+- **Social Payloads**: Social and profile responses now include guild data so guild state updates alongside the rest of the menu systems.
+- **Backend Routing**: Added dedicated guild API routes and live Worker route coverage so the new guild foundation works in both local and deployed environments.
+- **Guild UI Polish**: Guild icon selectors now render with readable dark dropdown styling, directory cards stop offering a join action for the player's current guild, and guild icon presets now render as distinct shape-based crests instead of text initials.
+
+### Fixed
+- **Guild Form Draft Persistence**: Background social polling no longer wipes guild create, join, admin, or chat text fields while players are typing in the Social menu.
+- **Guild Renderer Conflict**: Removed the stale guild panel renderer path that was overriding the draft-preserving Social UI and causing guild form fields to reset during menu refreshes.
+- **Guild Focus Retention**: Guild form inputs and dropdowns now restore focus after background social refreshes so players can keep typing or selecting without clicking back into the field.
+
+
 ## v1.7.0 â€” Admin Live Ops + Announcements (2026-03-31)
 ### Added
 - **Admin Control Center**: Added expanded live-ops tools for reports, events, feature controls, and player-facing announcements.
