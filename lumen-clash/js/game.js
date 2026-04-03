@@ -119,6 +119,51 @@ if (!localUid) {
     localStorage.setItem('lumen_clash_uid', localUid);
 }
 
+let activeSocialTab = 'friends';
+let guildDirectoryCache = [];
+let guildFocusState = null;
+let guildScrollState = 0;
+let guildContainerScrollState = 0;
+let guildTabPanelScrollState = 0;
+let guildDirectoryFilters = { query: '', recruitingOnly: true, sort: 'fit' };
+let guildNoGuildView = 'home';
+let guildInfoHydrationPromise = null;
+let guildDraftState = {
+    createName: '',
+    createTag: '',
+    createDescription: '',
+    createIcon: 'comet',
+    createBanner: 'aurora',
+    createPrivacy: 'public',
+    joinCode: '',
+    adminGuildId: null,
+    adminDescription: '',
+    adminIcon: 'comet',
+    adminBanner: 'aurora',
+    adminPrivacy: 'public',
+    adminRecruitmentStatus: 'recruiting',
+    adminRecruitmentMessage: '',
+    adminRecruitmentFocus: 'all_modes',
+    adminRecruitmentPlaystyle: 'mixed',
+    adminBulletinMessage: '',
+    chatGuildId: null,
+    chatInput: ''
+};
+
+const GUILD_ICON_PRESETS = [
+    { id: 'comet', label: 'Comet', crest: 'CM' },
+    { id: 'crown', label: 'Crown', crest: 'CR' },
+    { id: 'nova', label: 'Nova', crest: 'NV' },
+    { id: 'wolf', label: 'Wolf', crest: 'WF' }
+];
+
+const GUILD_BANNER_PRESETS = [
+    { id: 'aurora', label: 'Aurora' },
+    { id: 'ember', label: 'Ember' },
+    { id: 'forest', label: 'Forest' },
+    { id: 'royal', label: 'Royal' }
+];
+
 // ============================================================
 // CLIENT PREFERENCES (perf overlay + accessibility)
 // ============================================================
@@ -765,6 +810,8 @@ async function fetchPlayerProfile(silent = false) {
 
         document.getElementById('profile-wins').innerText = data.wins;
         document.getElementById('profile-losses').innerText = data.losses;
+        document.getElementById('profile-guild-name').innerText = data.guild ? `[${data.guild.tag}] ${data.guild.name}` : 'No guild';
+        document.getElementById('btn-profile-leave-guild')?.classList.toggle('hidden', !data.guild);
 
         const roster = sumRosterXpProgress(data.classes);
         document.getElementById('profile-xp-fill').style.width = `${roster.pct}%`;
@@ -854,6 +901,8 @@ function updateProfileUI(data) {
 
     document.getElementById('profile-wins').innerText = data.wins;
     document.getElementById('profile-losses').innerText = data.losses;
+    document.getElementById('profile-guild-name').innerText = data.guild ? `[${data.guild.tag}] ${data.guild.name}` : 'No guild';
+    document.getElementById('btn-profile-leave-guild')?.classList.toggle('hidden', !data.guild);
 
     const roster = sumRosterXpProgress(data.classes);
     document.getElementById('profile-xp-fill').style.width = `${roster.pct}%`;
@@ -2272,6 +2321,7 @@ document.getElementById('btn-save-username').addEventListener('click', async () 
 // Social Button
 document.getElementById('btn-social').addEventListener('click', () => {
     document.getElementById('social-container').classList.remove('hidden');
+    setActiveSocialTab(lastSocialSnapshot && lastSocialSnapshot.guild ? 'guild' : activeSocialTab);
     fetchFriends();
 });
 
@@ -2293,21 +2343,873 @@ async function parseJsonResponse(res) {
 
 async function fetchFriends(silent = false) {
     if (!silent) document.getElementById('friends-list').innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">Updating social...</div>';
+    if (!silent) document.getElementById('guild-panel').innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">Syncing guild...</div>';
     try {
         const res = await fetch(`/friends-status?uid=${localUid}`);
         const data = await res.json();
-        updateSocialUI(data);
+        await fetchGuildDirectory(true);
+        updateSocialUI(data, { passiveRefresh: !!silent });
     } catch (e) {}
 }
 
-function updateSocialUI(data) {
+async function fetchGuildDirectory(silent = false) {
+    try {
+        const res = await fetch('/guild/directory');
+        const data = await parseJsonResponse(res);
+        guildDirectoryCache = Array.isArray(data.guilds) ? data.guilds : [];
+        if (!silent && lastSocialSnapshot && !lastSocialSnapshot.guild) renderGuildPanel(null);
+    } catch (e) {
+        if (!silent) guildDirectoryCache = [];
+    }
+}
+
+function guildIconCrest(iconId) {
+    switch (iconId) {
+        case 'crown':
+            return `
+                <div class="guild-crest-mark guild-crest-mark--crown" aria-hidden="true">
+                    <span></span><span></span><span></span><span></span>
+                </div>
+            `;
+        case 'nova':
+            return `
+                <div class="guild-crest-mark guild-crest-mark--nova" aria-hidden="true">
+                    <span></span><span></span><span></span><span></span>
+                </div>
+            `;
+        case 'wolf':
+            return `
+                <div class="guild-crest-mark guild-crest-mark--wolf" aria-hidden="true">
+                    <span></span><span></span><span></span>
+                </div>
+            `;
+        case 'comet':
+        default:
+            return `
+                <div class="guild-crest-mark guild-crest-mark--comet" aria-hidden="true">
+                    <span></span><span></span><span></span>
+                </div>
+            `;
+    }
+}
+
+function guildBannerClass(bannerId) {
+    return `guild-hero guild-hero--${bannerId || 'aurora'}`;
+}
+
+function guildVisualSelectOptions(options, currentId) {
+    return options.map((option) => `<option value="${option.id}" ${option.id === currentId ? 'selected' : ''}>${option.label}</option>`).join('');
+}
+
+function guildRecruitmentLabel(status) {
+    switch (status) {
+        case 'invite_only': return 'Invite Only';
+        case 'closed': return 'Closed';
+        case 'recruiting':
+        default: return 'Recruiting';
+    }
+}
+
+function guildRecruitmentFocusLabel(focus) {
+    switch (focus) {
+        case 'duels': return '1v1 Focus';
+        case 'squads': return '2v2 Focus';
+        case 'all_modes':
+        default: return 'All Modes';
+    }
+}
+
+function guildRecruitmentPlaystyleLabel(playstyle) {
+    switch (playstyle) {
+        case 'casual': return 'Casual';
+        case 'competitive': return 'Competitive';
+        case 'mixed':
+        default: return 'Mixed';
+    }
+}
+
+function guildDirectoryEntries(currentGuildId = null) {
+    const query = (guildDirectoryFilters.query || '').trim().toLowerCase();
+    const recruitingOnly = !!guildDirectoryFilters.recruitingOnly;
+    const sort = guildDirectoryFilters.sort || 'fit';
+    const entries = guildDirectoryCache.filter((entry) => {
+        const recruitment = entry.recruitment || {};
+        const status = recruitment.status || 'recruiting';
+        if (entry.id && entry.id === currentGuildId) return true;
+        if (recruitingOnly && status !== 'recruiting') return false;
+        if (!query) return true;
+        const blob = [
+            entry.name,
+            entry.tag,
+            entry.leaderName,
+            entry.description,
+            recruitment.message,
+            recruitment.focus,
+            recruitment.playstyle,
+            entry.bulletin && entry.bulletin.message
+        ].join(' ').toLowerCase();
+        return blob.includes(query);
+    });
+    entries.sort((a, b) => {
+        const aStatus = (a.recruitment && a.recruitment.status) || 'recruiting';
+        const bStatus = (b.recruitment && b.recruitment.status) || 'recruiting';
+        if (sort === 'newest') return (b.createdAt || 0) - (a.createdAt || 0);
+        if (sort === 'xp') return (b.xp || 0) - (a.xp || 0) || (b.memberCount || 0) - (a.memberCount || 0);
+        if (sort === 'members') return (b.memberCount || 0) - (a.memberCount || 0) || (b.xp || 0) - (a.xp || 0);
+        const statusScore = { recruiting: 3, invite_only: 2, closed: 1 };
+        return (statusScore[bStatus] || 0) - (statusScore[aStatus] || 0)
+            || ((b.memberCount || 0) - (a.memberCount || 0))
+            || ((b.xp || 0) - (a.xp || 0));
+    });
+    return entries;
+}
+
+function setGuildNoGuildView(view = 'home') {
+    guildNoGuildView = ['home', 'create', 'join'].includes(view) ? view : 'home';
+    renderGuildPanel(null);
+}
+
+function getKnownPlayerGuild() {
+    return playerProfileData && playerProfileData.guild ? playerProfileData.guild : null;
+}
+
+async function hydrateCurrentGuildFromBackend() {
+    if (guildInfoHydrationPromise) return guildInfoHydrationPromise;
+    guildInfoHydrationPromise = (async () => {
+        try {
+            const res = await fetch(`/guild/info?uid=${localUid}`);
+            const data = await parseJsonResponse(res);
+            if (data && data.ok && data.guild) {
+                applyGuildToSocialState(data.guild);
+            }
+        } catch (e) {
+        } finally {
+            guildInfoHydrationPromise = null;
+        }
+    })();
+    return guildInfoHydrationPromise;
+}
+
+function escapeGuildFieldValue(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function captureGuildDraftState() {
+    const createName = document.getElementById('guild-create-name');
+    if (createName) guildDraftState.createName = createName.value;
+    const createTag = document.getElementById('guild-create-tag');
+    if (createTag) guildDraftState.createTag = createTag.value;
+    const createDescription = document.getElementById('guild-create-description');
+    if (createDescription) guildDraftState.createDescription = createDescription.value;
+    const createIcon = document.getElementById('guild-create-icon');
+    if (createIcon) guildDraftState.createIcon = createIcon.value || 'comet';
+    const createBanner = document.getElementById('guild-create-banner');
+    if (createBanner) guildDraftState.createBanner = createBanner.value || 'aurora';
+    const createPrivacy = document.getElementById('guild-create-privacy');
+    if (createPrivacy) guildDraftState.createPrivacy = createPrivacy.value || 'public';
+    const joinCode = document.getElementById('guild-join-code');
+    if (joinCode) guildDraftState.joinCode = joinCode.value;
+
+    const guildId = lastSocialSnapshot?.guild?.id || null;
+    const adminDescription = document.getElementById('guild-admin-description');
+    if (adminDescription) {
+        guildDraftState.adminGuildId = guildId;
+        guildDraftState.adminDescription = adminDescription.value;
+    }
+    const adminIcon = document.getElementById('guild-admin-icon');
+    if (adminIcon) {
+        guildDraftState.adminGuildId = guildId;
+        guildDraftState.adminIcon = adminIcon.value || 'comet';
+    }
+    const adminBanner = document.getElementById('guild-admin-banner');
+    if (adminBanner) {
+        guildDraftState.adminGuildId = guildId;
+        guildDraftState.adminBanner = adminBanner.value || 'aurora';
+    }
+    const adminPrivacy = document.getElementById('guild-admin-privacy');
+    if (adminPrivacy) {
+        guildDraftState.adminGuildId = guildId;
+        guildDraftState.adminPrivacy = adminPrivacy.value || 'public';
+    }
+    const adminRecruitmentStatus = document.getElementById('guild-admin-recruitment-status');
+    if (adminRecruitmentStatus) {
+        guildDraftState.adminGuildId = guildId;
+        guildDraftState.adminRecruitmentStatus = adminRecruitmentStatus.value || 'recruiting';
+    }
+    const adminRecruitmentMessage = document.getElementById('guild-admin-recruitment-message');
+    if (adminRecruitmentMessage) {
+        guildDraftState.adminGuildId = guildId;
+        guildDraftState.adminRecruitmentMessage = adminRecruitmentMessage.value;
+    }
+    const adminRecruitmentFocus = document.getElementById('guild-admin-recruitment-focus');
+    if (adminRecruitmentFocus) {
+        guildDraftState.adminGuildId = guildId;
+        guildDraftState.adminRecruitmentFocus = adminRecruitmentFocus.value || 'all_modes';
+    }
+    const adminRecruitmentPlaystyle = document.getElementById('guild-admin-recruitment-playstyle');
+    if (adminRecruitmentPlaystyle) {
+        guildDraftState.adminGuildId = guildId;
+        guildDraftState.adminRecruitmentPlaystyle = adminRecruitmentPlaystyle.value || 'mixed';
+    }
+    const adminBulletinMessage = document.getElementById('guild-admin-bulletin-message');
+    if (adminBulletinMessage) {
+        guildDraftState.adminGuildId = guildId;
+        guildDraftState.adminBulletinMessage = adminBulletinMessage.value;
+    }
+    const chatInput = document.getElementById('guild-chat-input');
+    if (chatInput) {
+        guildDraftState.chatGuildId = guildId;
+        guildDraftState.chatInput = chatInput.value;
+    }
+}
+
+function captureGuildFocusState() {
+    const active = document.activeElement;
+    if (!active || !active.id || !active.closest('#guild-panel')) {
+        guildFocusState = null;
+        return;
+    }
+    guildFocusState = {
+        id: active.id,
+        selectionStart: typeof active.selectionStart === 'number' ? active.selectionStart : null,
+        selectionEnd: typeof active.selectionEnd === 'number' ? active.selectionEnd : null
+    };
+}
+
+function restoreGuildFocusState() {
+    if (!guildFocusState || document.activeElement?.id === guildFocusState.id) return;
+    const target = document.getElementById(guildFocusState.id);
+    if (!target) {
+        guildFocusState = null;
+        return;
+    }
+    try {
+        target.focus({ preventScroll: true });
+    } catch (e) {
+        target.focus();
+    }
+    if (typeof guildFocusState.selectionStart === 'number' && typeof target.setSelectionRange === 'function') {
+        try {
+            target.setSelectionRange(guildFocusState.selectionStart, guildFocusState.selectionEnd ?? guildFocusState.selectionStart);
+        } catch (e) {}
+    }
+    guildFocusState = null;
+}
+
+function captureGuildScrollState() {
+    const panel = document.getElementById('guild-panel');
+    const socialContainer = document.getElementById('social-container');
+    const guildTabPanel = document.getElementById('social-guild-tab-panel');
+    guildScrollState = panel ? (panel.scrollTop || 0) : 0;
+    guildContainerScrollState = socialContainer ? (socialContainer.scrollTop || 0) : 0;
+    guildTabPanelScrollState = guildTabPanel ? (guildTabPanel.scrollTop || 0) : 0;
+}
+
+function restoreGuildScrollState() {
+    const panel = document.getElementById('guild-panel');
+    const socialContainer = document.getElementById('social-container');
+    const guildTabPanel = document.getElementById('social-guild-tab-panel');
+    if (socialContainer) socialContainer.scrollTop = Math.max(0, guildContainerScrollState || 0);
+    if (guildTabPanel) guildTabPanel.scrollTop = Math.max(0, guildTabPanelScrollState || 0);
+    if (panel) panel.scrollTop = Math.max(0, guildScrollState || 0);
+}
+
+function restoreGuildViewStateDeferred() {
+    const restore = () => {
+        restoreGuildFocusState();
+        restoreGuildScrollState();
+    };
+    if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
+        restore();
+        return;
+    }
+    window.requestAnimationFrame(() => {
+        restore();
+        window.requestAnimationFrame(restoreGuildScrollState);
+    });
+}
+
+function clearGuildDraftState(mode = 'all') {
+    if (mode === 'all' || mode === 'noguild') {
+        guildDraftState.createName = '';
+        guildDraftState.createTag = '';
+        guildDraftState.createDescription = '';
+        guildDraftState.createIcon = 'comet';
+        guildDraftState.createBanner = 'aurora';
+        guildDraftState.createPrivacy = 'public';
+        guildDraftState.joinCode = '';
+    }
+    if (mode === 'all' || mode === 'guild') {
+        guildDraftState.adminGuildId = null;
+        guildDraftState.adminDescription = '';
+        guildDraftState.adminIcon = 'comet';
+        guildDraftState.adminBanner = 'aurora';
+        guildDraftState.adminPrivacy = 'public';
+        guildDraftState.adminRecruitmentStatus = 'recruiting';
+        guildDraftState.adminRecruitmentMessage = '';
+        guildDraftState.adminRecruitmentFocus = 'all_modes';
+        guildDraftState.adminRecruitmentPlaystyle = 'mixed';
+        guildDraftState.adminBulletinMessage = '';
+        guildDraftState.chatGuildId = null;
+        guildDraftState.chatInput = '';
+    }
+}
+
+function applyGuildToSocialState(guild) {
+    captureGuildDraftState();
+    captureGuildFocusState();
+    captureGuildScrollState();
+    const base = lastSocialSnapshot || { friends: [], requests: [], invites: [] };
+    const next = { ...base, guild: guild || null };
+    lastSocialSnapshot = next;
+    if (guild) clearGuildDraftState('noguild');
+    else {
+        clearGuildDraftState('guild');
+        guildNoGuildView = 'home';
+    }
+    renderSocialGuildPreview(next.guild);
+    renderGuildPanel(next.guild);
+    restoreGuildViewStateDeferred();
+    const guildBadge = document.getElementById('social-tab-guild-badge');
+    if (guildBadge) guildBadge.innerText = next.guild ? `${next.guild.memberCount || (next.guild.members || []).length} members` : 'Solo';
+    setActiveSocialTab(next.guild ? 'guild' : 'friends');
+}
+
+function setActiveSocialTab(tabName = 'friends') {
+    activeSocialTab = tabName === 'guild' ? 'guild' : 'friends';
+    document.querySelectorAll('[data-social-tab]').forEach((btn) => {
+        const isActive = btn.dataset.socialTab === activeSocialTab;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-social-tab-panel]').forEach((panel) => {
+        panel.classList.toggle('active', panel.dataset.socialTabPanel === activeSocialTab);
+    });
+}
+
+function renderSocialGuildPreview(guild) {
+    const preview = document.getElementById('social-guild-preview');
+    if (!preview) return;
+    if (!guild) {
+        preview.classList.add('hidden');
+        preview.innerHTML = '';
+        return;
+    }
+    preview.classList.remove('hidden');
+    preview.innerHTML = `
+        <div class="social-guild-preview-main">
+            <div class="social-guild-preview-title">[${guild.tag}] ${guild.name}</div>
+            <div class="social-guild-preview-meta">Guild Lv. ${guild.level || 1} · ${guild.memberCount || 0}/${guild.memberCap || 50} members · Leader ${guild.leaderName || 'Unknown'}</div>
+        </div>
+        <div class="social-guild-preview-actions">
+            <button type="button" id="btn-open-guild-tab" class="menu-btn secondary-btn social-guild-preview-btn">Open Guild</button>
+            <button type="button" id="btn-leave-guild-preview" class="menu-btn secondary-btn social-guild-preview-btn">Leave Guild</button>
+        </div>
+    `;
+    document.getElementById('btn-open-guild-tab')?.addEventListener('click', () => setActiveSocialTab('guild'));
+    document.getElementById('btn-leave-guild-preview')?.addEventListener('click', leaveGuild);
+}
+
+
+function renderGuildPanel(guild) {
+    const panel = document.getElementById('guild-panel');
+    const count = document.getElementById('guild-count');
+    if (!panel || !count) return;
+    const currentGuildId = lastSocialSnapshot?.guild?.id || null;
+    const createName = escapeGuildFieldValue(guildDraftState.createName || '');
+    const createTag = escapeGuildFieldValue(guildDraftState.createTag || '');
+    const createDescription = escapeGuildFieldValue(guildDraftState.createDescription || '');
+    const createIcon = guildDraftState.createIcon || 'comet';
+    const createBanner = guildDraftState.createBanner || 'aurora';
+    const createPrivacy = guildDraftState.createPrivacy || 'public';
+    const joinCode = escapeGuildFieldValue(guildDraftState.joinCode || '');
+    const adminDraftMatchesGuild = !!(guild && guildDraftState.adminGuildId === guild.id);
+    const chatDraftMatchesGuild = !!(guild && guildDraftState.chatGuildId === guild.id);
+    const browserQuery = escapeGuildFieldValue(guildDirectoryFilters.query || '');
+    const browserEntries = guildDirectoryEntries(currentGuildId);
+    const knownPlayerGuild = getKnownPlayerGuild();
+
+    if (!guild && ['home', 'create', 'join'].includes(guildNoGuildView)) {
+        if (knownPlayerGuild) {
+            count.innerText = `${knownPlayerGuild.memberCount || '...'} members`;
+            panel.innerHTML = `
+                <div class="guild-shell">
+                    <div class="guild-panel-note">Loading your guild data for [${knownPlayerGuild.tag}] ${knownPlayerGuild.name}...</div>
+                    <div class="guild-admin-panel">
+                        <div class="guild-section-title">Guild Sync</div>
+                        <div class="guild-directory-meta">You are already in a guild, so this tab is syncing your live guild page instead of showing create or join options.</div>
+                    </div>
+                </div>
+            `;
+            hydrateCurrentGuildFromBackend();
+            return;
+        }
+        count.innerText = 'Solo';
+        panel.innerHTML = `
+            <div class="guild-shell">
+                <div class="guild-panel-note">Choose how you want to get into a guild. Create one for your squad or browse and join an existing community.</div>
+                <div class="guild-choice-shell ${guildNoGuildView === 'home' ? '' : 'hidden'}">
+                    <button type="button" id="btn-guild-open-create" class="guild-choice-card">
+                        <strong>Create Guild</strong>
+                        <span>Start a new guild with your own tag, visuals, and recruiting setup.</span>
+                    </button>
+                    <button type="button" id="btn-guild-open-join" class="guild-choice-card">
+                        <strong>Join Guild</strong>
+                        <span>Use a guild code or browse public guilds that are currently recruiting.</span>
+                    </button>
+                </div>
+                <div class="guild-subview ${guildNoGuildView === 'create' ? '' : 'hidden'}">
+                    <div class="guild-subview-head">
+                        <div>
+                            <div class="guild-section-title">Create Guild</div>
+                            <div class="guild-panel-note">Set up your guild identity first. You can tune recruiting details after it is created.</div>
+                        </div>
+                        <button type="button" id="btn-guild-back-home-create" class="menu-btn secondary-btn guild-inline-btn">Back</button>
+                    </div>
+                    <div class="guild-form-grid">
+                        <input type="text" id="guild-create-name" class="social-input" maxlength="32" placeholder="Guild name" value="${createName}">
+                        <input type="text" id="guild-create-tag" class="social-input" maxlength="5" placeholder="Tag" value="${createTag}">
+                        <button type="button" id="btn-guild-create" class="action-btn social-add-btn guild-inline-btn">Create</button>
+                    </div>
+                    <textarea id="guild-create-description" class="social-input" maxlength="180" placeholder="Guild description" style="min-height:84px; resize:vertical;">${createDescription}</textarea>
+                    <div class="guild-admin-grid">
+                        <select id="guild-create-icon" class="social-input">${guildVisualSelectOptions(GUILD_ICON_PRESETS, createIcon)}</select>
+                        <select id="guild-create-banner" class="social-input">${guildVisualSelectOptions(GUILD_BANNER_PRESETS, createBanner)}</select>
+                        <select id="guild-create-privacy" class="social-input">
+                            <option value="public" ${createPrivacy === 'public' ? 'selected' : ''}>Public guild</option>
+                            <option value="private" ${createPrivacy === 'private' ? 'selected' : ''}>Private guild</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="guild-subview ${guildNoGuildView === 'join' ? '' : 'hidden'}">
+                    <div class="guild-subview-head">
+                        <div>
+                            <div class="guild-section-title">Join Guild</div>
+                            <div class="guild-panel-note">Enter a guild code or look through guilds that match your style.</div>
+                        </div>
+                        <button type="button" id="btn-guild-back-home-join" class="menu-btn secondary-btn guild-inline-btn">Back</button>
+                    </div>
+                    <div class="guild-form-grid guild-form-grid--join">
+                        <input type="text" id="guild-join-code" class="social-input" maxlength="8" placeholder="Guild code" value="${joinCode}">
+                        <button type="button" id="btn-guild-join" class="action-btn social-add-btn guild-inline-btn">Join</button>
+                    </div>
+                    <div class="guild-directory-shell">
+                        <div class="guild-section-title">Guild Directory</div>
+                        <div class="guild-directory-toolbar">
+                            <input type="text" id="guild-directory-search" class="social-input" maxlength="48" placeholder="Search guilds, tags, leaders..." value="${browserQuery}">
+                            <label class="guild-directory-toggle">
+                                <input type="checkbox" id="guild-directory-recruiting-only" ${guildDirectoryFilters.recruitingOnly ? 'checked' : ''}>
+                                <span>Recruiting only</span>
+                            </label>
+                            <select id="guild-directory-sort" class="social-input">
+                                <option value="fit" ${guildDirectoryFilters.sort === 'fit' ? 'selected' : ''}>Best fit</option>
+                                <option value="members" ${guildDirectoryFilters.sort === 'members' ? 'selected' : ''}>Most members</option>
+                                <option value="xp" ${guildDirectoryFilters.sort === 'xp' ? 'selected' : ''}>Most guild XP</option>
+                                <option value="newest" ${guildDirectoryFilters.sort === 'newest' ? 'selected' : ''}>Newest</option>
+                            </select>
+                        </div>
+                        ${browserEntries.length ? browserEntries.map((entry) => `
+                            <div class="guild-directory-card">
+                                <div class="guild-directory-head">
+                                    <div>
+                                        <div class="guild-name-line">
+                                            <span class="guild-tag-badge">${entry.tag}</span>
+                                            <span class="guild-name-title">${entry.name}</span>
+                                        </div>
+                                        <div class="guild-directory-meta">Guild Lv. ${entry.level || 1} · ${entry.memberCount || 0}/${entry.memberCap || 50} members · Leader ${entry.leaderName || 'Unknown'}</div>
+                                    </div>
+                                    <div class="guild-crest">${guildIconCrest(entry.icon)}</div>
+                                </div>
+                                <div class="guild-directory-meta">${entry.description || 'No description yet.'}</div>
+                                <div class="guild-directory-pills">
+                                    <span class="guild-pill guild-pill--status guild-pill--${(entry.recruitment && entry.recruitment.status) || 'recruiting'}">${guildRecruitmentLabel(entry.recruitment && entry.recruitment.status)}</span>
+                                    <span class="guild-pill">${guildRecruitmentFocusLabel(entry.recruitment && entry.recruitment.focus)}</span>
+                                    <span class="guild-pill">${guildRecruitmentPlaystyleLabel(entry.recruitment && entry.recruitment.playstyle)}</span>
+                                </div>
+                                ${entry.recruitment && entry.recruitment.message ? `<div class="guild-directory-recruitment">${entry.recruitment.message}</div>` : ''}
+                                ${entry.bulletin && entry.bulletin.message ? `<div class="guild-directory-bulletin">Guild bulletin: ${entry.bulletin.message}</div>` : ''}
+                                <div class="guild-directory-actions">
+                                    ${((entry.recruitment && entry.recruitment.status) === 'closed'
+                                        ? `<span class="guild-directory-status guild-directory-status--muted">Recruitment Closed</span>`
+                                        : (entry.recruitment && entry.recruitment.status) === 'invite_only'
+                                            ? `<span class="guild-directory-status guild-directory-status--muted">Invite Only</span>`
+                                            : `<button type="button" class="action-btn social-add-btn guild-inline-btn" onclick="joinGuildByCode('${entry.joinCode}', true)">Join ${entry.tag}</button>`)}
+                                </div>
+                            </div>
+                        `).join('') : '<div class="guild-directory-empty">No guilds match those filters right now.</div>'}
+                    </div>
+                </div>
+            </div>
+        `;
+        document.getElementById('btn-guild-open-create')?.addEventListener('click', () => setGuildNoGuildView('create'));
+        document.getElementById('btn-guild-open-join')?.addEventListener('click', () => setGuildNoGuildView('join'));
+        document.getElementById('btn-guild-back-home-create')?.addEventListener('click', () => setGuildNoGuildView('home'));
+        document.getElementById('btn-guild-back-home-join')?.addEventListener('click', () => setGuildNoGuildView('home'));
+        document.getElementById('btn-guild-create')?.addEventListener('click', createGuild);
+        document.getElementById('btn-guild-join')?.addEventListener('click', joinGuild);
+        document.getElementById('guild-directory-search')?.addEventListener('input', (e) => {
+            captureGuildFocusState();
+            captureGuildScrollState();
+            guildDirectoryFilters.query = e.target.value || '';
+            renderGuildPanel(null);
+            restoreGuildViewStateDeferred();
+        });
+        document.getElementById('guild-directory-recruiting-only')?.addEventListener('change', (e) => {
+            captureGuildFocusState();
+            captureGuildScrollState();
+            guildDirectoryFilters.recruitingOnly = !!e.target.checked;
+            renderGuildPanel(null);
+            restoreGuildViewStateDeferred();
+        });
+        document.getElementById('guild-directory-sort')?.addEventListener('change', (e) => {
+            captureGuildFocusState();
+            captureGuildScrollState();
+            guildDirectoryFilters.sort = e.target.value || 'fit';
+            renderGuildPanel(null);
+            restoreGuildViewStateDeferred();
+        });
+        return;
+    }
+
+    if (!guild) {
+        count.innerText = 'Solo';
+        panel.innerHTML = `
+            <div class="guild-shell">
+                <div class="guild-panel-note">Build a guild identity, browse public guilds, or join an invite code from your squad leader.</div>
+                <div class="guild-form-grid">
+                    <input type="text" id="guild-create-name" class="social-input" maxlength="32" placeholder="Guild name" value="${createName}">
+                    <input type="text" id="guild-create-tag" class="social-input" maxlength="5" placeholder="Tag" value="${createTag}">
+                    <button type="button" id="btn-guild-create" class="action-btn social-add-btn guild-inline-btn">Create</button>
+                </div>
+                <textarea id="guild-create-description" class="social-input" maxlength="180" placeholder="Guild description" style="min-height:84px; resize:vertical;">${createDescription}</textarea>
+                <div class="guild-admin-grid">
+                    <select id="guild-create-icon" class="social-input">${guildVisualSelectOptions(GUILD_ICON_PRESETS, createIcon)}</select>
+                    <select id="guild-create-banner" class="social-input">${guildVisualSelectOptions(GUILD_BANNER_PRESETS, createBanner)}</select>
+                    <select id="guild-create-privacy" class="social-input">
+                        <option value="public" ${createPrivacy === 'public' ? 'selected' : ''}>Public guild</option>
+                        <option value="private" ${createPrivacy === 'private' ? 'selected' : ''}>Private guild</option>
+                    </select>
+                </div>
+                <div class="guild-form-grid guild-form-grid--join">
+                    <input type="text" id="guild-join-code" class="social-input" maxlength="8" placeholder="Guild code" value="${joinCode}">
+                    <button type="button" id="btn-guild-join" class="action-btn social-add-btn guild-inline-btn">Join</button>
+                </div>
+                <div class="guild-directory-shell">
+                    <div class="guild-section-title">Guild Directory</div>
+                    <div class="guild-directory-toolbar">
+                        <input type="text" id="guild-directory-search" class="social-input" maxlength="48" placeholder="Search guilds, tags, leaders..." value="${browserQuery}">
+                        <label class="guild-directory-toggle">
+                            <input type="checkbox" id="guild-directory-recruiting-only" ${guildDirectoryFilters.recruitingOnly ? 'checked' : ''}>
+                            <span>Recruiting only</span>
+                        </label>
+                        <select id="guild-directory-sort" class="social-input">
+                            <option value="fit" ${guildDirectoryFilters.sort === 'fit' ? 'selected' : ''}>Best fit</option>
+                            <option value="members" ${guildDirectoryFilters.sort === 'members' ? 'selected' : ''}>Most members</option>
+                            <option value="xp" ${guildDirectoryFilters.sort === 'xp' ? 'selected' : ''}>Most guild XP</option>
+                            <option value="newest" ${guildDirectoryFilters.sort === 'newest' ? 'selected' : ''}>Newest</option>
+                        </select>
+                    </div>
+                    ${browserEntries.length ? browserEntries.map((entry) => `
+                        <div class="guild-directory-card">
+                            <div class="guild-directory-head">
+                                <div>
+                                    <div class="guild-name-line">
+                                        <span class="guild-tag-badge">${entry.tag}</span>
+                                        <span class="guild-name-title">${entry.name}</span>
+                                    </div>
+                                    <div class="guild-directory-meta">Guild Lv. ${entry.level || 1} · ${entry.memberCount || 0}/${entry.memberCap || 50} members · Leader ${entry.leaderName || 'Unknown'}</div>
+                                </div>
+                                <div class="guild-crest">${guildIconCrest(entry.icon)}</div>
+                            </div>
+                            <div class="guild-directory-meta">${entry.description || 'No description yet.'}</div>
+                            <div class="guild-directory-pills">
+                                <span class="guild-pill guild-pill--status guild-pill--${(entry.recruitment && entry.recruitment.status) || 'recruiting'}">${guildRecruitmentLabel(entry.recruitment && entry.recruitment.status)}</span>
+                                <span class="guild-pill">${guildRecruitmentFocusLabel(entry.recruitment && entry.recruitment.focus)}</span>
+                                <span class="guild-pill">${guildRecruitmentPlaystyleLabel(entry.recruitment && entry.recruitment.playstyle)}</span>
+                            </div>
+                            ${entry.recruitment && entry.recruitment.message ? `<div class="guild-directory-recruitment">${entry.recruitment.message}</div>` : ''}
+                            ${entry.bulletin && entry.bulletin.message ? `<div class="guild-directory-bulletin">Guild bulletin: ${entry.bulletin.message}</div>` : ''}
+                            <div class="guild-directory-actions">
+                                ${entry.id && entry.id === currentGuildId
+                                    ? `<span class="guild-directory-status">Current Guild</span>`
+                                    : ((entry.recruitment && entry.recruitment.status) === 'closed'
+                                        ? `<span class="guild-directory-status guild-directory-status--muted">Recruitment Closed</span>`
+                                        : (entry.recruitment && entry.recruitment.status) === 'invite_only'
+                                            ? `<span class="guild-directory-status guild-directory-status--muted">Invite Only</span>`
+                                            : `<button type="button" class="action-btn social-add-btn guild-inline-btn" onclick="joinGuildByCode('${entry.joinCode}', true)">Join ${entry.tag}</button>`)}
+                            </div>
+                        </div>
+                    `).join('') : '<div class="guild-directory-empty">No guilds match those filters right now.</div>'}
+                </div>
+            </div>
+        `;
+        document.getElementById('btn-guild-create')?.addEventListener('click', createGuild);
+        document.getElementById('btn-guild-join')?.addEventListener('click', joinGuild);
+        document.getElementById('guild-directory-search')?.addEventListener('input', (e) => {
+            captureGuildFocusState();
+            guildDirectoryFilters.query = e.target.value || '';
+            renderGuildPanel(null);
+            restoreGuildFocusState();
+        });
+        document.getElementById('guild-directory-recruiting-only')?.addEventListener('change', (e) => {
+            captureGuildFocusState();
+            guildDirectoryFilters.recruitingOnly = !!e.target.checked;
+            renderGuildPanel(null);
+            restoreGuildFocusState();
+        });
+        document.getElementById('guild-directory-sort')?.addEventListener('change', (e) => {
+            captureGuildFocusState();
+            guildDirectoryFilters.sort = e.target.value || 'fit';
+            renderGuildPanel(null);
+            restoreGuildFocusState();
+        });
+        return;
+    }
+
+    const recruitment = guild.recruitment || {};
+    const members = (guild.members || []).slice().sort((a, b) => {
+        const roleScore = (m) => (m.role === 'Leader' ? 1 : 0);
+        return roleScore(b) - roleScore(a) || (b.contributedXp || 0) - (a.contributedXp || 0);
+    });
+    const leader = members.find((member) => member.role === 'Leader');
+    const foundedLabel = guild.createdAt ? new Date(guild.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown';
+    const topContributor = guild.topContributor ? `${guild.topContributor.username} (${guild.topContributor.contributedXp || 0} XP)` : 'No data yet';
+    const progressPct = Math.max(0, Math.min(100, Number(guild.levelProgressPct) || 0));
+    const progressLabel = `${guild.xpIntoLevel || 0} / ${Math.max(1, (guild.nextLevelXp || 0) - (guild.levelFloorXp || 0))} XP`;
+    const myMember = members.find((member) => member.uid === localUid);
+    const canManageGuild = !!(myMember && (myMember.role === 'Leader' || myMember.role === 'Officer'));
+    const canManageRoles = !!(myMember && myMember.role === 'Leader');
+    const canManageRecruitment = !!(myMember && (myMember.role === 'Leader' || myMember.role === 'Recruiter'));
+    const adminDescription = escapeGuildFieldValue(adminDraftMatchesGuild ? guildDraftState.adminDescription : (guild.description || ''));
+    const adminIcon = adminDraftMatchesGuild ? guildDraftState.adminIcon : (guild.icon || 'comet');
+    const adminBanner = adminDraftMatchesGuild ? guildDraftState.adminBanner : (guild.banner || 'aurora');
+    const adminPrivacy = adminDraftMatchesGuild ? guildDraftState.adminPrivacy : (guild.isPublic ? 'public' : 'private');
+    const adminRecruitmentStatus = adminDraftMatchesGuild ? guildDraftState.adminRecruitmentStatus : (recruitment.status || (guild.isPublic ? 'recruiting' : 'invite_only'));
+    const adminRecruitmentMessage = escapeGuildFieldValue(adminDraftMatchesGuild ? guildDraftState.adminRecruitmentMessage : (recruitment.message || ''));
+    const adminRecruitmentFocus = adminDraftMatchesGuild ? guildDraftState.adminRecruitmentFocus : (recruitment.focus || 'all_modes');
+    const adminRecruitmentPlaystyle = adminDraftMatchesGuild ? guildDraftState.adminRecruitmentPlaystyle : (recruitment.playstyle || 'mixed');
+    const adminBulletinMessage = escapeGuildFieldValue(adminDraftMatchesGuild ? guildDraftState.adminBulletinMessage : ((guild.bulletin && guild.bulletin.message) || ''));
+    const chatInputValue = escapeGuildFieldValue(chatDraftMatchesGuild ? guildDraftState.chatInput : '');
+    const chatRows = (guild.chat || []).slice(-20).map((msg) => {
+        const when = new Date(msg.ts || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return `
+            <div class="guild-chat-row">
+                <div class="guild-chat-head">
+                    <span class="guild-chat-user">${msg.username}</span>
+                    <span class="guild-chat-time">${when}</span>
+                </div>
+                <div class="guild-chat-msg">${msg.message}</div>
+            </div>
+        `;
+    }).join('');
+    count.innerText = `${guild.memberCount || members.length}/${guild.memberCap || 50}`;
+    panel.innerHTML = `
+        <div class="guild-shell">
+            <div class="${guildBannerClass(guild.banner)}">
+                <div class="guild-hero-top">
+                    <div class="guild-crest">${guildIconCrest(guild.icon)}</div>
+                    <div class="guild-hero-copy">
+                        <div class="guild-identity">
+                            <div>
+                                <div class="guild-name-line">
+                                    <span class="guild-tag-badge">${guild.tag}</span>
+                                    <span class="guild-name-title">${guild.name}</span>
+                                </div>
+                                <div class="guild-meta-line">Guild Lv. ${guild.level || 1} · ${(guild.xp || 0)} XP · ${guild.isPublic ? 'Public guild' : 'Private guild'} · Join code <span class="guild-code">${guild.joinCode}</span></div>
+                                <div class="guild-directory-pills" style="margin-top:10px">
+                                    <span class="guild-pill guild-pill--status guild-pill--${recruitment.status || 'recruiting'}">${guildRecruitmentLabel(recruitment.status)}</span>
+                                    <span class="guild-pill">${guildRecruitmentFocusLabel(recruitment.focus)}</span>
+                                    <span class="guild-pill">${guildRecruitmentPlaystyleLabel(recruitment.playstyle)}</span>
+                                </div>
+                            </div>
+                            <button type="button" id="btn-guild-leave" class="menu-btn secondary-btn guild-inline-btn">Leave</button>
+                        </div>
+                        <div class="guild-hero-description">${guild.description || 'No guild description set yet.'}</div>
+                        ${recruitment.message ? `<div class="guild-recruitment-banner">${recruitment.message}</div>` : ''}
+                        ${guild.bulletin && guild.bulletin.message ? `<div class="guild-bulletin-card"><strong>Guild Bulletin</strong><span>${guild.bulletin.message}</span></div>` : ''}
+                    </div>
+                </div>
+            </div>
+            <div class="guild-summary-grid">
+                <div class="guild-summary-card"><div class="guild-summary-label">Leader</div><div class="guild-summary-value">${guild.leaderName || (leader ? leader.username : 'Unknown')}</div></div>
+                <div class="guild-summary-card"><div class="guild-summary-label">Members</div><div class="guild-summary-value">${guild.memberCount || members.length}/${guild.memberCap || 50}</div></div>
+                <div class="guild-summary-card"><div class="guild-summary-label">Guild XP</div><div class="guild-summary-value">${guild.xp || 0}</div></div>
+                <div class="guild-summary-card"><div class="guild-summary-label">Founded</div><div class="guild-summary-value">${foundedLabel}</div></div>
+                <div class="guild-summary-card"><div class="guild-summary-label">Top Contributor</div><div class="guild-summary-value">${topContributor}</div></div>
+                <div class="guild-summary-card"><div class="guild-summary-label">Total Member XP</div><div class="guild-summary-value">${guild.totalContributionXp || 0}</div></div>
+                <div class="guild-summary-card"><div class="guild-summary-label">Join Code</div><div class="guild-summary-value">${guild.joinCode}</div></div>
+                <div class="guild-summary-card"><div class="guild-summary-label">Next Level</div><div class="guild-summary-value">${guild.xpNeededForNextLevel || 0} XP away</div></div>
+            </div>
+            <div class="guild-progress-shell">
+                <div class="guild-progress-head">
+                    <div class="guild-progress-title">Guild Progress</div>
+                    <div class="guild-progress-meta">${progressLabel}</div>
+                </div>
+                <div class="guild-progress-bar">
+                    <div class="guild-progress-fill" style="width:${progressPct}%"></div>
+                </div>
+            </div>
+            ${canManageGuild ? `
+                <div class="guild-admin-panel">
+                    <div class="guild-section-title">Guild Admin</div>
+                    <div class="guild-admin-note">Guild admins can update the description, icon, banner, and privacy. Public guilds appear in the guild directory.</div>
+                    <textarea id="guild-admin-description" class="social-input" maxlength="180" placeholder="Guild description" style="min-height:84px; resize:vertical;">${adminDescription}</textarea>
+                    <div class="guild-admin-grid">
+                        <select id="guild-admin-icon" class="social-input">${guildVisualSelectOptions(GUILD_ICON_PRESETS, adminIcon)}</select>
+                        <select id="guild-admin-banner" class="social-input">${guildVisualSelectOptions(GUILD_BANNER_PRESETS, adminBanner)}</select>
+                        <select id="guild-admin-privacy" class="social-input">
+                            <option value="public" ${adminPrivacy === 'public' ? 'selected' : ''}>Public guild</option>
+                            <option value="private" ${adminPrivacy === 'private' ? 'selected' : ''}>Private guild</option>
+                        </select>
+                        <button type="button" id="btn-guild-save-settings" class="action-btn social-add-btn guild-inline-btn">Save Settings</button>
+                    </div>
+                </div>
+            ` : ''}
+            ${canManageRecruitment ? `
+                <div class="guild-admin-panel">
+                    <div class="guild-section-title">Recruitment Studio</div>
+                    <div class="guild-admin-note">Leaders and approved recruiters can publish the guild's browser pitch and keep a short bulletin up to date for members and recruits.</div>
+                    <textarea id="guild-admin-recruitment-message" class="social-input" maxlength="200" placeholder="What kind of players are you looking for?" style="min-height:84px; resize:vertical;">${adminRecruitmentMessage}</textarea>
+                    <div class="guild-admin-grid">
+                        <select id="guild-admin-recruitment-status" class="social-input">
+                            <option value="recruiting" ${adminRecruitmentStatus === 'recruiting' ? 'selected' : ''}>Recruiting</option>
+                            <option value="invite_only" ${adminRecruitmentStatus === 'invite_only' ? 'selected' : ''}>Invite only</option>
+                            <option value="closed" ${adminRecruitmentStatus === 'closed' ? 'selected' : ''}>Closed</option>
+                        </select>
+                        <select id="guild-admin-recruitment-focus" class="social-input">
+                            <option value="all_modes" ${adminRecruitmentFocus === 'all_modes' ? 'selected' : ''}>All modes</option>
+                            <option value="duels" ${adminRecruitmentFocus === 'duels' ? 'selected' : ''}>1v1 focus</option>
+                            <option value="squads" ${adminRecruitmentFocus === 'squads' ? 'selected' : ''}>2v2 focus</option>
+                        </select>
+                        <select id="guild-admin-recruitment-playstyle" class="social-input">
+                            <option value="mixed" ${adminRecruitmentPlaystyle === 'mixed' ? 'selected' : ''}>Mixed</option>
+                            <option value="casual" ${adminRecruitmentPlaystyle === 'casual' ? 'selected' : ''}>Casual</option>
+                            <option value="competitive" ${adminRecruitmentPlaystyle === 'competitive' ? 'selected' : ''}>Competitive</option>
+                        </select>
+                    </div>
+                    <textarea id="guild-admin-bulletin-message" class="social-input" maxlength="160" placeholder="Guild bulletin for members and visitors" style="min-height:68px; resize:vertical;">${adminBulletinMessage}</textarea>
+                    <button type="button" id="btn-guild-save-recruitment" class="action-btn social-add-btn guild-inline-btn">Publish Recruitment</button>
+                </div>
+            ` : ''}
+            <div class="guild-section-title">Roster</div>
+            <div class="guild-members">
+                ${members.map((m) => `
+                    <div class="guild-member-row">
+                        <div class="guild-member-main">
+                            <div class="guild-member-name">${m.username}</div>
+                            <div class="guild-member-role">${m.role || 'Member'}</div>
+                            <div class="guild-member-meta">Joined ${new Date(m.joinedAt || Date.now()).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                            <div class="guild-member-xp">${m.contributedXp || 0} XP</div>
+                            ${canManageRoles && m.uid !== localUid ? `
+                                <button type="button" class="menu-btn secondary-btn guild-inline-btn" onclick="setGuildMemberRole('${m.uid}', 'Officer')">Officer</button>
+                                <button type="button" class="menu-btn secondary-btn guild-inline-btn" onclick="setGuildMemberRole('${m.uid}', 'Recruiter')">Recruiter</button>
+                                <button type="button" class="menu-btn secondary-btn guild-inline-btn" onclick="setGuildMemberRole('${m.uid}', 'Member')">Member</button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="guild-chat-shell">
+                <div class="guild-section-title">Guild Chat</div>
+                <div id="guild-chat-list" class="guild-chat-list">${chatRows || '<div class="guild-chat-empty">No guild chatter yet. Break the silence.</div>'}</div>
+                <div class="guild-chat-compose">
+                    <input type="text" id="guild-chat-input" class="social-input" maxlength="160" placeholder="Message your guild" value="${chatInputValue}">
+                    <button type="button" id="btn-guild-chat-send" class="action-btn social-add-btn guild-inline-btn">Send</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.getElementById('btn-guild-leave')?.addEventListener('click', leaveGuild);
+    document.getElementById('btn-guild-save-settings')?.addEventListener('click', saveGuildSettings);
+    document.getElementById('btn-guild-save-recruitment')?.addEventListener('click', saveGuildSettings);
+    document.getElementById('btn-guild-chat-send')?.addEventListener('click', sendGuildChat);
+    document.getElementById('guild-chat-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendGuildChat();
+        }
+    });
+}
+
+function guildRenderSignature(guild) {
+    if (!guild) return 'noguild';
+    return JSON.stringify({
+        id: guild.id || null,
+        name: guild.name || '',
+        tag: guild.tag || '',
+        description: guild.description || '',
+        level: guild.level || 1,
+        xp: guild.xp || 0,
+        memberCount: guild.memberCount || 0,
+        memberCap: guild.memberCap || 0,
+        leaderName: guild.leaderName || '',
+        isPublic: !!guild.isPublic,
+        icon: guild.icon || '',
+        banner: guild.banner || '',
+        recruitment: guild.recruitment || null,
+        bulletin: guild.bulletin || null,
+        members: Array.isArray(guild.members) ? guild.members.map((member) => ({
+            uid: member.uid || '',
+            username: member.username || '',
+            role: member.role || '',
+            contributedXp: member.contributedXp || 0,
+            joinedAt: member.joinedAt || ''
+        })) : [],
+        chat: Array.isArray(guild.chat) ? guild.chat.map((entry) => ({
+            uid: entry.uid || '',
+            username: entry.username || '',
+            role: entry.role || '',
+            message: entry.message || '',
+            createdAt: entry.createdAt || ''
+        })) : []
+    });
+}
+
+function updateSocialUI(data, options = {}) {
     if (!data) return;
+    const passiveRefresh = !!options.passiveRefresh;
+    captureGuildDraftState();
+    captureGuildFocusState();
+    captureGuildScrollState();
+    const previousGuild = lastSocialSnapshot ? lastSocialSnapshot.guild : null;
+    const previousGuildSignature = guildRenderSignature(previousGuild);
     lastSocialSnapshot = data;
     const friends = data.friends || [];
     const requests = data.requests || [];
     const invites = data.invites || [];
+    const guild = data.guild || null;
+    const nextGuildSignature = guildRenderSignature(guild);
+    const isSocialOpen = !document.getElementById('social-container').classList.contains('hidden');
+    const shouldFreezeGuildRender = passiveRefresh
+        && isSocialOpen
+        && activeSocialTab === 'guild'
+        && previousGuildSignature === nextGuildSignature;
+    if (!guild && getKnownPlayerGuild()) {
+        renderSocialGuildPreview(getKnownPlayerGuild());
+        if (!shouldFreezeGuildRender) {
+            renderGuildPanel(null);
+            restoreGuildViewStateDeferred();
+        }
+        document.getElementById('social-tab-friends-badge').innerText = `${friends.length}`;
+        document.getElementById('social-tab-guild-badge').innerText = `${getKnownPlayerGuild().memberCount || '...'} members`;
+        return;
+    }
     
     document.getElementById('friends-count').innerText = `${friends.length}/100`;
+    renderSocialGuildPreview(guild);
+    if (!shouldFreezeGuildRender) {
+        renderGuildPanel(guild);
+        restoreGuildViewStateDeferred();
+    }
+    document.getElementById('social-tab-friends-badge').innerText = `${friends.length}`;
+    document.getElementById('social-tab-guild-badge').innerText = guild ? `${guild.memberCount || (guild.members || []).length} members` : 'Solo';
 
     // Update notification dot (friend requests + invites)
     const dot = document.getElementById('social-dot');
@@ -2330,8 +3232,8 @@ function updateSocialUI(data) {
     if (menuActivityPopoverOpen) renderMenuActivityPopoverBody();
 
     // Only update the list if the container is open
-    const isSocialOpen = !document.getElementById('social-container').classList.contains('hidden');
     if (!isSocialOpen) return;
+    if (guild && !previousGuild) setActiveSocialTab('guild');
 
     const list = document.getElementById('friends-list');
     let html = '';
@@ -2362,6 +3264,19 @@ function updateSocialUI(data) {
                         <div style="display: flex; gap: 8px;">
                             <button onclick="acceptInvite('${d.fromUid}', 'party')" style="background: #cc66ff; border: none; color: #000; border-radius: 4px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer; font-weight: bold;">Accept</button>
                             <button onclick="declineInvite('${d.fromUid}', 'party')" style="background: #444; border: none; color: #fff; border-radius: 4px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer;">Decline</button>
+                        </div>
+                    </div>
+                `;
+            } else if (d.type === 'guild') {
+                html += `
+                    <div style="padding: 10px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; background: rgba(80, 170, 255, 0.07);">
+                        <div>
+                            <div style="font-weight: bold; color: #eee;">${d.fromUsername}</div>
+                            <div style="font-size: 0.75rem; color: #888;">Guild invite · [${d.guildTag || 'TAG'}] ${d.guildName || 'Guild'}</div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="acceptInvite('${d.fromUid}', 'guild')" style="background: #7dcfff; border: none; color: #00111f; border-radius: 4px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer; font-weight: bold;">Join</button>
+                            <button onclick="declineInvite('${d.fromUid}', 'guild')" style="background: #444; border: none; color: #fff; border-radius: 4px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer;">Decline</button>
                         </div>
                     </div>
                 `;
@@ -2411,6 +3326,7 @@ function updateSocialUI(data) {
                         </div>
                     </div>
                     <div style="display: flex; flex-shrink: 0; flex-wrap: wrap; gap: 6px; justify-content: flex-end;">
+                        ${lastSocialSnapshot && lastSocialSnapshot.guild ? `<button type="button" onclick="sendInvite('${f.uid}', 'guild')" style="background: rgba(125, 207, 255, 0.18); border: 1px solid rgba(125, 207, 255, 0.4); color: #bfeaff; border-radius: 4px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; font-weight: bold;">Guild</button>` : ''}
                         <button type="button" onclick="sendInvite('${f.uid}', 'party')" style="background: rgba(204, 102, 255, 0.2); border: 1px solid rgba(204, 102, 255, 0.45); color: #e6b3ff; border-radius: 4px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; font-weight: bold;">+ Party</button>
                         <button type="button" onclick="sendInvite('${f.uid}', 'duel')" style="background: rgba(0, 210, 255, 0.2); border: 1px solid rgba(0, 210, 255, 0.45); color: #9ef0ff; border-radius: 4px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; font-weight: bold;">Challenge</button>
                         <button onclick="removeFriend('${f.uid}')" style="background: none; border: none; color: #ff0055; opacity: 0.5; cursor: pointer; font-size: 0.8rem; padding: 5px;">Remove</button>
@@ -2466,6 +3382,14 @@ window.acceptInvite = async (fromUid, type) => {
             fetchFriends(true);
         } else if (data.ok && data.type === 'party' && data.partyId) {
             connectParty(data.partyId);
+        } else if (data.ok && data.type === 'guild' && data.guild) {
+            const errorEl = document.getElementById('social-error');
+            applyGuildToSocialState(data.guild);
+            errorEl.style.color = '#00ffcc';
+            errorEl.innerText = `Joined guild: ${data.guild.name}`;
+            errorEl.classList.remove('hidden');
+            fetchFriends();
+            fetchPlayerProfile(true);
         } else {
             alert(data.error || 'Invite is no longer valid');
             fetchFriends();
@@ -2541,6 +3465,8 @@ document.getElementById('btn-add-friend').addEventListener('click', async () => 
     }
 });
 
+document.getElementById('btn-profile-leave-guild')?.addEventListener('click', leaveGuild);
+
 window.removeFriend = async (friendUid) => {
     if (!confirm('Are you sure you want to remove this friend?')) return;
     try {
@@ -2552,6 +3478,216 @@ window.removeFriend = async (friendUid) => {
         fetchFriends();
     } catch (e) {}
 };
+
+async function createGuild() {
+    const errorEl = document.getElementById('social-error');
+    const name = document.getElementById('guild-create-name')?.value?.trim() || '';
+    const tag = document.getElementById('guild-create-tag')?.value?.trim() || '';
+    const description = document.getElementById('guild-create-description')?.value?.trim() || '';
+    const icon = document.getElementById('guild-create-icon')?.value || 'comet';
+    const banner = document.getElementById('guild-create-banner')?.value || 'aurora';
+    const isPublic = (document.getElementById('guild-create-privacy')?.value || 'public') === 'public';
+    errorEl.classList.add('hidden');
+    try {
+        const res = await fetch('/guild/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: localUid, name, tag, description, icon, banner, isPublic })
+        });
+        const data = await parseJsonResponse(res);
+        if (!data.ok) throw new Error(data.error || 'Could not create guild');
+        applyGuildToSocialState(data.guild);
+        errorEl.style.color = '#00ffcc';
+        errorEl.innerText = `Guild created: ${data.guild.name}`;
+        errorEl.classList.remove('hidden');
+        fetchFriends();
+        fetchPlayerProfile(true);
+    } catch (e) {
+        errorEl.style.color = '#ff4444';
+        errorEl.innerText = e.message || 'Could not create guild';
+        errorEl.classList.remove('hidden');
+    }
+}
+
+async function joinGuild() {
+    const errorEl = document.getElementById('social-error');
+    const code = document.getElementById('guild-join-code')?.value?.trim() || '';
+    errorEl.classList.add('hidden');
+    try {
+        const res = await fetch('/guild/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: localUid, code })
+        });
+        const data = await parseJsonResponse(res);
+        if (!data.ok) throw new Error(data.error || 'Could not join guild');
+        applyGuildToSocialState(data.guild);
+        errorEl.style.color = '#00ffcc';
+        errorEl.innerText = `Joined guild: ${data.guild.name}`;
+        errorEl.classList.remove('hidden');
+        fetchFriends();
+        fetchPlayerProfile(true);
+    } catch (e) {
+        errorEl.style.color = '#ff4444';
+        errorEl.innerText = e.message || 'Could not join guild';
+        errorEl.classList.remove('hidden');
+    }
+}
+
+async function leaveGuild() {
+    const guild = lastSocialSnapshot && lastSocialSnapshot.guild ? lastSocialSnapshot.guild : null;
+    const isLastMember = guild && Number(guild.memberCount || 0) <= 1;
+    const confirmMessage = isLastMember
+        ? 'Leave your current guild? You are the last member, so the guild will be permanently disbanded.'
+        : 'Leave your current guild? If you are the last member, the guild will be disbanded.';
+    if (!confirm(confirmMessage)) return;
+    const errorEl = document.getElementById('social-error');
+    errorEl.classList.add('hidden');
+    try {
+        const res = await fetch('/guild/leave', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: localUid })
+        });
+        const data = await parseJsonResponse(res);
+        if (!data.ok) throw new Error(data.error || 'Could not leave guild');
+        errorEl.style.color = '#00ffcc';
+        errorEl.innerText = data.disbanded ? 'You left the guild. Since no members remained, the guild was disbanded.' : 'You left the guild.';
+        errorEl.classList.remove('hidden');
+        applyGuildToSocialState(null);
+        fetchFriends();
+        fetchPlayerProfile(true);
+    } catch (e) {
+        errorEl.style.color = '#ff4444';
+        errorEl.innerText = e.message || 'Could not leave guild';
+        errorEl.classList.remove('hidden');
+    }
+}
+
+async function sendGuildChat() {
+    const input = document.getElementById('guild-chat-input');
+    const errorEl = document.getElementById('social-error');
+    const message = input?.value?.trim() || '';
+    if (!message) return;
+    errorEl.classList.add('hidden');
+    try {
+        const res = await fetch('/guild/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: localUid, message })
+        });
+        const data = await parseJsonResponse(res);
+        if (!data.ok) throw new Error(data.error || 'Could not send message');
+        if (input) input.value = '';
+        if (data.guild) applyGuildToSocialState(data.guild);
+        fetchFriends(true);
+    } catch (e) {
+        errorEl.style.color = '#ff4444';
+        errorEl.innerText = e.message || 'Could not send guild message';
+        errorEl.classList.remove('hidden');
+    }
+}
+
+window.joinGuildByCode = async (code, allowPrivateJoin = false) => {
+    const joinInput = document.getElementById('guild-join-code');
+    if (joinInput) joinInput.value = code;
+    try {
+        const res = await fetch('/guild/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: localUid, code, allowPrivateJoin })
+        });
+        const data = await parseJsonResponse(res);
+        if (!data.ok) throw new Error(data.error || 'Could not join guild');
+        const errorEl = document.getElementById('social-error');
+        applyGuildToSocialState(data.guild);
+        errorEl.style.color = '#00ffcc';
+        errorEl.innerText = `Joined guild: ${data.guild.name}`;
+        errorEl.classList.remove('hidden');
+        fetchFriends();
+        fetchPlayerProfile(true);
+    } catch (e) {
+        const errorEl = document.getElementById('social-error');
+        errorEl.style.color = '#ff4444';
+        errorEl.innerText = e.message || 'Could not join guild';
+        errorEl.classList.remove('hidden');
+    }
+};
+
+async function saveGuildSettings() {
+    const errorEl = document.getElementById('social-error');
+    errorEl.classList.add('hidden');
+    try {
+        const payload = { uid: localUid };
+        const adminDescriptionEl = document.getElementById('guild-admin-description');
+        const adminIconEl = document.getElementById('guild-admin-icon');
+        const adminBannerEl = document.getElementById('guild-admin-banner');
+        const adminPrivacyEl = document.getElementById('guild-admin-privacy');
+        if (adminDescriptionEl) payload.description = adminDescriptionEl.value.trim();
+        if (adminIconEl) payload.icon = adminIconEl.value || 'comet';
+        if (adminBannerEl) payload.banner = adminBannerEl.value || 'aurora';
+        if (adminPrivacyEl) payload.isPublic = (adminPrivacyEl.value || 'public') === 'public';
+        const recruitmentStatusEl = document.getElementById('guild-admin-recruitment-status');
+        const recruitmentMessageEl = document.getElementById('guild-admin-recruitment-message');
+        const recruitmentFocusEl = document.getElementById('guild-admin-recruitment-focus');
+        const recruitmentPlaystyleEl = document.getElementById('guild-admin-recruitment-playstyle');
+        const bulletinEl = document.getElementById('guild-admin-bulletin-message');
+        if (recruitmentStatusEl) payload.recruitmentStatus = recruitmentStatusEl.value || 'recruiting';
+        if (recruitmentMessageEl) payload.recruitmentMessage = recruitmentMessageEl.value.trim();
+        if (recruitmentFocusEl) payload.recruitmentFocus = recruitmentFocusEl.value || 'all_modes';
+        if (recruitmentPlaystyleEl) payload.recruitmentPlaystyle = recruitmentPlaystyleEl.value || 'mixed';
+        if (bulletinEl) payload.bulletinMessage = bulletinEl.value.trim();
+        const res = await fetch('/guild/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await parseJsonResponse(res);
+        if (!data.ok) throw new Error(data.error || 'Could not save guild settings');
+        applyGuildToSocialState(data.guild);
+        errorEl.style.color = '#00ffcc';
+        errorEl.innerText = 'Guild settings updated.';
+        errorEl.classList.remove('hidden');
+        fetchFriends(true);
+        fetchGuildDirectory(true);
+        fetchPlayerProfile(true);
+    } catch (e) {
+        errorEl.style.color = '#ff4444';
+        errorEl.innerText = e.message || 'Could not save guild settings';
+        errorEl.classList.remove('hidden');
+    }
+}
+
+window.setGuildMemberRole = async (targetUid, role) => {
+    const errorEl = document.getElementById('social-error');
+    errorEl.classList.add('hidden');
+    try {
+        const res = await fetch('/guild/member-role', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: localUid, targetUid, role })
+        });
+        const data = await parseJsonResponse(res);
+        if (!data.ok) throw new Error(data.error || 'Could not update guild member role');
+        applyGuildToSocialState(data.guild);
+        errorEl.style.color = '#00ffcc';
+        errorEl.innerText = 'Guild roster updated.';
+        errorEl.classList.remove('hidden');
+        fetchFriends(true);
+    } catch (e) {
+        errorEl.style.color = '#ff4444';
+        errorEl.innerText = e.message || 'Could not update guild member role';
+        errorEl.classList.remove('hidden');
+    }
+};
+
+document.querySelectorAll('[data-social-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+        setActiveSocialTab(btn.dataset.socialTab);
+    });
+});
+
+setActiveSocialTab('friends');
 
 // Private Match UI
 document.getElementById('btn-close-private').addEventListener('click', () => {

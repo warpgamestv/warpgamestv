@@ -349,6 +349,8 @@
             <p class="profile-xp-details"><span id="profile-xp-text">0 / 300</span> roster XP</p>
             <p class="profile-xp-hint">Bar = progress across all classes (rank rises when any class levels up).</p>
             <p class="profile-winloss">Wins: <span id="profile-wins">0</span> | Losses: <span id="profile-losses">0</span></p>
+            <p class="profile-winloss">Guild: <span id="profile-guild-name">No guild</span></p>
+            <button type="button" id="btn-profile-leave-guild" class="menu-btn secondary-btn profile-guild-action hidden">Leave Guild</button>
         </div>
 
         <div class="profile-section-title">Match History (Last 10)</div>
@@ -365,19 +367,45 @@
             <p class="lumen-modal-eyebrow">Network</p>
             <h1 class="modal-screen-title">Social</h1>
         </div>
-        
-        <div class="social-add-friend-row">
-            <input type="text" id="input-friend-name" placeholder="Friend's username..." class="social-input">
-            <button id="btn-add-friend" class="action-btn social-add-btn">Add</button>
-        </div>
+
         <div id="social-error" class="hidden social-error-text"></div>
 
-        <div class="social-section-title">
-            <span>Friends</span>
-            <span id="friends-count" class="social-friends-count">0/100</span>
+        <div class="social-tabs" role="tablist" aria-label="Social sections">
+            <button type="button" id="social-tab-friends" class="social-tab-btn active" data-social-tab="friends" role="tab" aria-selected="true">
+                <span>Friends</span>
+                <span id="social-tab-friends-badge" class="social-tab-badge">0</span>
+            </button>
+            <button type="button" id="social-tab-guild" class="social-tab-btn" data-social-tab="guild" role="tab" aria-selected="false">
+                <span>Guild</span>
+                <span id="social-tab-guild-badge" class="social-tab-badge">Solo</span>
+            </button>
         </div>
-        <div id="friends-list" class="social-friends-list">
-            <div class="empty-list-msg">No friends yet. Add some to play together!</div>
+
+        <div id="social-friends-tab-panel" class="social-tab-panel active" data-social-tab-panel="friends" role="tabpanel">
+            <div id="social-guild-preview" class="hidden social-guild-preview"></div>
+
+            <div class="social-add-friend-row">
+                <input type="text" id="input-friend-name" placeholder="Friend's username..." class="social-input">
+                <button id="btn-add-friend" class="action-btn social-add-btn">Add</button>
+            </div>
+
+            <div class="social-section-title">
+                <span>Friends</span>
+                <span id="friends-count" class="social-friends-count">0/100</span>
+            </div>
+            <div id="friends-list" class="social-friends-list">
+                <div class="empty-list-msg">No friends yet. Add some to play together!</div>
+            </div>
+        </div>
+
+        <div id="social-guild-tab-panel" class="social-tab-panel" data-social-tab-panel="guild" role="tabpanel">
+            <div class="social-section-title">
+                <span>Guild</span>
+                <span id="guild-count" class="social-friends-count">Solo</span>
+            </div>
+            <div id="guild-panel" class="social-friends-list social-guild-panel">
+                <div class="empty-list-msg">Loading guild systems...</div>
+            </div>
         </div>
 
         <button type="button" id="btn-close-social" class="menu-btn secondary-btn btn-lumen-back">Back ↩</button>
