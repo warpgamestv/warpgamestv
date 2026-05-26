@@ -4,23 +4,6 @@ All notable changes to **Lush Harvest** will be documented in this file.
 
 ---
 
-## [2.4.0] - 2026-03-20
-
-### ✨ Added
-- **Randomized Spirit Themes**: The primary spirit threat now changes every 5 levels, selecting from 4 unique types to keep gameplay dynamic.
-- **Unique Spirit Behaviors**:
-    - **Depth Creeper**: Gains a massive speed boost when stalking from a distance (>500 units).
-    - **Solar Flare**: Emits periodic pulses that slow down the regrowth of nearby trees by 80%.
-    - **Void Shade**: Splits into two fast-moving "Shreds" when dispelled, requiring quick reactions.
-- **Visual Variety**: Each spirit type has its own distinct color, glow, and animation (Cyan for Creeper, Gold for Flare, Glitchy-Grey for Shade).
-- **New Effects**: Added expanding "Flare Pulse" visual and "Tree Slowed" UI indicators.
-
-### 🚀 Optimized
-- **Game State v2.4**: Updated the save system to track the active spirit theme consistently across sessions.
-- **Asset Versioning**: Incremented asset query strings to `?v=2.4` for seamless updates.
-
----
-
 ## [2.3.0] - 2026-03-19
 
 ### ✨ Added

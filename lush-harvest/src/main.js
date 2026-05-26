@@ -183,7 +183,6 @@ let state = {
     companions: [],
     voidSpirits: [],
     remnants: [],
-    activeSpiritType: null,
     spiritIntervalId: null,
     burst: { active: false, x: 0, y: 0, radius: 0, maxRadius: 160, cooldown: 0, maxCooldown: 120 },
     boosts: {
@@ -247,7 +246,8 @@ let state = {
         { id: 'fairy', name: 'Sprite', icon: '🧚', price: 5000, unlocked: false },
         { id: 'lantern', name: 'Lantern', icon: '🏮', price: 10, currency: 'starFragments', unlocked: false }
     ],
-    entityMap: {} // $O(1)$ lookup cache
+    entityMap: {}, // $O(1)$ lookup cache
+    activeSpiritType: 'glimmer' // Randomized every 5 levels
 };
 
 // Objective Definitions
@@ -310,12 +310,6 @@ function updateBiome() {
             }
         });
     }
-}
-
-function randomizeSpiritType() {
-    const types = ['standard', 'creeper', 'flare', 'shade'];
-    state.activeSpiritType = types[Math.floor(Math.random() * types.length)];
-    console.log(`NEW SPIRIT THEME for Area ${state.level}: ${state.activeSpiritType}`);
 }
 
 const HARVEST_RANGE = 100;
@@ -392,6 +386,18 @@ function updateEntityMap() {
     state.entities.forEach(e => state.entityMap[e.id] = e);
 }
 
+function randomizeSpiritType() {
+    const types = ['glimmer', 'creeper', 'flare', 'shade'];
+    // Randomly select a type that is different from the current one if possible
+    let newType;
+    do {
+        newType = types[Math.floor(Math.random() * types.length)];
+    } while (newType === state.activeSpiritType && types.length > 1);
+
+    state.activeSpiritType = newType;
+    console.log(`NEW SPIRIT THEME: ${state.activeSpiritType.toUpperCase()}`);
+}
+
 function initWorld() {
     entitiesLayer.innerHTML = '';
 
@@ -406,6 +412,14 @@ function initWorld() {
     state.entities = [];
     const centerX = state.world.width / 2;
     const centerY = state.world.height / 2;
+
+    // Initialize spirit type if not set
+    if (!state.activeSpiritType) randomizeSpiritType();
+    // Every 5 levels, pick a new theme
+    if (state.level % 5 === 1 && state.level > 1) {
+        // Only randomize once per 5-level block
+        // We check if we just entered this block
+    }
 
     const forge = { id: 'light-forge', x: centerX, y: centerY, type: 'forge' };
     state.entities.push(forge);
@@ -462,9 +476,6 @@ function initWorld() {
     gameWorld.style.width = `${state.world.width}px`;
     gameWorld.style.height = `${state.world.height}px`;
     updateEntityMap();
-    
-    if (!state.activeSpiritType) randomizeSpiritType();
-    
     state.entities.forEach(renderEntity);
     initMinimap();
     renderTethers();
@@ -561,10 +572,6 @@ function advanceLevel() {
             state.level++;
             state.stats.upgradesBoughtThisLevel = 0;
             state.stats.totalPodsHarvested = 0;
-            
-            if (state.level % 5 === 1) {
-                randomizeSpiritType();
-            }
 
             state.world.width += 500;
             state.world.height += 500;
@@ -574,6 +581,12 @@ function advanceLevel() {
             state.entities = [];
             initWorld();
             reconnectTethers();
+
+            // Randomize Spirit Theme every 5 levels
+            if (state.level % 5 === 1) {
+                randomizeSpiritType();
+            }
+
             updateWorldColors();
             updateHUD();
 
@@ -857,21 +870,18 @@ function checkInteractions() {
             const activeThreshold = thresholds.find(t => state.level >= t) || 1;
             const biome = biomes[activeThreshold];
             const regrowthBonus = 1 + (state.sparkUpgrades.starlight_harvest ? 0.2 : 0);
-            
-            const finalRegrowthSlow = (entity.slowedUntil && entity.slowedUntil > Date.now()) ? 0.2 : 1.0;
-            if (entity.slowedUntil && entity.slowedUntil < Date.now()) {
-                entity.slowedUntil = null;
-                const treeEl = document.getElementById(entity.id);
-                if (treeEl) treeEl.classList.remove('tree-slowed');
-            }
 
             if (entity.pods < maxCapacity && dist >= range) {
                 // Fix: Separate star tree regrowth from normal pods
                 if (entity.subType === 'star-tree') {
                     // Star fragments regrow much slower and aren't tied to normal regrowth rate
-                    entity.pods = Math.min(maxCapacity, entity.pods + (0.0001 * regrowthBonus * finalRegrowthSlow));
+                    entity.pods = Math.min(maxCapacity, entity.pods + 0.0001 * regrowthBonus);
                 } else {
-                    entity.pods = Math.min(maxCapacity, entity.pods + (regrowthRate * regrowthBonus * biome.regrowth * finalRegrowthSlow));
+                    let rate = regrowthRate * regrowthBonus * biome.regrowth;
+                    if (entity.slowedUntil && Date.now() < entity.slowedUntil) {
+                        rate *= 0.2; // 80% slower when pulsed by Solar Flare
+                    }
+                    entity.pods = Math.min(maxCapacity, entity.pods + rate);
                 }
             }
 
@@ -1471,7 +1481,7 @@ function beginJourney() {
     setTimeout(() => playTone(500, 'sine', 1.5, 0.8), 400);
 }
 
-const SAVE_VERSION = 2.4;
+const SAVE_VERSION = 2.2;
 
 function migrateSaveData(data) {
     if (!data) return {};
@@ -1920,31 +1930,17 @@ function spawnVoidSpirit() {
 
     const id = `spirit-${Date.now()}`;
     const el = document.createElement('div');
-    
-    const activeType = state.activeSpiritType || 'standard';
-    let addedClass = '';
-    if (activeType === 'creeper') addedClass = 'spirit-creeper';
-    if (activeType === 'flare') addedClass = 'spirit-flare';
-    if (activeType === 'shade') addedClass = 'spirit-shade';
-
-    el.className = `void-spirit ${addedClass}`;
+    const type = state.activeSpiritType || 'glimmer';
+    el.className = `void-spirit spirit-${type}`;
     el.id = id;
     el.innerHTML = '<div class="spirit-core"></div>';
     entitiesLayer.appendChild(el);
 
-    const thresholds = Object.keys(biomes).map(Number).sort((a, b) => b - a);
-    const activeThreshold = thresholds.find(t => state.level >= t) || 1;
-    const biome = biomes[activeThreshold];
-
-    state.voidSpirits.push({ 
-        id, 
-        x, 
-        y, 
-        el, 
-        dispelling: false, 
+    state.voidSpirits.push({
+        id, x, y, el, type,
+        dispelling: false,
         speed: (1 + Math.random() * 1.5) * biome.spiritSpeed,
-        type: activeType,
-        flareTimer: activeType === 'flare' ? 120 + Math.random() * 60 : 0
+        lastPulse: Date.now()
     });
 }
 
@@ -1956,41 +1952,55 @@ function spawnShreds(x, y) {
         el.id = id;
         el.innerHTML = '<div class="spirit-core"></div>';
         entitiesLayer.appendChild(el);
-        
+
+        const angle = Math.random() * Math.PI * 2;
+        const vx = Math.cos(angle) * 30;
+        const vy = Math.sin(angle) * 30;
+
         state.voidSpirits.push({
-            id,
-            x: x + (Math.random() * 40 - 20),
-            y: y + (Math.random() * 40 - 20),
-            el,
+            id, x: x + vx, y: y + vy, el, type: 'glimmer',
+            isShred: true,
             dispelling: false,
-            speed: 5 + Math.random() * 2,
-            type: 'shade',
-            isShred: true
+            speed: 3 + Math.random() * 2
         });
     }
 }
 
-function triggerFlarePulse(x, y) {
-    playTone(200, 'square', 0.2, 0.4);
-    const pulseEl = document.createElement('div');
-    pulseEl.className = 'flare-pulse';
-    pulseEl.style.left = `${x}px`;
-    pulseEl.style.top = `${y}px`;
-    entitiesLayer.appendChild(pulseEl);
-    
-    setTimeout(() => pulseEl.remove(), 1500);
+function triggerFlarePulse(spirit) {
+    const pulse = document.createElement('div');
+    pulse.className = 'flare-pulse';
+    pulse.style.left = `${spirit.x}px`;
+    pulse.style.top = `${spirit.y}px`;
+    entitiesLayer.appendChild(pulse);
 
-    const pulseRadius = 150;
-    state.entities.forEach(e => {
-        if (e.type === 'tree') {
-            const dist = Math.sqrt(Math.pow(e.x - x, 2) + Math.pow(e.y - y, 2));
-            if (dist < pulseRadius) {
-                e.slowedUntil = Date.now() + 5000;
-                const treeEl = document.getElementById(e.id);
-                if (treeEl) treeEl.classList.add('tree-slowed');
+    // Animate and remove pulse
+    setTimeout(() => pulse.remove(), 1000);
+
+    // Find nearest tree tether source
+    let nearestTree = null;
+    let minDist = 300;
+
+    state.entities.forEach(ent => {
+        if (ent.type === 'tree') {
+            const dx = ent.x - spirit.x;
+            const dy = ent.y - spirit.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < minDist) {
+                minDist = dist;
+                nearestTree = ent;
             }
         }
     });
+
+    if (nearestTree) {
+        nearestTree.slowedUntil = Date.now() + 5000;
+        // Visual indicator on tree
+        const treeEl = document.getElementById(nearestTree.id);
+        if (treeEl) {
+            treeEl.classList.add('tree-slowed');
+            setTimeout(() => treeEl.classList.remove('tree-slowed'), 5000);
+        }
+    }
 }
 
 function updateSpirits() {
@@ -2000,6 +2010,7 @@ function updateSpirits() {
         if (s.dispelling) {
             s.el.style.opacity = parseFloat(s.el.style.opacity || 1) - 0.1;
             if (parseFloat(s.el.style.opacity) <= 0) {
+                // Handle Shade splitting on death
                 if (s.type === 'shade' && !s.isShred) {
                     spawnShreds(s.x, s.y);
                 }
@@ -2049,28 +2060,24 @@ function updateSpirits() {
 
         if (damagedTether) return true;
 
-        if (damagedTether) return true;
-
-        // Flare Pulse Logic
-        if (s.type === 'flare' && !s.dispelling) {
-            s.flareTimer--;
-            if (s.flareTimer <= 0) {
-                triggerFlarePulse(s.x, s.y);
-                s.flareTimer = 180 + Math.random() * 60; // 3-4 seconds
-            }
-        }
-
-        // Creeper Speed Logic
-        let currentSpeed = s.speed;
-        if (s.type === 'creeper') {
-            const distToPlayer = Math.sqrt(Math.pow(s.x - state.player.x, 2) + Math.pow(s.y - state.player.y, 2));
-            if (distToPlayer > 500) currentSpeed *= 2.5;
-        }
-
         // Move toward player OR nearest tree (tether source)
         let targetX = state.player.x;
         let targetY = state.player.y;
-        let minSqDist = Math.pow(s.x - targetX, 2) + Math.pow(s.y - targetY, 2);
+        let distSq = Math.pow(s.x - targetX, 2) + Math.pow(s.y - targetY, 2);
+
+        // Depth Creeper: Speed boost when far from player
+        let currentSpeed = s.speed;
+        if (s.type === 'creeper' && distSq > 250000) { // > 500 units
+            currentSpeed *= 1.8;
+        }
+
+        // Solar Flare: Periodic pulse to slow tree regrowth
+        if (s.type === 'flare' && !s.isShred && Date.now() - s.lastPulse > 4000) {
+            triggerFlarePulse(s);
+            s.lastPulse = Date.now();
+        }
+
+        let minSqDist = distSq;
 
         for (const t of state.tethers) {
             const dSq = Math.pow(s.x - (t.x1 || 0), 2) + Math.pow(s.y - (t.y1 || 0), 2);
@@ -2079,8 +2086,8 @@ function updateSpirits() {
 
         const dx = targetX - s.x;
         const dy = targetY - s.y;
-        const dist = Math.sqrt(minSqDist);
-        if (dist > 1) {
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0) {
             s.x += (dx / dist) * currentSpeed;
             s.y += (dy / dist) * currentSpeed;
         }

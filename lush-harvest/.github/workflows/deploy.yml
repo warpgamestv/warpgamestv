@@ -1,0 +1,25 @@
+name: Deploy to Website
+
+on:
+  push:
+    branches:
+      - main  # or 'master' depending on your default branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Game Repo
+        uses: actions/checkout@v4
+
+      - name: Push to Website Repo
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.WEBSITE_DEPLOY_TOKEN }}
+        with:
+          source-directory: '.'
+          destination-github-username: 'warpgamestv'
+          destination-repository-name: 'warpgamestv'
+          user-email: 'warpgamestv@users.noreply.github.com'
+          target-directory: 'lush-harvest'
+          target-branch: 'main'
