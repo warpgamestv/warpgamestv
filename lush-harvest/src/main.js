@@ -173,7 +173,9 @@ let state = {
         bgmVolume: 80,
         sfxVolume: 80,
         showParticles: true,
-        screenshake: true
+        screenshake: true,
+        reducedMotion: false,
+        colorblind: 'off' // 'off' | 'deuteranopia' | 'protanopia' | 'tritanopia'
     },
     buildMode: { active: false, sourceId: null, targetId: null },
     buffs: {
@@ -227,24 +229,25 @@ let state = {
     keys: { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false },
     isTouch: false,
     entities: [],
+    // v3.0 Balance: smoother early curves, milestone scaling, deeper late-game ceilings
     upgrades: [
-        { id: 'speed', name: 'Swift Essence', description: 'Increase movement speed', basePrice: 20, priceMult: 1.6, level: 0, effect: (lvl) => 4 + (lvl * 0.8), currency: 'motes' },
-        { id: 'harvest', name: 'Resonant Aura', description: 'Wider harvesting range', basePrice: 50, priceMult: 1.5, level: 0, effect: (lvl) => 80 + (lvl * 20), currency: 'motes' },
-        { id: 'capacity', name: 'Void Pouch', description: 'Hold more Spore Pods', basePrice: 30, priceMult: 1.5, level: 0, effect: (lvl) => 20 + (lvl * 10), currency: 'motes' },
-        { id: 'forge_speed', name: 'Forge Resonance', description: 'Faster pod conversion', basePrice: 40, priceMult: 1.6, level: 0, effect: (lvl) => 0.5 + (lvl * 0.25), currency: 'motes' },
-        { id: 'regrowth', name: 'Nature\'s Bounty', description: 'Trees regrow faster', basePrice: 60, priceMult: 1.7, level: 0, effect: (lvl) => 0.005 + (lvl * 0.002), currency: 'motes' },
-        { id: 'wisp', name: 'Luminous Companion', description: 'Auto-harvests pods nearby', basePrice: 80, priceMult: 2.0, level: 0, effect: (lvl) => lvl, currency: 'motes' },
-        { id: 'light_weaver', name: 'Light Weaver', description: 'Unlock Light Tethers to automate harvesting', basePrice: 3, priceMult: 1.5, level: 0, effect: (lvl) => lvl, currency: 'starFragments' },
-        { id: 'star_blessing', name: 'Stellar Blessing', description: 'Increases all Mote gains', basePrice: 5, priceMult: 1.8, level: 0, effect: (lvl) => 1 + (lvl * 0.5), currency: 'starFragments' },
-        { id: 'mote_magnet', name: 'Mote Magnet', description: 'Automatically pull motes from further away', basePrice: 150, priceMult: 2.0, level: 0, effect: (lvl) => 120 + (lvl * 30), currency: 'motes' },
-        { id: 'crit_harvest', name: 'Critical Bloom', description: 'Chance to get double pods', basePrice: 200, priceMult: 2.2, level: 0, effect: (lvl) => lvl * 0.05, currency: 'motes' },
-        { id: 'sentinel', name: 'Void Sentinel', description: 'A defensive orb that dispels spirits attacking tethers.', basePrice: 10, priceMult: 2.5, level: 0, effect: (lvl) => lvl, currency: 'starFragments' }
+        { id: 'speed', name: 'Swift Essence', description: 'Increase movement speed', basePrice: 15, priceMult: 1.45, level: 0, effect: (lvl) => 4 + Math.sqrt(lvl) * 1.4, currency: 'motes' },
+        { id: 'harvest', name: 'Resonant Aura', description: 'Wider harvesting range', basePrice: 35, priceMult: 1.4, level: 0, effect: (lvl) => 80 + lvl * 18 + Math.sqrt(lvl) * 12, currency: 'motes' },
+        { id: 'capacity', name: 'Void Pouch', description: 'Hold more Spore Pods', basePrice: 25, priceMult: 1.42, level: 0, effect: (lvl) => 20 + Math.floor(lvl * 12 + Math.pow(lvl, 1.15)), currency: 'motes' },
+        { id: 'forge_speed', name: 'Forge Resonance', description: 'Faster pod conversion', basePrice: 30, priceMult: 1.5, level: 0, effect: (lvl) => 0.5 + lvl * 0.35, currency: 'motes' },
+        { id: 'regrowth', name: 'Nature\'s Bounty', description: 'Trees regrow faster', basePrice: 45, priceMult: 1.55, level: 0, effect: (lvl) => 0.006 + lvl * 0.0028, currency: 'motes' },
+        { id: 'wisp', name: 'Luminous Companion', description: 'Auto-harvests pods nearby', basePrice: 70, priceMult: 1.85, level: 0, effect: (lvl) => lvl, currency: 'motes' },
+        { id: 'mote_magnet', name: 'Mote Magnet', description: 'Automatically pull motes from further away', basePrice: 120, priceMult: 1.75, level: 0, effect: (lvl) => 120 + lvl * 35, currency: 'motes' },
+        { id: 'crit_harvest', name: 'Critical Bloom', description: 'Chance to get double pods', basePrice: 175, priceMult: 1.9, level: 0, effect: (lvl) => Math.min(0.6, lvl * 0.06), currency: 'motes' },
+        { id: 'light_weaver', name: 'Light Weaver', description: 'Unlock Light Tethers to automate harvesting', basePrice: 2, priceMult: 1.4, level: 0, effect: (lvl) => lvl, currency: 'starFragments' },
+        { id: 'star_blessing', name: 'Stellar Blessing', description: 'Increases all Mote gains', basePrice: 4, priceMult: 1.65, level: 0, effect: (lvl) => 1 + lvl * 0.6, currency: 'starFragments' },
+        { id: 'sentinel', name: 'Void Sentinel', description: 'A defensive orb that dispels spirits attacking tethers.', basePrice: 8, priceMult: 2.1, level: 0, effect: (lvl) => lvl, currency: 'starFragments' }
     ],
     cosmetics: [
-        { id: 'default', name: 'Spark', icon: '✨', price: 0, unlocked: true },
-        { id: 'butterfly', name: 'Faerie', icon: '🦋', price: 1000, unlocked: false },
-        { id: 'fairy', name: 'Sprite', icon: '🧚', price: 5000, unlocked: false },
-        { id: 'lantern', name: 'Lantern', icon: '🏮', price: 10, currency: 'starFragments', unlocked: false }
+        { id: 'default',   key: 'spark',   name: 'Spark',   icon: '✨', price: 0,    unlocked: true },
+        { id: 'butterfly', key: 'faerie',  name: 'Faerie',  icon: '🦋', price: 1000, unlocked: false },
+        { id: 'fairy',     key: 'sprite',  name: 'Sprite',  icon: '🧚', price: 5000, unlocked: false },
+        { id: 'lantern',   key: 'lantern', name: 'Lantern', icon: '🏮', price: 10, currency: 'starFragments', unlocked: false }
     ],
     entityMap: {}, // $O(1)$ lookup cache
     activeSpiritType: 'glimmer' // Randomized every 5 levels
@@ -252,19 +255,25 @@ let state = {
 
 // Objective Definitions
 function getLevelObjective(level) {
+    // v3.0: smoother early ramp, rotating objective types for variety
     const objectives = [
-        { type: 'collect_motes', target: 50, desc: 'Gather Motes' }, // Level 1
-        { type: 'harvest_pods', target: 100, desc: 'Harvest Spore Pods' }, // Level 2
-        { type: 'buy_upgrades', target: 2, desc: 'Purchase Mystic Upgrades' }, // Level 3
-        { type: 'collect_motes', target: 500, desc: 'Gather Motes' }, // Level 4
-        { type: 'harvest_pods', target: 300, desc: 'Harvest Spore Pods' } // Level 5
+        { type: 'collect_motes', target: 40, desc: 'Gather Motes' },        // L1
+        { type: 'harvest_pods', target: 80, desc: 'Harvest Spore Pods' },   // L2
+        { type: 'buy_upgrades', target: 2, desc: 'Purchase Mystic Upgrades' }, // L3
+        { type: 'collect_motes', target: 350, desc: 'Gather Motes' },       // L4
+        { type: 'harvest_pods', target: 220, desc: 'Harvest Spore Pods' },  // L5
+        { type: 'collect_motes', target: 800, desc: 'Gather Motes' },       // L6
+        { type: 'buy_upgrades', target: 3, desc: 'Purchase Mystic Upgrades' }, // L7
+        { type: 'harvest_pods', target: 500, desc: 'Harvest Spore Pods' }   // L8
     ];
-    // Default to scaling mote collection if beyond defined levels
-    if (level <= objectives.length) {
-        return objectives[level - 1];
-    } else {
-        return { type: 'collect_motes', target: 500 * Math.pow(1.5, level - 5), desc: 'Gather Motes' };
-    }
+    if (level <= objectives.length) return objectives[level - 1];
+    // Beyond defined levels: alternate mote/pod objectives with tempered exponential
+    const beyond = level - objectives.length;
+    const base = level % 2 === 0 ? 600 : 1000;
+    const target = Math.floor(base * Math.pow(1.32, beyond));
+    return level % 2 === 0
+        ? { type: 'harvest_pods', target, desc: 'Harvest Spore Pods' }
+        : { type: 'collect_motes', target, desc: 'Gather Motes' };
 }
 
 function getObjectiveProgress(objective) {
@@ -276,11 +285,14 @@ function getObjectiveProgress(objective) {
     }
 }
 
+// v3.0: Richer biome palettes (deep -> mid -> accent), refined difficulty scaling
 const biomes = {
-    1: { name: 'Ethereal Grove', bg: '#0f0524', accent: '#bc00ff', spiritInterval: 12000, spiritSpeed: 1.0, regrowth: 1.0, bgmFreqs: [110, 164.81, 220] },
-    6: { name: 'Bioluminescent Depths', bg: '#051b24', accent: '#00f2ff', spiritInterval: 10000, spiritSpeed: 1.3, regrowth: 0.9, bgmFreqs: [98, 146.83, 196] },
-    11: { name: 'Radiant Hollows', bg: '#241a05', accent: '#ffd700', spiritInterval: 8000, spiritSpeed: 1.6, regrowth: 1.2, bgmFreqs: [130, 196, 261] },
-    16: { name: 'The Void', bg: '#0a0a0a', accent: '#444444', spiritInterval: 6000, spiritSpeed: 2.2, regrowth: 0.7, bgmFreqs: [82.41, 123.47, 164.81] }
+    1: { name: 'Ethereal Grove', bg: '#0f0524', bgMid: '#1f0a3a', accent: '#bc00ff', accent2: '#00f2ff', spiritInterval: 14000, spiritSpeed: 0.9, regrowth: 1.1, bgmFreqs: [110, 164.81, 220], fogColor: 'rgba(188, 0, 255, 0.06)' },
+    4: { name: 'Whispering Canopy', bg: '#0a1a18', bgMid: '#16332c', accent: '#a2ff00', accent2: '#00f2ff', spiritInterval: 12000, spiritSpeed: 1.05, regrowth: 1.15, bgmFreqs: [123.47, 174.61, 246.94], fogColor: 'rgba(162, 255, 0, 0.06)' },
+    7: { name: 'Bioluminescent Depths', bg: '#051b24', bgMid: '#0a3340', accent: '#00f2ff', accent2: '#bc00ff', spiritInterval: 10500, spiritSpeed: 1.25, regrowth: 1.0, bgmFreqs: [98, 146.83, 196], fogColor: 'rgba(0, 242, 255, 0.07)' },
+    11: { name: 'Radiant Hollows', bg: '#241a05', bgMid: '#3a2e0a', accent: '#ffd700', accent2: '#ff9d00', spiritInterval: 9000, spiritSpeed: 1.45, regrowth: 1.25, bgmFreqs: [130.81, 196, 261.63], fogColor: 'rgba(255, 215, 0, 0.07)' },
+    14: { name: 'Cinder Sanctum', bg: '#240a0a', bgMid: '#3a1414', accent: '#ff007b', accent2: '#ff9d00', spiritInterval: 8000, spiritSpeed: 1.65, regrowth: 0.95, bgmFreqs: [87.31, 130.81, 174.61], fogColor: 'rgba(255, 0, 123, 0.08)' },
+    18: { name: 'The Void', bg: '#070310', bgMid: '#0e0820', accent: '#8a4dff', accent2: '#444444', spiritInterval: 6500, spiritSpeed: 2.0, regrowth: 0.8, bgmFreqs: [82.41, 123.47, 164.81], fogColor: 'rgba(138, 77, 255, 0.1)' }
 };
 
 function updateBiome() {
@@ -288,14 +300,22 @@ function updateBiome() {
     const activeThreshold = thresholds.find(t => state.level >= t) || 1;
     const biome = biomes[activeThreshold];
 
-    // Visuals
+    // Visuals (v3.0: layered biome palette pushed to CSS vars)
     document.documentElement.style.setProperty('--bg-deep', biome.bg);
-    document.documentElement.style.setProperty('--neon-purple', biome.accent);
+    document.documentElement.style.setProperty('--bg-mid', biome.bgMid || biome.bg);
+    document.documentElement.style.setProperty('--biome-accent', biome.accent);
+    document.documentElement.style.setProperty('--biome-accent-2', biome.accent2 || biome.accent);
+    document.documentElement.style.setProperty('--biome-fog', biome.fogColor || 'rgba(188,0,255,0.06)');
 
-    // Refresh background gradient
+    // Refresh background gradient with mid-tone for depth
     const container = document.querySelector('.game-container');
     if (container) {
-        container.style.background = `radial-gradient(circle at center, ${biome.bg} 0%, #000 100%)`;
+        container.style.background = `radial-gradient(ellipse at 50% 40%, ${biome.bgMid || biome.bg} 0%, ${biome.bg} 55%, #000 100%)`;
+    }
+    const world = document.getElementById('game-world');
+    if (world) {
+        world.style.setProperty('--world-accent', biome.accent);
+        world.style.setProperty('--world-accent-2', biome.accent2 || biome.accent);
     }
 
     // Mechanics
@@ -460,7 +480,8 @@ function initWorld() {
     const numTrees = 15 + (state.level * 5);
 
     for (let i = 0; i < numTrees; i++) {
-        const isStar = Math.random() < 0.05 + (state.level * 0.01); // 5% + 1% per level
+        // v3.0: smoother star-tree scaling, capped so they remain special
+        const isStar = Math.random() < Math.min(0.18, 0.04 + state.level * 0.008);
         const tree = {
             id: `tree-${state.level}-${i}`,
             x: Math.random() * (state.world.width - 300) + 150,
@@ -570,6 +591,9 @@ function advanceLevel() {
             }
 
             state.level++;
+            // Lifetime: track highest area reached
+            state.lifetime.area = Math.max(state.lifetime.area || 0, state.level);
+            state.runRecords.highestArea = Math.max(state.runRecords.highestArea || 0, state.level);
             state.stats.upgradesBoughtThisLevel = 0;
             state.stats.totalPodsHarvested = 0;
 
@@ -611,10 +635,706 @@ function advanceLevel() {
     }
 }
 
+// ============================================================
+// v3.0: Daily Seed — deterministic world per UTC day
+// ============================================================
+function getTodaySeed() {
+    const d = new Date();
+    return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+}
+// Seeded PRNG (mulberry32) — used when state.dailyMode is true
+let seededRng = null;
+function setSeed(seed) {
+    let a = seed >>> 0;
+    seededRng = function () {
+        a |= 0; a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+// Override Math.random when in daily mode for deterministic worlds
+const _origRandom = Math.random;
+function patchRandomForDaily() {
+    Math.random = function () { return seededRng ? seededRng() : _origRandom(); };
+}
+function unpatchRandom() { Math.random = _origRandom; seededRng = null; }
+
+state.dailyMode = false;
+state.dailyBest = state.dailyBest || {}; // { [seed]: { level, motes, ts } }
+state.runSnapshots = state.runSnapshots || { main: null, daily: null };
+
+// Capture all run-tied state into a portable snapshot
+function captureRunSnapshot() {
+    return {
+        savedAt: Date.now(),
+        level: state.level,
+        motes: Number(state.motes),
+        pods: Number(state.pods),
+        starFragments: Number(state.starFragments),
+        world: { width: state.world.width, height: state.world.height },
+        playerX: state.player.x,
+        playerY: state.player.y,
+        upgrades: state.upgrades.map(u => ({ id: u.id, level: Number(u.level) || 0 })),
+        stats: {
+            totalPodsHarvested: state.stats.totalPodsHarvested,
+            totalStarsHarvested: state.stats.totalStarsHarvested,
+            totalMotesEarned: state.stats.totalMotesEarned,
+            upgradesBoughtThisLevel: state.stats.upgradesBoughtThisLevel
+        },
+        entities: state.entities.map(e => { const { el, ...rest } = e; return rest; }),
+        tethers: state.tethers.map(t => ({ sourceId: t.sourceId, targetId: t.targetId, health: t.health, maxHealth: t.maxHealth })),
+        remnants: state.remnants.map(r => ({ sourceId: r.sourceId, targetId: r.targetId, maxHealth: r.maxHealth })),
+        companions: state.companions.map(c => ({ id: c.id, x: c.x, y: c.y, variant: c.variant })),
+        runStartSec: state._runStartSec ?? null
+    };
+}
+
+// Apply a run snapshot back into state; rebuilds DOM
+function applyRunSnapshot(snap) {
+    if (!snap) return;
+    state.level = snap.level;
+    state.motes = Number(snap.motes) || 0;
+    state.pods = Number(snap.pods) || 0;
+    state.starFragments = Number(snap.starFragments) || 0;
+    state.world = { width: snap.world.width, height: snap.world.height };
+    state.player.x = snap.playerX;
+    state.player.y = snap.playerY;
+    state.stats = { ...state.stats, ...snap.stats };
+    state._runStartSec = snap.runStartSec;
+
+    // Upgrades — restore levels by id
+    if (Array.isArray(snap.upgrades)) {
+        snap.upgrades.forEach(saveU => {
+            const u = state.upgrades.find(upg => upg.id === saveU.id);
+            if (u) u.level = Number(saveU.level) || 0;
+        });
+    }
+
+    // Recompute permanent bonuses applied to player
+    const speedBonus = 1 + (state.sparkUpgrades.luminous_stride ? 0.15 : 0);
+    const capBonus = state.sparkUpgrades.celestial_pockets ? 50 : 0;
+    const speedU = state.upgrades.find(u => u.id === 'speed');
+    const capU = state.upgrades.find(u => u.id === 'capacity');
+    state.player.speed = (speedU ? speedU.effect(speedU.level) : 4) * speedBonus;
+    state.player.maxPods = (capU ? capU.effect(capU.level) : 20) + capBonus;
+
+    // World structure
+    state.entities = (snap.entities || []).map(e => ({ ...e }));
+    state.tethers = (snap.tethers || []).map(t => ({ ...t }));
+    state.remnants = (snap.remnants || []).map(r => ({ ...r }));
+
+    // Clear transient entities & DOM
+    state.voidSpirits.forEach(s => { if (s.el) s.el.remove(); });
+    state.voidSpirits = [];
+    state.companions.forEach(c => { if (c.el) c.el.remove(); });
+    state.companions = (snap.companions || []).map(c => ({ id: c.id, x: c.x, y: c.y, variant: c.variant || 'sentinel' }));
+    state.buildMode.active = false;
+    state.buildMode.sourceId = null;
+
+    // Camera recenters on player
+    state.camera.x = window.innerWidth / 2 - state.player.x;
+    state.camera.y = window.innerHeight / 2 - state.player.y;
+
+    // Rebuild world DOM
+    gameWorld.style.width = `${state.world.width}px`;
+    gameWorld.style.height = `${state.world.height}px`;
+    entitiesLayer.innerHTML = '';
+    state.entities.forEach(renderEntity);
+    updateEntityMap();
+    initMinimap();
+    renderTethers();
+    state.companions.forEach(c => spawnCompanionElement(c));
+}
+
+// Toggle the daily-mode UI banner
+function updateDailyBanner() {
+    const banner = document.getElementById('daily-banner');
+    if (!banner) return;
+    banner.style.display = state.dailyMode ? 'flex' : 'none';
+}
+
+function startDailyChallenge() {
+    const seed = getTodaySeed();
+
+    // If we're currently in the main run, snapshot it so we can return later
+    if (!state.dailyMode) {
+        state.runSnapshots.main = captureRunSnapshot();
+    }
+
+    // Discard a stale daily snapshot from a previous day
+    if (state.runSnapshots.daily && state.runSnapshots.daily.seed !== seed) {
+        state.runSnapshots.daily = null;
+    }
+
+    state.dailyMode = true;
+    setSeed(seed);
+    patchRandomForDaily();
+
+    // Resume an in-progress daily for today's seed, or initialize a fresh one
+    if (state.runSnapshots.daily && state.runSnapshots.daily.seed === seed) {
+        applyRunSnapshot(state.runSnapshots.daily);
+        updateWorldColors();
+        updateHUD();
+        renderUpgrades();
+        showBiomeToast('DAILY RESUMED', `Seed #${seed}`);
+    } else {
+        // Lifetime: count this as a new run only on a fresh daily start
+        state.lifetime.runs = (state.lifetime.runs || 0) + 1;
+        state._runStartSec = state.lifetime.playSec || 0;
+
+        // Fresh daily run — isolated from main (currency reset)
+        state.level = 1;
+        state.motes = 0;
+        state.pods = 0;
+        state.starFragments = 0;
+        state.world = { width: 2000, height: 2000 };
+        state.stats.totalMotesEarned = 0;
+        state.stats.upgradesBoughtThisLevel = 0;
+        state.stats.totalPodsHarvested = 0;
+        state.upgrades.forEach(u => u.level = 0);
+        state.player.speed = state.upgrades.find(u => u.id === 'speed').effect(0);
+        state.player.maxPods = state.upgrades.find(u => u.id === 'capacity').effect(0);
+        state.player.x = 1000; state.player.y = 1000;
+        state.camera.x = 0; state.camera.y = 0;
+        // Clear companion DOM before nuking the array
+        state.companions.forEach(c => { if (c.el) c.el.remove(); });
+        state.entities = []; state.tethers = []; state.remnants = []; state.companions = [];
+        state.voidSpirits.forEach(s => { if (s.el) s.el.remove(); });
+        state.voidSpirits = [];
+        state.buildMode.active = false;
+
+        initWorld();
+        updateWorldColors();
+        updateHUD();
+        renderUpgrades();
+        showBiomeToast('DAILY CHALLENGE', `Seed #${seed}`);
+    }
+    updateDailyBanner();
+    saveGame();
+}
+
+// Record best score (called both on ascend and on manual exit)
+function recordDailyBest() {
+    const seed = getTodaySeed();
+    const score = Math.floor(state.stats.totalMotesEarned);
+    const prev = state.dailyBest[seed] || { motes: 0, level: 0 };
+    if (score > prev.motes) {
+        state.dailyBest[seed] = { motes: score, level: state.level, ts: Date.now() };
+        showAchievementToast({ icon: '🏅', name: 'New Daily Best!', reward: { motes: 0 } });
+        const t = document.getElementById('achievement-toast');
+        if (t) t.querySelector('.ach-reward').textContent = `${score} motes • Area ${state.level}`;
+        return true;
+    }
+    return false;
+}
+
+// Called by handleAscend — daily run completed, score recorded, no snapshot kept
+function endDailyChallenge() {
+    if (!state.dailyMode) return;
+    recordDailyBest();
+    state.runSnapshots.daily = null; // ascension completes the daily — no resume
+    state.dailyMode = false;
+    unpatchRandom();
+    // Restore main run so the player lands back in their main world
+    if (state.runSnapshots.main) {
+        applyRunSnapshot(state.runSnapshots.main);
+        updateWorldColors();
+        updateHUD();
+        renderUpgrades();
+    }
+    updateDailyBanner();
+    saveGame();
+}
+
+// Manual exit from daily back to main — daily progress is snapshotted for later resume
+function exitDailyToMain() {
+    if (!state.dailyMode) return;
+    // Record best before snapshotting (so the leaderboard reflects current progress)
+    recordDailyBest();
+    // Snapshot current daily progress for resume
+    state.runSnapshots.daily = { seed: getTodaySeed(), ...captureRunSnapshot() };
+
+    state.dailyMode = false;
+    unpatchRandom();
+
+    if (state.runSnapshots.main) {
+        applyRunSnapshot(state.runSnapshots.main);
+        updateWorldColors();
+        updateHUD();
+        renderUpgrades();
+        showBiomeToast('MAIN RUN RESUMED', `Area ${state.level}`);
+    } else {
+        // No prior main snapshot — should not happen in practice, but recover gracefully
+        updateWorldColors();
+        updateHUD();
+    }
+    updateDailyBanner();
+    saveGame();
+}
+
+function showBiomeToast(title, desc) {
+    const toast = document.getElementById('biome-toast');
+    if (!toast) return;
+    document.getElementById('biome-title').textContent = title;
+    document.getElementById('biome-desc').textContent = desc;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ============================================================
+// v3.0: Companion progression — Guardian / Gatherer / Scholar variants
+// ============================================================
+const COMPANION_VARIANTS = {
+    sentinel: { name: 'Sentinel',  icon: '🛡️', desc: 'Basic defender — dispels nearby spirits.',                color: 'cyan',   defenseRange: 400, harvestRate: 0,    moteBonus: 0 },
+    guardian: { name: 'Guardian',  icon: '🛡️', desc: 'Stays close to tethers, larger dispel range.',           color: 'cyan',   defenseRange: 600, harvestRate: 0,    moteBonus: 0 },
+    gatherer: { name: 'Gatherer',  icon: '🌿', desc: 'Auto-harvests pods from trees as it patrols.',           color: 'lime',   defenseRange: 300, harvestRate: 0.4,  moteBonus: 0 },
+    scholar:  { name: 'Scholar',   icon: '📜', desc: 'Generates passive motes over time.',                     color: 'purple', defenseRange: 250, harvestRate: 0,    moteBonus: 0.6 }
+};
+
+// Mark each newly-spawned companion as 'sentinel' by default
+const _origApplyUpgradeEffects = null; // unused placeholder
+// ============================================================
+// v3.0: Achievement system — milestone-based currency rewards
+// ============================================================
+const ACHIEVEMENTS = [
+    { id: 'first_pod',      name: 'First Bloom',         icon: '🌱', desc: 'Harvest your first 50 pods',          getProgress: () => state.stats.totalPodsHarvested,  target: 50,    reward: { motes: 50 } },
+    { id: 'pod_500',        name: 'Diligent Gatherer',   icon: '🌿', desc: 'Harvest 500 pods total',              getProgress: () => state.stats.totalPodsHarvested,  target: 500,   reward: { motes: 200 } },
+    { id: 'pod_5000',       name: 'Harvest Master',      icon: '🌾', desc: 'Harvest 5,000 pods total',            getProgress: () => state.stats.totalPodsHarvested,  target: 5000,  reward: { motes: 1500 } },
+    { id: 'motes_1k',       name: 'Glow Hoarder',        icon: '💠', desc: 'Earn 1,000 motes in this run',        getProgress: () => state.stats.totalMotesEarned,    target: 1000,  reward: { motes: 250 } },
+    { id: 'motes_10k',      name: 'Luminous Magnate',    icon: '💎', desc: 'Earn 10,000 motes in this run',       getProgress: () => state.stats.totalMotesEarned,    target: 10000, reward: { starFragments: 5 } },
+    { id: 'first_star',     name: 'Stellar Touch',       icon: '⭐', desc: 'Harvest your first Star Fragment',    getProgress: () => state.stats.totalStarsHarvested, target: 1,     reward: { motes: 500 } },
+    { id: 'stars_25',       name: 'Constellation',       icon: '✨', desc: 'Harvest 25 Star Fragments',           getProgress: () => state.stats.totalStarsHarvested, target: 25,    reward: { starFragments: 10 } },
+    { id: 'area_5',         name: 'Pathfinder',          icon: '🧭', desc: 'Reach Area 5',                        getProgress: () => state.level,                     target: 5,     reward: { motes: 1000 } },
+    { id: 'area_10',        name: 'Voidwalker',          icon: '🌀', desc: 'Reach Area 10',                       getProgress: () => state.level,                     target: 10,    reward: { starFragments: 8 } },
+    { id: 'area_20',        name: 'Eternal Wanderer',    icon: '🪐', desc: 'Reach Area 20',                       getProgress: () => state.level,                     target: 20,    reward: { starFragments: 20 } },
+    { id: 'tethers_5',      name: 'Web of Light',        icon: '🔗', desc: 'Build 5 active tethers at once',      getProgress: () => state.tethers.length,            target: 5,     reward: { motes: 800 } },
+    { id: 'first_ascend',   name: 'Transcendent',        icon: '🌠', desc: 'Ascend for the first time',           getProgress: () => state.sparks,                    target: 1,     reward: { motes: 2000 } },
+    { id: 'sparks_25',      name: 'Eternal Light',       icon: '🌟', desc: 'Accumulate 25 Eternal Sparks',        getProgress: () => state.sparks,                    target: 25,    reward: { starFragments: 15 } }
+];
+
+// state.achievements: { [id]: { unlocked: bool, claimed: bool, unlockedAt: ts } }
+state.achievements = state.achievements || {};
+
+// ============================================================
+// v3.0 Hub: profile + lifetime stats
+// ============================================================
+function generatePlayerId() {
+    // Short readable ID: timestamp + random suffix
+    const ts = Date.now().toString(36).toUpperCase();
+    const rnd = Math.floor(Math.random() * 0xfffff).toString(16).toUpperCase().padStart(5, '0');
+    return `LH-${ts}-${rnd}`;
+}
+
+// Themed username pools — bioluminescent forest flavor
+const USERNAME_ADJECTIVES = [
+    'Luminous', 'Verdant', 'Mystic', 'Radiant', 'Astral', 'Twilight', 'Glimmering', 'Ethereal',
+    'Serene', 'Wandering', 'Whispering', 'Silent', 'Echoing', 'Crystalline', 'Iridescent', 'Stellar',
+    'Lunar', 'Solar', 'Sylvan', 'Glowing', 'Drifting', 'Misty', 'Velvet', 'Auroral',
+    'Cosmic', 'Hushed', 'Sapphire', 'Emerald', 'Amber', 'Lush', 'Bioluminescent', 'Quiet',
+    'Dappled', 'Soft', 'Bright', 'Ancient', 'Spectral', 'Verdigris', 'Twin', 'Nebulous'
+];
+const USERNAME_NOUNS = [
+    'Wanderer', 'Wisp', 'Sprite', 'Bloom', 'Glow', 'Echo', 'Ember', 'Lumen',
+    'Sentinel', 'Stargazer', 'Pathfinder', 'Voyager', 'Wayfarer', 'Forager', 'Harvester', 'Tender',
+    'Keeper', 'Seeker', 'Pilgrim', 'Drifter', 'Watcher', 'Dreamer', 'Whisper', 'Spark',
+    'Lantern', 'Beacon', 'Mote', 'Sapling', 'Grove', 'Fern', 'Mirage', 'Reverie',
+    'Spire', 'Thistle', 'Petal', 'Sigil', 'Halo', 'Aurora'
+];
+function generateUsername() {
+    // Always use the unseeded RNG so daily-mode patching can't make names deterministic
+    const rng = (typeof _origRandom === 'function') ? _origRandom : Math.random;
+    const adj = USERNAME_ADJECTIVES[Math.floor(rng() * USERNAME_ADJECTIVES.length)];
+    const noun = USERNAME_NOUNS[Math.floor(rng() * USERNAME_NOUNS.length)];
+    return `${adj} ${noun}`;
+}
+
+state.profile = state.profile || { name: null, playerId: null, joined: null };
+state.lifetime = state.lifetime || { runs: 0, ascensions: 0, motes: 0, area: 0, playSec: 0 };
+
+function ensureProfileInitialized() {
+    if (!state.profile.playerId) state.profile.playerId = generatePlayerId();
+    if (!state.profile.joined)   state.profile.joined = Date.now();
+    // Generate a themed random name on first-ever profile creation
+    if (!state.profile.name)     state.profile.name = generateUsername();
+}
+
+function formatPlayTime(sec) {
+    sec = Math.floor(sec);
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${sec % 60}s`;
+    return `${sec}s`;
+}
+function formatNumber(n) {
+    n = Math.floor(n);
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + 'M';
+    if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'K';
+    return String(n);
+}
+
+// Tick play time every second
+setInterval(() => { state.lifetime.playSec = (state.lifetime.playSec || 0) + 1; }, 1000);
+
+function renderProfile() {
+    ensureProfileInitialized();
+
+    // Avatar — live layered sprite from equipped cosmetic
+    const avatar = document.getElementById('profile-avatar');
+    if (avatar) {
+        const cos = getEquippedCosmetic();
+        avatar.innerHTML = SPRITE_TEMPLATES[cos.key] || SPRITE_TEMPLATES.spark;
+    }
+
+    // Identity
+    const nameInput = document.getElementById('profile-name-input');
+    if (nameInput) nameInput.value = state.profile.name || 'Wanderer';
+    const idDisplay = document.getElementById('profile-id-display');
+    if (idDisplay) idDisplay.textContent = state.profile.playerId;
+
+    // Lifetime stats grid
+    const grid = document.getElementById('profile-stats');
+    if (grid) {
+        const lt = state.lifetime;
+        const highestArea = Math.max(lt.area || 0, state.level || 1);
+        const joined = state.profile.joined ? new Date(state.profile.joined).toLocaleDateString() : '—';
+        const stats = [
+            { label: 'Runs',         value: lt.runs || 0 },
+            { label: 'Ascensions',   value: lt.ascensions || 0 },
+            { label: 'Highest Area', value: highestArea },
+            { label: 'Lifetime Motes', value: formatNumber(lt.motes || 0) },
+            { label: 'Play Time',    value: formatPlayTime(lt.playSec || 0) },
+            { label: 'Joined',       value: joined }
+        ];
+        grid.innerHTML = stats.map(s => `
+            <div class="profile-stat">
+                <div class="stat-label">${s.label}</div>
+                <div class="stat-value">${s.value}</div>
+            </div>`).join('');
+    }
+
+    // Achievements summary
+    const summary = document.getElementById('profile-achievement-summary');
+    if (summary) {
+        const unlocked = ACHIEVEMENTS.filter(a => state.achievements[a.id]?.unlocked).length;
+        const claimed  = ACHIEVEMENTS.filter(a => state.achievements[a.id]?.claimed).length;
+        const total    = ACHIEVEMENTS.length;
+        const claimable = unlocked - claimed;
+        summary.innerHTML = `
+            <div class="pas-icon">🏆</div>
+            <div class="pas-text">
+                <div class="pas-count">${claimed} / ${total} claimed</div>
+                <div class="pas-desc">${claimable > 0 ? `${claimable} ready to claim` : 'All caught up'}</div>
+            </div>
+            <button class="pas-link" id="pas-open">Open</button>`;
+        const btn = document.getElementById('pas-open');
+        if (btn) btn.onclick = () => {
+            document.getElementById('profile-panel').classList.remove('active');
+            renderAchievements();
+            document.getElementById('achievements-panel').classList.add('active');
+        };
+    }
+}
+
+// ============================================================
+// v3.0 Hub: leaderboard (run records + daily best + stubbed global)
+// ============================================================
+state.runRecords = state.runRecords || { bestMotes: 0, highestArea: 0, fastestAscendSec: null };
+
+let activeLeaderboardTab = 'run';
+function renderLeaderboard() {
+    const body = document.getElementById('leaderboard-body');
+    if (!body) return;
+    document.querySelectorAll('.lb-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === activeLeaderboardTab));
+
+    if (activeLeaderboardTab === 'run') {
+        const r = state.runRecords;
+        const rows = [
+            { rank: '🏆', name: 'Best Motes (single run)',    score: formatNumber(r.bestMotes || 0) + ' motes' },
+            { rank: '🪐', name: 'Highest Area Reached',       score: 'Area ' + (r.highestArea || 1) },
+            { rank: '⚡', name: 'Fastest Ascension',          score: r.fastestAscendSec ? formatPlayTime(r.fastestAscendSec) : '—' },
+            { rank: '🛡️', name: 'Active Tethers (peak)',      score: String(Math.max(state.tethers?.length || 0, r.peakTethers || 0)) }
+        ];
+        body.innerHTML = rows.map(row => `
+            <div class="lb-row">
+                <div class="lb-rank">${row.rank}</div>
+                <div class="lb-name">${row.name}</div>
+                <div class="lb-score">${row.score}</div>
+            </div>`).join('');
+        return;
+    }
+    if (activeLeaderboardTab === 'daily') {
+        const entries = Object.entries(state.dailyBest || {})
+            .sort((a, b) => b[0] - a[0])    // most recent seeds first
+            .slice(0, 30);
+        if (entries.length === 0) {
+            body.innerHTML = `
+                <div class="lb-empty">
+                    <div class="lb-icon">🏅</div>
+                    <div>No daily runs yet.</div>
+                    <div style="margin-top: 8px; font-size: 0.82rem;">Start a Daily Challenge from the Hub to set your first record.</div>
+                </div>`;
+            return;
+        }
+        body.innerHTML = entries.map(([seed, rec], i) => {
+            const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+            const seedStr = String(seed);
+            const date = `${seedStr.slice(0,4)}-${seedStr.slice(4,6)}-${seedStr.slice(6,8)}`;
+            return `
+                <div class="lb-row">
+                    <div class="lb-rank ${rankClass}">${i + 1}</div>
+                    <div class="lb-name">Seed #${seed}<div class="lb-meta">${date} • Area ${rec.level}</div></div>
+                    <div class="lb-score">${formatNumber(rec.motes)} motes</div>
+                </div>`;
+        }).join('');
+        return;
+    }
+    if (activeLeaderboardTab === 'global') {
+        body.innerHTML = `
+            <div class="lb-coming-soon">
+                <div class="lb-icon">🌐</div>
+                <h3>Global Leaderboard — Coming Soon</h3>
+                <p>Compete against players worldwide once cloud sync ships. Your Player ID in <strong>Profile</strong> will identify your submissions.</p>
+            </div>`;
+    }
+}
+
+function notifyAchievementProgress(_event, _value) {
+    let didUnlock = false;
+    for (const ach of ACHIEVEMENTS) {
+        const rec = state.achievements[ach.id] || (state.achievements[ach.id] = { unlocked: false, claimed: false });
+        if (rec.unlocked || rec.claimed) continue; // skip if already unlocked OR claimed
+        if (ach.getProgress() >= ach.target) {
+            rec.unlocked = true;
+            rec.unlockedAt = Date.now();
+            showAchievementToast(ach);
+            didUnlock = true;
+        }
+    }
+    // Persist immediately so a quick reload doesn't lose unlock state
+    if (didUnlock) saveGame();
+}
+
+function showAchievementToast(ach) {
+    const toast = document.getElementById('achievement-toast');
+    if (!toast) return;
+    toast.querySelector('.ach-icon').textContent = ach.icon;
+    toast.querySelector('.ach-name').textContent = ach.name;
+    const r = ach.reward;
+    const rewardStr = r.motes ? `+${r.motes} motes` : `+${r.starFragments} ⭐`;
+    toast.querySelector('.ach-reward').textContent = `Reward ready: ${rewardStr}`;
+    toast.classList.remove('show'); void toast.offsetWidth;
+    toast.classList.add('show');
+    playLevelUpSound();
+    setTimeout(() => toast.classList.remove('show'), 4200);
+}
+
+function claimAchievement(id) {
+    const ach = ACHIEVEMENTS.find(a => a.id === id);
+    const rec = state.achievements[id];
+    if (!ach || !rec || !rec.unlocked || rec.claimed) return;
+    rec.claimed = true;
+    if (ach.reward.motes) {
+        state.motes += ach.reward.motes;
+        state.stats.totalMotesEarned += ach.reward.motes;
+    }
+    if (ach.reward.starFragments) {
+        state.starFragments += ach.reward.starFragments;
+    }
+    playTone(800, 'sine', 0.5, 0.3);
+    updateHUD();
+    renderAchievements();
+    saveGame();
+}
+
+function renderAchievements() {
+    const list = document.getElementById('achievement-list');
+    if (!list) return;
+    list.innerHTML = '';
+    ACHIEVEMENTS.forEach(ach => {
+        const rec = state.achievements[ach.id] || { unlocked: false, claimed: false };
+        const progress = Math.min(ach.getProgress(), ach.target);
+        const pct = Math.floor((progress / ach.target) * 100);
+        const row = document.createElement('div');
+        row.className = `achievement-row ${rec.unlocked ? 'unlocked' : 'locked'}`;
+        const r = ach.reward;
+        const rewardStr = r.motes ? `+${r.motes} ✨` : `+${r.starFragments} ⭐`;
+        let rewardEl;
+        if (rec.claimed)       rewardEl = `<span class="ar-reward claimed">Claimed</span>`;
+        else if (rec.unlocked) rewardEl = `<button class="ar-reward claimable" data-id="${ach.id}">${rewardStr}</button>`;
+        else                   rewardEl = `<span class="ar-reward">${rewardStr}</span>`;
+
+        row.innerHTML = `
+            <div class="ar-icon">${ach.icon}</div>
+            <div class="ar-text">
+                <div class="ar-name">${ach.name}</div>
+                <div class="ar-desc">${ach.desc}</div>
+                <div class="ar-progress"><div class="ar-fill" style="width: ${pct}%"></div></div>
+            </div>
+            ${rewardEl}`;
+        list.appendChild(row);
+    });
+}
+
+// v3.0: Accessibility — apply settings to <body> class list
+function applyAccessibility() {
+    const body = document.body;
+    body.classList.toggle('reduced-motion', !!state.settings.reducedMotion);
+    body.classList.remove('cb-deuteranopia', 'cb-protanopia', 'cb-tritanopia');
+    const cb = state.settings.colorblind;
+    if (cb && cb !== 'off') body.classList.add(`cb-${cb}`);
+}
+
+// v3.0: Floating gain numbers (anchored in game-world coordinates)
+function showFloatingNumber(x, y, text, opts = {}) {
+    if (!state.settings.showParticles) return;
+    const el = document.createElement('div');
+    el.className = 'float-num' + (opts.crit ? ' crit' : '');
+    el.textContent = text;
+    if (!opts.crit && opts.color) el.style.color = opts.color;
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.style.transform = 'translate(-50%, 0)';
+    entitiesLayer.appendChild(el);
+    if (opts.crit) {
+        // CSS animation handles it
+        setTimeout(() => el.remove(), 1000);
+    } else {
+        const dx = (Math.random() - 0.5) * 30;
+        el.animate(
+            [
+                { transform: 'translate(-50%, 0) scale(0.6)', opacity: 0 },
+                { transform: `translate(calc(-50% + ${dx * 0.4}px), -16px) scale(1.15)`, opacity: 1, offset: 0.2 },
+                { transform: `translate(calc(-50% + ${dx}px), -52px) scale(1)`, opacity: 0 }
+            ],
+            { duration: 850, easing: 'ease-out' }
+        ).onfinish = () => el.remove();
+    }
+}
+
+// v3.0: Accumulator for floating sell numbers (avoids spam at 60fps)
+const sellAccum = { motes: 0, lastFlush: 0 };
+
+// v3.0: Player movement trail particles
+let trailFrameCounter = 0;
+let trailLastX = 0, trailLastY = 0;
+function emitPlayerTrail() {
+    if (!state.settings.showParticles || state.settings.reducedMotion) return;
+    const dx = state.player.x - trailLastX;
+    const dy = state.player.y - trailLastY;
+    if (dx * dx + dy * dy < 4) return; // only when actually moving
+    if (++trailFrameCounter % 4 !== 0) return; // throttle
+    trailLastX = state.player.x;
+    trailLastY = state.player.y;
+
+    const t = document.createElement('div');
+    t.className = 'trail-particle';
+    t.style.left = `${state.player.x - 4}px`;
+    t.style.top = `${state.player.y - 4}px`;
+    // Tint by equipped cosmetic for variety
+    const cos = getEquippedCosmetic && getEquippedCosmetic();
+    const palette = { spark: '0,242,255', faerie: '188,0,255', sprite: '255,215,0', lantern: '255,157,0' };
+    const rgb = palette[cos?.key] || '0,242,255';
+    t.style.background = `radial-gradient(circle, rgba(${rgb}, 0.85) 0%, transparent 70%)`;
+    entitiesLayer.appendChild(t);
+    t.animate(
+        [
+            { transform: 'scale(1)',   opacity: 0.75 },
+            { transform: 'scale(0.3)', opacity: 0 }
+        ],
+        { duration: 700, easing: 'ease-out' }
+    ).onfinish = () => t.remove();
+}
+
+// v3.0: Format upgrade effect values for tooltip display
+function formatUpgradeEffect(upgrade, lvl) {
+    const v = upgrade.effect(lvl);
+    switch (upgrade.id) {
+        case 'speed':       return v.toFixed(1);
+        case 'harvest':     return Math.round(v) + ' range';
+        case 'capacity':    return Math.floor(v) + ' pods';
+        case 'forge_speed': return v.toFixed(2) + '/tick';
+        case 'regrowth':    return (v * 1000).toFixed(1) + '‰';
+        case 'wisp':        return v + ' wisp' + (v === 1 ? '' : 's');
+        case 'mote_magnet': return Math.round(v) + ' radius';
+        case 'crit_harvest':return Math.round(v * 100) + '% crit';
+        case 'light_weaver':return v + ' tether' + (v === 1 ? '' : 's');
+        case 'star_blessing':return '×' + v.toFixed(1) + ' motes';
+        case 'sentinel':    return v + ' sentinel' + (v === 1 ? '' : 's');
+        default:            return String(v);
+    }
+}
+
+// v3.0: Layered DOM sprite templates (replaces flat emojis on the player + cosmetic cards)
+const SPRITE_TEMPLATES = {
+    spark: `
+        <div class="sprite-art sprite-spark">
+            <div class="spark-halo"></div>
+            <div class="spark-ray h"></div>
+            <div class="spark-ray v"></div>
+            <div class="spark-ray d1"></div>
+            <div class="spark-ray d2"></div>
+            <div class="spark-core"></div>
+        </div>`,
+    faerie: `
+        <div class="sprite-art sprite-faerie">
+            <div class="faerie-glow"></div>
+            <div class="faerie-wing wing-tl"></div>
+            <div class="faerie-wing wing-tr"></div>
+            <div class="faerie-wing wing-bl"></div>
+            <div class="faerie-wing wing-br"></div>
+            <div class="faerie-body"></div>
+            <div class="faerie-antennae"></div>
+        </div>`,
+    sprite: `
+        <div class="sprite-art sprite-sprite">
+            <div class="sprite-glow"></div>
+            <div class="sprite-halo-ring"></div>
+            <div class="sprite-wing left"></div>
+            <div class="sprite-wing right"></div>
+            <div class="sprite-body"></div>
+            <div class="sprite-head"></div>
+            <div class="sprite-dust d1"></div>
+            <div class="sprite-dust d2"></div>
+            <div class="sprite-dust d3"></div>
+        </div>`,
+    lantern: `
+        <div class="sprite-art sprite-lantern">
+            <div class="lantern-glow"></div>
+            <div class="lantern-rope"></div>
+            <div class="lantern-cap"></div>
+            <div class="lantern-body">
+                <div class="lantern-rib r1"></div>
+                <div class="lantern-rib r2"></div>
+                <div class="lantern-rib r3"></div>
+                <div class="lantern-flame"></div>
+            </div>
+            <div class="lantern-base"></div>
+            <div class="lantern-tassel"></div>
+        </div>`
+};
+
+function getEquippedCosmetic() {
+    // Resolve by stored emoji (state.player.sprite) for save back-compat
+    return state.cosmetics.find(c => c.icon === state.player.sprite) || state.cosmetics[0];
+}
+
+function renderPlayerSprite() {
+    const cos = getEquippedCosmetic();
+    const key = cos.key || 'spark';
+    const el = document.querySelector('.char-sprite');
+    if (!el) return;
+    if (el.dataset.spriteKey === key) return;
+    el.dataset.spriteKey = key;
+    el.innerHTML = SPRITE_TEMPLATES[key] || SPRITE_TEMPLATES.spark;
+}
+
 function renderEntity(entity) {
+    // v3.0: richly layered DOM art per entity type (no longer plain emojis on a div)
     const el = document.createElement('div');
     el.id = entity.id;
-    el.className = entity.type === 'tree' ? 'source-tree' : 'light-forge';
+    el.className = entity.type === 'tree' ? 'source-tree v3' : 'light-forge v3';
 
     const offset = entity.type === 'tree' ? 40 : (entity.type === 'obstacle' ? 0 : 60);
     el.style.left = entity.type === 'obstacle' ? `${entity.x}px` : `${entity.x - offset}px`;
@@ -622,17 +1342,61 @@ function renderEntity(entity) {
 
     if (entity.type === 'tree') {
         if (entity.subType === 'star-tree') {
-            el.innerHTML = `<div class="star-tree-glow"></div><div class="star-tree-icon">🌟</div>`;
+            // Crystalline star tree: rotating halo + faceted crystal core + drifting motes
+            el.innerHTML = `
+                <div class="star-tree-aura"></div>
+                <div class="star-tree-ring r1"></div>
+                <div class="star-tree-ring r2"></div>
+                <div class="star-crystal">
+                    <div class="crystal-facet f1"></div>
+                    <div class="crystal-facet f2"></div>
+                    <div class="crystal-facet f3"></div>
+                    <div class="crystal-core"></div>
+                </div>
+                <div class="star-spark s1"></div>
+                <div class="star-spark s2"></div>
+                <div class="star-spark s3"></div>`;
         } else {
-            el.innerHTML = `<div class="tree-glow"></div><div class="tree-icon">🌲</div>`;
+            // Layered bioluminescent tree: glow halo, canopy gradient, swaying highlight, trunk
+            el.innerHTML = `
+                <div class="tree-aura"></div>
+                <div class="tree-canopy">
+                    <div class="canopy-layer l1"></div>
+                    <div class="canopy-layer l2"></div>
+                    <div class="canopy-layer l3"></div>
+                    <div class="canopy-shine"></div>
+                </div>
+                <div class="tree-trunk"></div>
+                <div class="tree-firefly f1"></div>
+                <div class="tree-firefly f2"></div>`;
         }
     } else if (entity.type === 'shrine') {
-        el.innerHTML = `<div class="shrine-glow"></div><div class="shrine-icon">🏛️</div>`;
+        // Ancient shrine: floating arches with inner rune light
+        el.innerHTML = `
+            <div class="shrine-aura"></div>
+            <div class="shrine-arch outer"></div>
+            <div class="shrine-arch inner"></div>
+            <div class="shrine-rune"></div>
+            <div class="shrine-base"></div>`;
     } else if (entity.type === 'obstacle') {
-        el.className += ` obstacle-${entity.subType}`;
-        el.innerHTML = entity.subType === 'rock' ? '🪨' : '🌿';
+        el.className += ` obstacle-${entity.subType} v3`;
+        if (entity.subType === 'rock') {
+            el.innerHTML = `<div class="rock-shape"><div class="rock-shine"></div></div>`;
+        } else {
+            el.innerHTML = `<div class="vine-leaf v1"></div><div class="vine-leaf v2"></div><div class="vine-leaf v3"></div>`;
+        }
     } else {
-        el.innerHTML = `<div class="forge-glow"></div><div class="forge-icon">🔥</div><div class="forge-label">LIGHT FORGE</div>`;
+        // Forge: multi-ring rotating core with pulse aura and label
+        el.innerHTML = `
+            <div class="forge-aura"></div>
+            <div class="forge-ring outer"></div>
+            <div class="forge-ring mid"></div>
+            <div class="forge-ring inner"></div>
+            <div class="forge-core"></div>
+            <div class="forge-spark fs1"></div>
+            <div class="forge-spark fs2"></div>
+            <div class="forge-spark fs3"></div>
+            <div class="forge-label">LIGHT FORGE</div>`;
     }
     entitiesLayer.appendChild(el);
 }
@@ -756,12 +1520,10 @@ function update() {
     playerEl.style.transform = `translate(${state.player.x - 20}px, ${state.player.y - 20}px)`;
     gameWorld.style.transform = `translate(${state.camera.x}px, ${state.camera.y}px)`;
 
-    // Update player sprite if needed
-    const charSpriteEl = document.querySelector('.char-sprite');
-    if (charSpriteEl && charSpriteEl.textContent !== state.player.sprite) {
-        charSpriteEl.textContent = state.player.sprite;
-    }
+    // v3.0: Render layered cosmetic sprite (replaces emoji textContent swap)
+    renderPlayerSprite();
 
+    emitPlayerTrail();
     checkInteractions();
     updateWisps();
     updateMinimap();
@@ -893,10 +1655,12 @@ function checkInteractions() {
                     el.style.filter = `drop-shadow(0 0 20px var(--neon-gold))`;
                     el.style.transform = `scale(1.2)`;
                     createHarvestParticle(entity.x, entity.y, true);
+                    showFloatingNumber(entity.x, entity.y - 30, '+1 ⭐', { crit: true });
                     playHarvestSound();
                     addCombo();
                     triggerShake();
                     updateHUD('stars');
+                    notifyAchievementProgress('stars_harvested');
                     updateHUD();
                 } else if (entity.subType !== 'star-tree' && entity.pods > 0 && state.pods < state.player.maxPods) {
                     let harvestBase = 0.1 * state.combo.multiplier;
@@ -917,8 +1681,13 @@ function checkInteractions() {
                         playHarvestSound();
                         addCombo();
                     }
+                    if (isCrit) {
+                        showFloatingNumber(entity.x, entity.y - 30, `CRIT ×2`, { crit: true });
+                        triggerShake();
+                    }
                     updateHUD('pods');
                     updateHUD();
+                    notifyAchievementProgress('pods_harvested');
                 } else {
                     el.style.filter = ''; el.style.transform = `scale(1)`;
                 }
@@ -941,10 +1710,24 @@ function checkInteractions() {
                     const gained = sellAmount * moteMultiplier * buffMulti * sparkMulti * state.boosts.moteMultiplier;
                     state.motes += gained;
                     state.stats.totalMotesEarned += gained;
+                    state.lifetime.motes = (state.lifetime.motes || 0) + gained;
+                    // Best-single-run motes record
+                    if (state.stats.totalMotesEarned > (state.runRecords.bestMotes || 0)) {
+                        state.runRecords.bestMotes = state.stats.totalMotesEarned;
+                    }
 
                     if (Math.random() > 0.70) createSellParticle(state.player.x, state.player.y, entity.x, entity.y);
                     if (Math.random() > 0.5) playSellSound(); // Reduce frequency
+
+                    // v3.0: accumulate motes and emit a floating number periodically
+                    sellAccum.motes += gained;
+                    if (Date.now() - sellAccum.lastFlush > 350 && sellAccum.motes >= 1) {
+                        showFloatingNumber(entity.x, entity.y - 50, `+${Math.floor(sellAccum.motes)} motes`, { color: 'var(--neon-lime)' });
+                        sellAccum.motes = 0;
+                        sellAccum.lastFlush = Date.now();
+                    }
                     updateHUD();
+                    notifyAchievementProgress('motes_earned');
                 }
             } else {
                 el.style.filter = ''; el.style.transform = `scale(1)`;
@@ -1291,7 +2074,16 @@ function renderUpgrades() {
             }
         }
 
-        card.innerHTML = `<div><h3>${upgrade.name} (Lv. ${upgrade.level})</h3><p>${upgrade.description}</p></div><button class="upgrade-btn" style="${upgrade.currency === 'starFragments' ? 'background: #b8860b;' : ''}" ${canAfford && !isLimitReached ? '' : 'disabled'} data-id="${upgrade.id}">${btnText}</button>`;
+        // v3.0: next-level effect preview (tooltip-style line under description)
+        let nextLine = '';
+        if (isLimitReached) {
+            nextLine = `<div class="upgrade-next max">★ Max for current tether tier</div>`;
+        } else {
+            const cur = upgrade.level > 0 ? formatUpgradeEffect(upgrade, upgrade.level) : null;
+            const next = formatUpgradeEffect(upgrade, upgrade.level + 1);
+            nextLine = `<div class="upgrade-next">${cur ? `${cur} <span class="arrow">→</span> ${next}` : `Lv 1: ${next}`}</div>`;
+        }
+        card.innerHTML = `<div><h3>${upgrade.name} (Lv. ${upgrade.level})</h3><p>${upgrade.description}</p>${nextLine}</div><button class="upgrade-btn" style="${upgrade.currency === 'starFragments' ? 'background: #b8860b;' : ''}" ${canAfford && !isLimitReached ? '' : 'disabled'} data-id="${upgrade.id}">${btnText}</button>`;
         upgradeList.appendChild(card);
     });
 }
@@ -1330,7 +2122,7 @@ function applyUpgradeEffects(upgrade) {
     if (upgrade.id === 'speed') state.player.speed = upgrade.effect(upgrade.level) * speedBonus;
     else if (upgrade.id === 'capacity') state.player.maxPods = upgrade.effect(upgrade.level) + capBonus;
     else if (upgrade.id === 'sentinel') {
-        const newCompanion = { id: Date.now(), x: state.player.x, y: state.player.y };
+        const newCompanion = { id: Date.now(), x: state.player.x, y: state.player.y, variant: 'sentinel' };
         state.companions.push(newCompanion);
         spawnCompanionElement(newCompanion);
     }
@@ -1347,15 +2139,17 @@ function renderCosmetics() {
         const card = document.createElement('div');
         card.className = `cosmetic-card glass ${isEquipped ? 'equipped' : ''}`;
 
+        // v3.0: layered sprite preview inside the cosmetic card
+        const preview = `<div class="cosmetic-preview">${SPRITE_TEMPLATES[cosmetic.key] || cosmetic.icon}</div>`;
         if (cosmetic.unlocked) {
             card.innerHTML = `
-                <div class="cosmetic-icon">${cosmetic.icon}</div>
+                ${preview}
                 <h3>${cosmetic.name}</h3>
                 <button class="upgrade-btn cosmetic-btn" data-id="${cosmetic.id}" ${isEquipped ? 'disabled' : ''}>${isEquipped ? 'Equipped' : 'Equip'}</button>
             `;
         } else {
             card.innerHTML = `
-                <div class="cosmetic-icon" style="filter: grayscale(1) opacity(0.5);">${cosmetic.icon}</div>
+                <div class="cosmetic-preview locked">${SPRITE_TEMPLATES[cosmetic.key] || cosmetic.icon}</div>
                 <h3>${cosmetic.name}</h3>
                 <button class="upgrade-btn cosmetic-btn" style="${starColor}" ${canAfford ? '' : 'disabled'} data-id="${cosmetic.id}">${cosmetic.price} ${currencySym}</button>
             `;
@@ -1389,12 +2183,24 @@ function handleCosmeticClick(id) {
 }
 
 function calculateSparksReward() {
-    return Math.floor(state.stats.totalMotesEarned / 5000);
+    // v3.0: gentler curve — sqrt-based so deeper runs are exponentially more rewarding
+    const m = Math.max(0, state.stats.totalMotesEarned);
+    return Math.floor(Math.sqrt(m / 1200));
 }
 
 function handleAscend() {
+    if (state.dailyMode) endDailyChallenge();
     const reward = calculateSparksReward();
     state.sparks += reward;
+    // Lifetime: count ascension + track fastest if we started timing this run
+    state.lifetime.ascensions = (state.lifetime.ascensions || 0) + 1;
+    if (state._runStartSec != null) {
+        const elapsed = (state.lifetime.playSec || 0) - state._runStartSec;
+        if (elapsed > 0 && (state.runRecords.fastestAscendSec == null || elapsed < state.runRecords.fastestAscendSec)) {
+            state.runRecords.fastestAscendSec = elapsed;
+        }
+    }
+    state._runStartSec = state.lifetime.playSec || 0;
     playTone(600, 'sine', 1.0, 0.8);
     ascendPanel.classList.remove('active');
     openAstralForge();
@@ -1445,6 +2251,8 @@ function renderAstralTree() {
 }
 
 function beginJourney() {
+    // Lifetime: count this as a new run
+    state.lifetime.runs = (state.lifetime.runs || 0) + 1;
     // Reset Game
     state.level = 1;
     state.motes = 0;
@@ -1481,7 +2289,7 @@ function beginJourney() {
     setTimeout(() => playTone(500, 'sine', 1.5, 0.8), 400);
 }
 
-const SAVE_VERSION = 2.2;
+const SAVE_VERSION = 3.0;
 
 function migrateSaveData(data) {
     if (!data) return {};
@@ -1538,6 +2346,13 @@ function saveGame() {
             buffs: state.buffs,
             upgrades: state.upgrades.map(u => ({ id: u.id, level: Number(u.level) || 0 })),
             sparkUpgrades: state.sparkUpgrades,
+            achievements: state.achievements,
+            dailyBest: state.dailyBest,
+            profile: state.profile,
+            lifetime: state.lifetime,
+            runRecords: state.runRecords,
+            dailyMode: !!state.dailyMode,
+            runSnapshots: state.runSnapshots || { main: null, daily: null },
             cosmetics: state.cosmetics.map(c => ({ id: c.id, unlocked: !!c.unlocked })),
             tethers: state.tethers.map(t => ({ sourceId: t.sourceId, targetId: t.targetId, health: t.health, maxHealth: t.maxHealth })),
             remnants: state.remnants.map(r => ({ sourceId: r.sourceId, targetId: r.targetId, maxHealth: r.maxHealth })),
@@ -1599,6 +2414,11 @@ function loadGame() {
             if (sVol) sVol.value = state.settings.sfxVolume;
             if (part) part.checked = state.settings.showParticles;
             if (shake) shake.checked = state.settings.screenshake;
+            const rm = document.getElementById('reduced-motion-toggle');
+            const cb = document.getElementById('colorblind-mode');
+            if (rm) rm.checked = !!state.settings.reducedMotion;
+            if (cb) cb.value = state.settings.colorblind || 'off';
+            applyAccessibility();
             updateVolume();
         }
 
@@ -1618,6 +2438,19 @@ function loadGame() {
         if (parsed.sparkUpgrades) {
             state.sparkUpgrades = { ...state.sparkUpgrades, ...parsed.sparkUpgrades };
         }
+        if (parsed.achievements) state.achievements = parsed.achievements;
+        if (parsed.dailyBest)    state.dailyBest    = parsed.dailyBest;
+        if (parsed.profile)      state.profile      = { ...state.profile, ...parsed.profile };
+        if (parsed.lifetime)     state.lifetime     = { ...state.lifetime, ...parsed.lifetime };
+        if (parsed.runRecords)   state.runRecords   = { ...state.runRecords, ...parsed.runRecords };
+        if (parsed.runSnapshots) state.runSnapshots = { main: null, daily: null, ...parsed.runSnapshots };
+        // Re-enable daily mode if save was made mid-daily
+        if (parsed.dailyMode) {
+            state.dailyMode = true;
+            setSeed(getTodaySeed());
+            patchRandomForDaily();
+        }
+        ensureProfileInitialized(); // guarantees player ID + joined date exist
 
         if (Array.isArray(parsed.cosmetics)) {
             parsed.cosmetics.forEach(saveC => {
@@ -1723,6 +2556,7 @@ buildToggle.addEventListener('click', () => {
                     health: 100,
                     maxHealth: 100
                 });
+                state.runRecords.peakTethers = Math.max(state.runRecords.peakTethers || 0, state.tethers.length);
                 state.buildMode.active = false;
                 renderTethers();
                 playTone(800, 'sine', 0.5, 0.5);
@@ -1741,6 +2575,120 @@ closeCosmetics.addEventListener('click', () => cosmeticsPanel.classList.remove('
 cosmeticList.addEventListener('click', (e) => { if (e.target.classList.contains('cosmetic-btn')) handleCosmeticClick(e.target.dataset.id); });
 
 settingsToggle.addEventListener('click', () => settingsPanel.classList.add('active'));
+
+// v3.0: Hub — Home button reopens the main menu overlay
+function openHub() {
+    // Always open the menu FIRST so label refresh failures can't block it
+    const menu = document.getElementById('main-menu');
+    if (menu) menu.classList.add('active');
+    try {
+        // Start Journey button is daily-aware: turns into Resume Main Run while in daily mode
+        const startBtnText = document.querySelector('#start-game .btn-text');
+        if (startBtnText) {
+            startBtnText.textContent = state.dailyMode ? 'Return to Main Run' : 'Continue Journey';
+        }
+        // Daily button: resume / new / show today's best
+        const menuDailyBtn = document.getElementById('menu-daily-btn');
+        if (menuDailyBtn) {
+            const seed = getTodaySeed();
+            const best = state.dailyBest && state.dailyBest[seed];
+            const hasInProgress = state.runSnapshots
+                && state.runSnapshots.daily
+                && state.runSnapshots.daily.seed === seed;
+            let label;
+            if (state.dailyMode)       label = 'Resume Daily Run';
+            else if (hasInProgress)    label = `Resume Daily · ${formatNumber(state.runSnapshots.daily.motes)} motes`;
+            else if (best)             label = `Daily Challenge · Best ${formatNumber(best.motes)}`;
+            else                       label = 'Daily Challenge';
+            menuDailyBtn.innerHTML = `<span class="btn-icon">🏅</span> ${label}`;
+        }
+    } catch (e) { console.warn('[Hub] label refresh failed:', e); }
+}
+const homeToggle = document.getElementById('home-toggle');
+if (homeToggle) {
+    homeToggle.addEventListener('click', (e) => { e.stopPropagation(); openHub(); });
+}
+
+// v3.0: Profile panel
+const profilePanel = document.getElementById('profile-panel');
+const closeProfile = document.getElementById('close-profile');
+function openProfile() {
+    ensureProfileInitialized();
+    renderProfile();
+    profilePanel.classList.add('active');
+}
+if (closeProfile) closeProfile.addEventListener('click', () => profilePanel.classList.remove('active'));
+
+const menuProfileBtn = document.getElementById('menu-profile-btn');
+if (menuProfileBtn) menuProfileBtn.addEventListener('click', () => { mainMenu.classList.remove('active'); openProfile(); });
+
+const profileNameInput = document.getElementById('profile-name-input');
+if (profileNameInput) {
+    let nameDebounce;
+    profileNameInput.addEventListener('input', (e) => {
+        const v = e.target.value.trim().slice(0, 24) || 'Wanderer';
+        state.profile.name = v;
+        clearTimeout(nameDebounce);
+        nameDebounce = setTimeout(saveGame, 400);
+    });
+}
+const profileIdCopy = document.getElementById('profile-id-copy');
+if (profileIdCopy) {
+    profileIdCopy.addEventListener('click', () => {
+        const msg = document.getElementById('profile-msg');
+        navigator.clipboard.writeText(state.profile.playerId || '').then(() => {
+            if (msg) { msg.textContent = 'Player ID copied!'; msg.style.color = 'var(--neon-lime)'; }
+        }).catch(() => {
+            if (msg) { msg.textContent = 'Copy failed.'; msg.style.color = '#ff6464'; }
+        });
+        setTimeout(() => { if (msg) msg.textContent = ''; }, 2500);
+    });
+}
+const profileExport = document.getElementById('profile-export');
+const profileImport = document.getElementById('profile-import');
+if (profileExport) profileExport.addEventListener('click', () => exportSaveBtn.click());
+if (profileImport) profileImport.addEventListener('click', () => importSaveBtn.click());
+
+// v3.0: Leaderboard panel
+const leaderboardPanel = document.getElementById('leaderboard-panel');
+const closeLeaderboard = document.getElementById('close-leaderboard');
+function openLeaderboard() {
+    renderLeaderboard();
+    leaderboardPanel.classList.add('active');
+}
+if (closeLeaderboard) closeLeaderboard.addEventListener('click', () => leaderboardPanel.classList.remove('active'));
+const menuLeaderboardBtn = document.getElementById('menu-leaderboard-btn');
+if (menuLeaderboardBtn) menuLeaderboardBtn.addEventListener('click', () => { mainMenu.classList.remove('active'); openLeaderboard(); });
+
+document.querySelectorAll('.lb-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        activeLeaderboardTab = tab.dataset.tab;
+        renderLeaderboard();
+    });
+});
+
+// v3.0: Achievements panel
+const achievementsToggle = document.getElementById('achievements-toggle');
+const achievementsPanel = document.getElementById('achievements-panel');
+const closeAchievements = document.getElementById('close-achievements');
+const achievementList = document.getElementById('achievement-list');
+if (achievementsToggle) {
+    achievementsToggle.addEventListener('click', () => {
+        renderAchievements();
+        achievementsPanel.classList.add('active');
+    });
+}
+if (closeAchievements) {
+    closeAchievements.addEventListener('click', () => achievementsPanel.classList.remove('active'));
+}
+if (achievementList) {
+    achievementList.addEventListener('click', (e) => {
+        const btn = e.target.closest('.ar-reward.claimable');
+        if (btn) claimAchievement(btn.dataset.id);
+    });
+}
+// Run a progress scan periodically so passive milestones (tethers, level, sparks) tick over
+setInterval(notifyAchievementProgress, 2000);
 document.addEventListener('DOMContentLoaded', () => {
     closeSettings.onclick = () => { settingsPanel.classList.remove('active'); settingsMsg.textContent = ''; };
     menuSettingsBtn.onclick = () => { settingsPanel.classList.add('active'); settingsMsg.textContent = ''; };
@@ -1786,13 +2734,49 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    // v3.0: Reduced motion + colorblind mode
+    const reducedMotionToggle = document.getElementById('reduced-motion-toggle');
+    if (reducedMotionToggle) {
+        reducedMotionToggle.checked = !!state.settings.reducedMotion;
+        reducedMotionToggle.onchange = (e) => {
+            state.settings.reducedMotion = e.target.checked;
+            applyAccessibility();
+            saveGame();
+        };
+    }
+    const colorblindMode = document.getElementById('colorblind-mode');
+    if (colorblindMode) {
+        colorblindMode.value = state.settings.colorblind || 'off';
+        colorblindMode.onchange = (e) => {
+            state.settings.colorblind = e.target.value;
+            applyAccessibility();
+            saveGame();
+        };
+    }
+
     startGameBtn.onclick = () => {
         initAudio();
         mainMenu.classList.remove('active');
-        if (state.level === 1 && state.motes === 0 && state.pods === 0) {
-            // First time play hook if needed
+        if (state.dailyMode) {
+            // Cleanly snapshot daily and restore main
+            exitDailyToMain();
         }
     };
+
+    // v3.0: Daily Challenge button
+    const menuDailyBtn = document.getElementById('menu-daily-btn');
+    if (menuDailyBtn) {
+        const seed = getTodaySeed();
+        const best = state.dailyBest && state.dailyBest[seed];
+        if (best) {
+            menuDailyBtn.innerHTML = `<span class="btn-icon">🏅</span> Daily Challenge · Best ${best.motes}`;
+        }
+        menuDailyBtn.onclick = () => {
+            initAudio();
+            mainMenu.classList.remove('active');
+            startDailyChallenge();
+        };
+    }
 });
 
 exportSaveBtn.addEventListener('click', () => {
@@ -1936,10 +2920,15 @@ function spawnVoidSpirit() {
     el.innerHTML = '<div class="spirit-core"></div>';
     entitiesLayer.appendChild(el);
 
+    // v3.0: derive biome at spawn time (fixes out-of-scope `biome` reference)
+    const thresholds = Object.keys(biomes).map(Number).sort((a, b) => b - a);
+    const activeThreshold = thresholds.find(t => state.level >= t) || 1;
+    const currentBiome = biomes[activeThreshold];
+
     state.voidSpirits.push({
         id, x, y, el, type,
         dispelling: false,
-        speed: (1 + Math.random() * 1.5) * biome.spiritSpeed,
+        speed: (1 + Math.random() * 1.4) * currentBiome.spiritSpeed,
         lastPulse: Date.now()
     });
 }
@@ -2142,36 +3131,129 @@ function getDistToSegment(px, py, x1, y1, x2, y2) {
 }
 
 function spawnCompanionElement(companion) {
+    if (!companion.variant) companion.variant = 'sentinel';
+    const v = COMPANION_VARIANTS[companion.variant] || COMPANION_VARIANTS.sentinel;
     const el = document.createElement('div');
-    el.className = 'companion sentinel glass';
+    el.className = `companion sentinel companion-${companion.variant} glass`;
     el.id = `companion-${companion.id}`;
-    el.innerHTML = '🛡️';
+    el.innerHTML = `<span class="companion-icon">${v.icon}</span><span class="companion-evolve-hint">⇡</span>`;
     el.style.position = 'absolute';
-    el.style.width = '30px';
-    el.style.height = '30px';
+    el.style.width = '34px';
+    el.style.height = '34px';
     el.style.display = 'flex';
     el.style.alignItems = 'center';
     el.style.justifyContent = 'center';
     el.style.borderRadius = '50%';
     el.style.zIndex = '50';
-    el.style.pointerEvents = 'none';
-    el.style.boxShadow = '0 0 15px var(--neon-cyan)';
-    entitiesLayer.appendChild(el); // FIXED: Changed from world to entitiesLayer
+    el.style.cursor = 'pointer';
+    el.style.pointerEvents = 'auto';
+    const glow = v.color === 'lime' ? 'var(--neon-lime)' : v.color === 'purple' ? 'var(--neon-purple)' : 'var(--neon-cyan)';
+    el.style.boxShadow = `0 0 18px ${glow}`;
+    el.style.border = `1px solid ${glow}`;
+    el.onclick = (e) => { e.stopPropagation(); openCompanionEvolvePanel(companion.id); };
+    entitiesLayer.appendChild(el);
     companion.el = el;
+}
+
+function openCompanionEvolvePanel(companionId) {
+    const c = state.companions.find(co => co.id === companionId);
+    if (!c) return;
+    let panel = document.getElementById('companion-evolve-panel');
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'companion-evolve-panel';
+        panel.className = 'overlay';
+        panel.innerHTML = `
+            <div class="overlay-content glass" style="max-width: 520px;">
+                <header>
+                    <h2>Evolve Companion</h2>
+                    <button class="close-btn" id="close-companion-evolve">&times;</button>
+                </header>
+                <p style="text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">
+                    Choose a specialization. Costs <strong class="neon-gold">3 ⭐</strong>. Each companion can be re-evolved.
+                </p>
+                <div id="companion-evolve-options" class="achievement-list"></div>
+            </div>`;
+        document.body.appendChild(panel);
+        panel.addEventListener('click', (e) => {
+            if (e.target === panel) panel.classList.remove('active');
+        });
+        document.getElementById('close-companion-evolve').onclick = () => panel.classList.remove('active');
+    }
+    const opts = document.getElementById('companion-evolve-options');
+    opts.innerHTML = '';
+    ['sentinel', 'guardian', 'gatherer', 'scholar'].forEach(key => {
+        const v = COMPANION_VARIANTS[key];
+        const isCurrent = c.variant === key;
+        const canAfford = state.starFragments >= 3 || isCurrent;
+        const row = document.createElement('div');
+        row.className = `achievement-row ${isCurrent ? 'unlocked' : ''}`;
+        row.innerHTML = `
+            <div class="ar-icon">${v.icon}</div>
+            <div class="ar-text">
+                <div class="ar-name">${v.name}${isCurrent ? ' • Current' : ''}</div>
+                <div class="ar-desc">${v.desc}</div>
+            </div>
+            ${isCurrent
+                ? `<span class="ar-reward claimed">Active</span>`
+                : `<button class="ar-reward claimable" data-key="${key}" ${canAfford ? '' : 'disabled'}>3 ⭐</button>`}`;
+        opts.appendChild(row);
+    });
+    opts.onclick = (e) => {
+        const btn = e.target.closest('.ar-reward.claimable[data-key]');
+        if (!btn) return;
+        const key = btn.dataset.key;
+        if (state.starFragments < 3) return;
+        state.starFragments -= 3;
+        c.variant = key;
+        // Re-render companion DOM
+        if (c.el && c.el.parentNode) c.el.parentNode.removeChild(c.el);
+        spawnCompanionElement(c);
+        playLevelUpSound();
+        updateHUD();
+        openCompanionEvolvePanel(companionId); // refresh
+        saveGame();
+    };
+    panel.classList.add('active');
 }
 
 function updateCompanions() {
     const threats = state._threats || [];
 
     state.companions.forEach((c, index) => {
+        const variant = COMPANION_VARIANTS[c.variant || 'sentinel'];
         // AI Logic: Find nearest spirit from the threat list (already filtered)
         let targetSpirit = null;
-        let minSqDist = 160000; // 400^2
+        let minSqDist = variant.defenseRange * variant.defenseRange;
 
         for (const t of threats) {
             if (t.spirit.dispelling) continue;
             const dSq = Math.pow(c.x - t.x, 2) + Math.pow(c.y - t.y, 2);
             if (dSq < minSqDist) { minSqDist = dSq; targetSpirit = t.spirit; }
+        }
+
+        // Gatherer: passively harvest pods within range every tick
+        if (variant.harvestRate > 0 && state.pods < state.player.maxPods) {
+            for (const ent of state.entities) {
+                if (ent.type === 'tree' && ent.subType !== 'star-tree' && ent.pods > 0.5) {
+                    const dSq = Math.pow(c.x - ent.x, 2) + Math.pow(c.y - ent.y, 2);
+                    if (dSq < 14400) { // within 120 units
+                        const amt = Math.min(variant.harvestRate / 60, ent.pods, state.player.maxPods - state.pods);
+                        ent.pods -= amt;
+                        state.pods += amt;
+                        state.stats.totalPodsHarvested += amt;
+                        if (Math.random() > 0.97) createHarvestParticle(ent.x, ent.y);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Scholar: passively generate motes
+        if (variant.moteBonus > 0) {
+            const gain = variant.moteBonus / 60;
+            state.motes += gain;
+            state.stats.totalMotesEarned += gain;
         }
 
         // Idle Behavior: Patrol between active tethers or follow player
@@ -2231,7 +3313,10 @@ function updateBurstUI() {
     burstFill.style.transform = `translateY(${pct}%)`;
 }
 
-loadGame(); initWorld(); updateHUD(); update();
+loadGame(); ensureProfileInitialized(); initWorld(); updateHUD(); renderPlayerSprite(); updateDailyBanner(); update();
+// Wire daily banner exit button (banner element is in DOM at this point)
+const dailyExitBtn = document.getElementById('daily-exit-btn');
+if (dailyExitBtn) dailyExitBtn.addEventListener('click', () => exitDailyToMain());
 
 // Handle Shop Tabs
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -2382,6 +3467,11 @@ setInterval(updateBoosts, 1000);
 window.state = state;
 window.updateHUD = updateHUD;
 window.saveGame = saveGame;
+window.startDailyChallenge = startDailyChallenge;
+window.exitDailyToMain = exitDailyToMain;
+window.endDailyChallenge = endDailyChallenge;
+window.captureRunSnapshot = captureRunSnapshot;
+window.applyRunSnapshot = applyRunSnapshot;
 window.checkSaveIntegrity = () => {
     const raw = localStorage.getItem('lushHarvestSave');
     console.group("Save Data Diagnostic");

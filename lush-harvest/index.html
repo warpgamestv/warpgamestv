@@ -9,10 +9,10 @@
     <title>Lush Harvest | Bioluminescent Exploration</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
-    <link rel="icon" href="./favicon.png?v=2.3" type="image/png">
-    <link rel="apple-touch-icon" href="./apple-touch-icon.png?v=2.3">
-    <link rel="stylesheet" href="./src/style.css?v=2.3">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="icon" href="./favicon.png?v=3.7" type="image/png">
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png?v=3.7">
+    <link rel="stylesheet" href="./src/style.css?v=3.7">
 </head>
 
 <body>
@@ -60,6 +60,12 @@
                 <div id="frenzy-indicator" style="display: none;">FRENZY!</div>
             </div>
 
+            <div id="daily-banner" class="glass">
+                <span class="db-icon">🏅</span>
+                <span class="db-text">Daily Challenge</span>
+                <button id="daily-exit-btn" class="db-btn">Return to Main Run</button>
+            </div>
+
             <div id="objective-tracker" class="glass">
                 <div class="objective-label">Area <span id="level-display">1</span> Objective</div>
                 <div id="objective-desc" class="objective-text">Gather Motes: <span id="objective-progress"
@@ -85,10 +91,14 @@
                     <div id="entities">
                     </div>
 
-                    <div id="player" class="character">
+                    <div id="player" class="character v3">
                         <div class="char-glow"></div>
-                        <div class="char-sprite">✨</div>
+                        <div class="char-halo"></div>
+                        <div class="char-ring"></div>
+                        <div class="char-sprite"></div>
                     </div>
+                    <div class="world-fog"></div>
+                    <div class="world-fireflies"></div>
                 </div>
             </div>
         </div>
@@ -110,11 +120,17 @@
         <!-- Bottom Action Bar -->
         <div class="bottom-bar-container">
             <div id="main-actions" class="glass bottom-bar">
+                <button id="home-toggle" class="nav-btn" title="Home / Hub">
+                    <span class="btn-icon">🏠</span> <span class="btn-label">Hub</span>
+                </button>
                 <button id="upgrades-toggle" class="nav-btn" title="Upgrades">
                     <span class="btn-icon">🛡️</span> <span class="btn-label">Upgrades</span>
                 </button>
                 <button id="cosmetics-toggle" class="nav-btn" title="Cosmetics">
                     <span class="btn-icon">👕</span> <span class="btn-label">Cosmetics</span>
+                </button>
+                <button id="achievements-toggle" class="nav-btn" title="Achievements">
+                    <span class="btn-icon">🏆</span> <span class="btn-label">Achievements</span>
                 </button>
                 <button id="settings-toggle" class="nav-btn" title="Settings">
                     <span class="btn-icon">⚙️</span> <span class="btn-label">Settings</span>
@@ -201,6 +217,19 @@
                     <label>Screen Shake</label>
                     <input type="checkbox" id="shake-toggle" checked>
                 </div>
+                <div class="setting-item">
+                    <label>Reduced Motion</label>
+                    <input type="checkbox" id="reduced-motion-toggle">
+                </div>
+                <div class="setting-item">
+                    <label>Colorblind Mode</label>
+                    <select id="colorblind-mode" class="select-control">
+                        <option value="off">Off</option>
+                        <option value="deuteranopia">Deuteranopia (red-green)</option>
+                        <option value="protanopia">Protanopia (red-green)</option>
+                        <option value="tritanopia">Tritanopia (blue-yellow)</option>
+                    </select>
+                </div>
 
                 <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 10px 0;"></div>
                 
@@ -212,7 +241,7 @@
                 <p id="settings-msg" style="color: var(--neon-lime); min-height: 20px; font-weight: bold; margin-top: 5px; font-size: 0.8rem;"></p>
                 
                 <div style="margin-top: 10px; padding: 10px; border-radius: 10px; background: rgba(0,0,255,0.1);">
-                    <p style="font-size: 0.75rem; color: var(--neon-cyan); margin: 0;">v2.3 Production</p>
+                    <p style="font-size: 0.75rem; color: var(--neon-cyan); margin: 0;">v3.0 — Radiant Edition</p>
                     <p style="font-size: 0.7rem; color: var(--text-muted); margin: 5px 0 0 0;">Developed by <span style="color: white; font-weight: bold;">WarpGamesTV</span></p>
                 </div>
             </div>
@@ -311,9 +340,109 @@
         <div id="menu-particles"></div>
         <div class="main-menu-content glass slide-up">
             <div class="menu-header">
-                <img src="./lush_harvest_logo_1773966169586.png" alt="Lush Harvest" class="menu-logo">
+                <svg class="menu-logo" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-label="Lush Harvest">
+                    <defs>
+                        <linearGradient id="lh-ring" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%"  stop-color="#00f2ff"/>
+                            <stop offset="50%" stop-color="#bc00ff"/>
+                            <stop offset="100%" stop-color="#a2ff00"/>
+                        </linearGradient>
+                        <radialGradient id="lh-canopy" cx="50%" cy="38%">
+                            <stop offset="0%"  stop-color="#a2ffb8"/>
+                            <stop offset="55%" stop-color="#2a8f48"/>
+                            <stop offset="100%" stop-color="#0d3a1a"/>
+                        </radialGradient>
+                        <radialGradient id="lh-crystal">
+                            <stop offset="0%"  stop-color="#ffffff"/>
+                            <stop offset="45%" stop-color="#00f2ff"/>
+                            <stop offset="100%" stop-color="rgba(0,242,255,0)"/>
+                        </radialGradient>
+                        <radialGradient id="lh-aura">
+                            <stop offset="0%"  stop-color="rgba(0,242,255,0.45)"/>
+                            <stop offset="60%" stop-color="rgba(188,0,255,0.10)"/>
+                            <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+                        </radialGradient>
+                        <linearGradient id="lh-aurora" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%"  stop-color="rgba(0,242,255,0)"/>
+                            <stop offset="30%" stop-color="rgba(0,242,255,0.55)"/>
+                            <stop offset="70%" stop-color="rgba(188,0,255,0.55)"/>
+                            <stop offset="100%" stop-color="rgba(188,0,255,0)"/>
+                        </linearGradient>
+                        <linearGradient id="lh-trunk" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%"  stop-color="#6b4523"/>
+                            <stop offset="100%" stop-color="#2a1808"/>
+                        </linearGradient>
+                        <filter id="lh-glow" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="2.2" result="b"/>
+                            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                        </filter>
+                        <filter id="lh-softglow" x="-100%" y="-100%" width="300%" height="300%">
+                            <feGaussianBlur stdDeviation="5"/>
+                        </filter>
+                    </defs>
+
+                    <!-- Soft outer aura -->
+                    <circle cx="100" cy="100" r="92" fill="url(#lh-aura)"/>
+
+                    <!-- Outer rotating gradient ring -->
+                    <g>
+                        <circle cx="100" cy="100" r="86" fill="none" stroke="url(#lh-ring)" stroke-width="1.5" opacity="0.75"/>
+                        <circle cx="100" cy="100" r="80" fill="none" stroke="#ffffff" stroke-width="0.5" stroke-dasharray="2 7" opacity="0.45"/>
+                        <animateTransform attributeName="transform" type="rotate" from="0 100 100" to="360 100 100" dur="38s" repeatCount="indefinite"/>
+                    </g>
+
+                    <!-- Aurora arc behind the tree -->
+                    <path d="M 32 78 Q 100 48 168 78" fill="none" stroke="url(#lh-aurora)" stroke-width="14" stroke-linecap="round" opacity="0.85" filter="url(#lh-softglow)"/>
+
+                    <!-- Ground shadow -->
+                    <ellipse cx="100" cy="158" rx="42" ry="5" fill="#000" opacity="0.55"/>
+
+                    <!-- Tree trunk -->
+                    <path d="M 94 158 Q 97 132 95 112 Q 100 105 105 112 Q 103 132 106 158 Z" fill="url(#lh-trunk)"/>
+
+                    <!-- Canopy: three stacked layers -->
+                    <ellipse cx="100" cy="108" rx="40" ry="30" fill="url(#lh-canopy)"/>
+                    <ellipse cx="100" cy="98"  rx="32" ry="25" fill="url(#lh-canopy)" opacity="0.95"/>
+                    <ellipse cx="100" cy="90"  rx="22" ry="18" fill="url(#lh-canopy)" opacity="0.95"/>
+
+                    <!-- Canopy highlight (sheen) -->
+                    <ellipse cx="92" cy="84" rx="9" ry="5" fill="#ffffff" opacity="0.4"/>
+
+                    <!-- Dangling glowing spore pods -->
+                    <circle cx="78"  cy="116" r="2.5" fill="#a2ff00" filter="url(#lh-glow)">
+                        <animate attributeName="opacity" values="0.6;1;0.6" dur="2.4s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="120" cy="120" r="2.5" fill="#00f2ff" filter="url(#lh-glow)">
+                        <animate attributeName="opacity" values="0.6;1;0.6" dur="2.7s" begin="0.5s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="100" cy="128" r="2"   fill="#ffffff" filter="url(#lh-glow)">
+                        <animate attributeName="opacity" values="0.5;1;0.5" dur="2.1s" begin="1s" repeatCount="indefinite"/>
+                    </circle>
+
+                    <!-- Central crystal core: large glow + bright inner dot -->
+                    <circle cx="100" cy="92" r="9" fill="url(#lh-crystal)" filter="url(#lh-glow)">
+                        <animate attributeName="r" values="8;11;8" dur="1.8s" repeatCount="indefinite"/>
+                    </circle>
+                    <circle cx="100" cy="92" r="3.2" fill="#ffffff">
+                        <animate attributeName="opacity" values="0.85;1;0.85" dur="1.4s" repeatCount="indefinite"/>
+                    </circle>
+
+                    <!-- Three orbiting motes at different radii + speeds -->
+                    <g>
+                        <circle cx="100" cy="22" r="2.8" fill="#00f2ff" filter="url(#lh-glow)"/>
+                        <animateTransform attributeName="transform" type="rotate" from="0 100 100" to="360 100 100" dur="14s" repeatCount="indefinite"/>
+                    </g>
+                    <g>
+                        <circle cx="100" cy="16" r="2.3" fill="#bc00ff" filter="url(#lh-glow)"/>
+                        <animateTransform attributeName="transform" type="rotate" from="120 100 100" to="480 100 100" dur="22s" repeatCount="indefinite"/>
+                    </g>
+                    <g>
+                        <circle cx="100" cy="26" r="2.6" fill="#a2ff00" filter="url(#lh-glow)"/>
+                        <animateTransform attributeName="transform" type="rotate" from="240 100 100" to="-120 100 100" dur="18s" repeatCount="indefinite"/>
+                    </g>
+                </svg>
                 <h1 class="game-title">Lush Harvest</h1>
-                <p class="game-subtitle">Explore a bioluminescent world of wonder</p>
+                <p class="game-subtitle">A bioluminescent journey through endless wonder</p>
             </div>
             
             <div class="menu-actions">
@@ -321,16 +450,99 @@
                     <span class="btn-shine"></span>
                     <span class="btn-text">Start Journey</span>
                 </button>
+                <button id="menu-daily-btn" class="secondary-menu-btn">
+                    <span class="btn-icon">🏅</span> Daily Challenge
+                </button>
+                <div class="menu-row">
+                    <button id="menu-profile-btn" class="secondary-menu-btn">
+                        <span class="btn-icon">👤</span> Profile
+                    </button>
+                    <button id="menu-leaderboard-btn" class="secondary-menu-btn">
+                        <span class="btn-icon">🏆</span> Leaderboard
+                    </button>
+                </div>
                 <button id="menu-settings-toggle" class="secondary-menu-btn">
                     <span class="btn-icon">⚙️</span> Settings
                 </button>
             </div>
             
             <div class="menu-footer-card glass">
-                <div class="version-tag">v2.3 PRODUCTION</div>
+                <div class="version-tag">v3.0 — RADIANT EDITION</div>
                 <div class="creator-info">Created by <span>WarpGamesTV</span></div>
                 <p class="tagline">Crafted with ✨ and 🌿</p>
             </div>
+        </div>
+    </div>
+
+    <div id="profile-panel" class="overlay">
+        <div class="overlay-content glass">
+            <header>
+                <h2>Profile</h2>
+                <button id="close-profile" class="close-btn">&times;</button>
+            </header>
+            <div class="profile-header">
+                <div class="profile-avatar" id="profile-avatar"></div>
+                <div class="profile-identity">
+                    <label class="profile-label">Display Name</label>
+                    <input id="profile-name-input" class="profile-name-input" type="text" maxlength="24" placeholder="Wanderer">
+                    <div class="profile-id-row">
+                        <span class="profile-label">Player ID</span>
+                        <code id="profile-id-display" class="profile-id"></code>
+                        <button id="profile-id-copy" class="profile-mini-btn" title="Copy ID">📋</button>
+                    </div>
+                </div>
+            </div>
+            <div class="profile-section">
+                <div class="profile-section-title">Lifetime Stats</div>
+                <div class="profile-stat-grid" id="profile-stats"></div>
+            </div>
+            <div class="profile-section">
+                <div class="profile-section-title">Achievements</div>
+                <div class="profile-achievement-summary" id="profile-achievement-summary"></div>
+            </div>
+            <div class="profile-section">
+                <div class="profile-section-title">Data Management</div>
+                <div class="profile-data-buttons">
+                    <button id="profile-export" class="upgrade-btn">Copy Save String</button>
+                    <button id="profile-import" class="upgrade-btn">Load Save String</button>
+                </div>
+                <p id="profile-msg" class="profile-msg"></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="leaderboard-panel" class="overlay">
+        <div class="overlay-content glass">
+            <header>
+                <h2>Leaderboard</h2>
+                <button id="close-leaderboard" class="close-btn">&times;</button>
+            </header>
+            <div class="leaderboard-tabs">
+                <button class="lb-tab active" data-tab="run">Run Records</button>
+                <button class="lb-tab" data-tab="daily">Daily Best</button>
+                <button class="lb-tab" data-tab="global">Global</button>
+            </div>
+            <div id="leaderboard-body" class="leaderboard-body"></div>
+        </div>
+    </div>
+
+    <div id="achievements-panel" class="overlay">
+        <div class="overlay-content glass">
+            <header>
+                <h2>Achievements</h2>
+                <button id="close-achievements" class="close-btn">&times;</button>
+            </header>
+            <p style="text-align: center; margin-bottom: 16px; font-size: 0.85rem; color: var(--text-muted);">Earn milestones to claim Motes &amp; Star Fragments.</p>
+            <div class="achievement-list" id="achievement-list"></div>
+        </div>
+    </div>
+
+    <div id="achievement-toast" aria-live="polite">
+        <div class="ach-icon">🏆</div>
+        <div class="ach-text">
+            <div class="ach-label">Achievement Unlocked</div>
+            <div class="ach-name"></div>
+            <div class="ach-reward"></div>
         </div>
     </div>
 
@@ -345,7 +557,7 @@
         </div>
     </div>
     </div>
-    <script src="./src/main.js?v=2.3"></script>
+    <script src="./src/main.js?v=3.7"></script>
 </body>
 
 </html>
