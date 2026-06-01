@@ -1,3 +1,123 @@
+// ============================================================
+// CLOUD CONFIG — fill these in after running SUPABASE_SETUP.md
+// ============================================================
+const SUPABASE_URL      = 'https://athvzdcvaxfevjnagklq.supabase.co'; // e.g. 'https://abcdefg.supabase.co'
+const SUPABASE_ANON_KEY = 'sb_publishable_pIYnEtDM5ffc-mqy97QQQQ_4gyI9SaC'; // anon (public) key from Project Settings → API
+
+const isCloudEnabled = () => Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+const CLOUD_STATE = { online: false, lastSync: 0, lastError: null, pending: false };
+
+async function supaRequest(method, path, body, extraHeaders = {}) {
+    if (!isCloudEnabled()) return null;
+    const headers = {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': method === 'POST' ? 'resolution=merge-duplicates,return=representation' : 'return=minimal',
+        ...extraHeaders
+    };
+    const url = `${SUPABASE_URL}/rest/v1${path}`;
+    const res = await fetch(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined
+    });
+    if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Supabase ${method} ${path} → ${res.status}: ${text.slice(0, 200)}`);
+    }
+    if (method === 'GET') return await res.json();
+    if (headers.Prefer && headers.Prefer.includes('representation')) {
+        const t = await res.text();
+        return t ? JSON.parse(t) : null;
+    }
+    return null;
+}
+
+async function cloudUpsertPlayer() {
+    if (!isCloudEnabled() || !state?.profile?.playerId) return;
+    try {
+        await supaRequest('POST', '/players?on_conflict=id', [{
+            id: state.profile.playerId,
+            name: state.profile.name || 'Wanderer',
+            last_seen: new Date().toISOString()
+        }]);
+        CLOUD_STATE.online = true; CLOUD_STATE.lastError = null;
+    } catch (e) {
+        CLOUD_STATE.online = false; CLOUD_STATE.lastError = e.message;
+        console.warn('[cloud] upsert player failed', e);
+    }
+}
+
+async function cloudPushSave(saveBlob) {
+    if (!isCloudEnabled() || !state?.profile?.playerId || CLOUD_STATE.pending) return;
+    CLOUD_STATE.pending = true;
+    try {
+        await supaRequest('POST', '/saves?on_conflict=player_id', [{
+            player_id: state.profile.playerId,
+            data: saveBlob,
+            updated_at: new Date().toISOString()
+        }]);
+        CLOUD_STATE.online = true; CLOUD_STATE.lastError = null; CLOUD_STATE.lastSync = Date.now();
+    } catch (e) {
+        CLOUD_STATE.online = false; CLOUD_STATE.lastError = e.message;
+        console.warn('[cloud] push save failed', e);
+    } finally {
+        CLOUD_STATE.pending = false;
+    }
+}
+
+async function cloudPullSave() {
+    if (!isCloudEnabled() || !state?.profile?.playerId) return null;
+    try {
+        const rows = await supaRequest('GET', `/saves?player_id=eq.${encodeURIComponent(state.profile.playerId)}&select=data,updated_at`);
+        CLOUD_STATE.online = true; CLOUD_STATE.lastError = null;
+        return rows && rows[0] ? rows[0] : null;
+    } catch (e) {
+        CLOUD_STATE.online = false; CLOUD_STATE.lastError = e.message;
+        console.warn('[cloud] pull save failed', e);
+        return null;
+    }
+}
+
+async function cloudSubmitScore(mode, seed, score, level) {
+    if (!isCloudEnabled() || !state?.profile?.playerId) return;
+    try {
+        await supaRequest('POST', '/scores?on_conflict=player_id,mode,seed', [{
+            player_id: state.profile.playerId,
+            name: state.profile.name || 'Wanderer',
+            mode, seed: seed || '',
+            score: Math.floor(score),
+            level: Math.floor(level || 1)
+        }]);
+        CLOUD_STATE.online = true; CLOUD_STATE.lastError = null;
+    } catch (e) {
+        CLOUD_STATE.online = false; CLOUD_STATE.lastError = e.message;
+        console.warn('[cloud] submit score failed', e);
+    }
+}
+
+async function cloudFetchLeaderboard(mode, seed, limit = 25) {
+    if (!isCloudEnabled()) return null;
+    try {
+        let path = `/scores?mode=eq.${mode}&order=score.desc&limit=${limit}&select=name,score,level,seed,created_at,player_id`;
+        if (seed !== undefined) path += `&seed=eq.${encodeURIComponent(seed)}`;
+        return await supaRequest('GET', path);
+    } catch (e) {
+        CLOUD_STATE.online = false; CLOUD_STATE.lastError = e.message;
+        console.warn('[cloud] fetch leaderboard failed', e);
+        return null;
+    }
+}
+
+// Debounced cloud save trigger (called from local saveGame)
+let _cloudSaveTimer = null;
+function queueCloudSave(saveBlob) {
+    if (!isCloudEnabled()) return;
+    clearTimeout(_cloudSaveTimer);
+    _cloudSaveTimer = setTimeout(() => cloudPushSave(saveBlob), 1500);
+}
+
 // Web Audio API Sound Generation
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
@@ -140,13 +260,19 @@ function startBGM() {
     });
 }
 const astralUpgrades = [
-    { id: 'astral_attunement', name: 'Astral Attunement', description: '+20% base Mote gain', cost: 1, x: 50, y: 20, req: null, icon: '✨' },
-    { id: 'luminous_stride', name: 'Luminous Stride', description: '+15% Move Speed', cost: 2, x: 25, y: 50, req: 'astral_attunement', icon: '👟' },
-    { id: 'celestial_pockets', name: 'Celestial Pockets', description: '+50 Max Pods', cost: 2, x: 50, y: 50, req: 'astral_attunement', icon: '🎒' },
-    { id: 'tether_mastery', name: 'Tether Mastery', description: 'Tethers 25% faster', cost: 3, x: 75, y: 50, req: 'astral_attunement', icon: '🔗' },
-    { id: 'radiant_echo', name: 'Radiant Echo', description: 'Burst triggers twice', cost: 5, x: 25, y: 80, req: 'luminous_stride', icon: '🔊' },
-    { id: 'starlight_harvest', name: 'Starlight Harvest', description: 'Trees regrow +20%', cost: 4, x: 75, y: 80, req: 'tether_mastery', icon: '🌟' },
-    { id: 'void_shield', name: 'Void Shield', description: 'Resist 1 spirit hit', cost: 6, x: 50, y: 80, req: 'celestial_pockets', icon: '🛡️' }
+    { id: 'astral_attunement', name: 'Astral Attunement', description: '+20% base Mote gain', cost: 1, x: 50, y: 12, req: null, icon: '✨' },
+    { id: 'luminous_stride', name: 'Luminous Stride', description: '+15% Move Speed', cost: 2, x: 22, y: 28, req: 'astral_attunement', icon: '👟' },
+    { id: 'celestial_pockets', name: 'Celestial Pockets', description: '+50 Max Pods', cost: 2, x: 50, y: 28, req: 'astral_attunement', icon: '🎒' },
+    { id: 'tether_mastery', name: 'Tether Mastery', description: 'Tethers 25% faster', cost: 3, x: 78, y: 28, req: 'astral_attunement', icon: '🔗' },
+    { id: 'radiant_echo', name: 'Radiant Echo', description: 'Burst triggers twice', cost: 5, x: 22, y: 46, req: 'luminous_stride', icon: '🔊' },
+    { id: 'starlight_harvest', name: 'Starlight Harvest', description: 'Trees regrow +20%', cost: 4, x: 78, y: 46, req: 'tether_mastery', icon: '🌟' },
+    { id: 'void_shield', name: 'Void Shield', description: 'Resist 1 spirit hit', cost: 6, x: 50, y: 46, req: 'celestial_pockets', icon: '🛡️' },
+    // v3.1 Cosmos tier — unlocks after first ascension + all base nodes purchased
+    { id: 'cosmic_bloom',  name: 'Cosmic Bloom',  description: '+50% Mote gain (stacks with Attunement)', cost: 10, x: 22, y: 72, req: 'radiant_echo',       icon: '🌌', tier: 'cosmos' },
+    { id: 'eternal_stride', name: 'Eternal Stride', description: '+30% Move Speed (stacks with Stride)',  cost: 10, x: 22, y: 90, req: 'cosmic_bloom',       icon: '⚡', tier: 'cosmos' },
+    { id: 'phantom_pouch', name: 'Phantom Pouch', description: '+100 Max Pods (stacks with Pockets)',     cost: 12, x: 50, y: 72, req: 'void_shield',        icon: '👻', tier: 'cosmos' },
+    { id: 'star_crucible', name: 'Star Crucible', description: 'Tethers harvest +50%',                    cost: 12, x: 78, y: 72, req: 'starlight_harvest', icon: '🔮', tier: 'cosmos' },
+    { id: 'void_aegis',    name: 'Void Aegis',    description: 'All spirit hits do 60% less damage',      cost: 15, x: 50, y: 90, req: 'phantom_pouch',      icon: '✴️', tier: 'cosmos' }
 ];
 
 // Game State
@@ -175,7 +301,11 @@ let state = {
         showParticles: true,
         screenshake: true,
         reducedMotion: false,
-        colorblind: 'off' // 'off' | 'deuteranopia' | 'protanopia' | 'tritanopia'
+        colorblind: 'off',  // 'off' | 'deuteranopia' | 'protanopia' | 'tritanopia'
+        // v3.1 new settings
+        performanceMode: false, // disables fog, fireflies, trail particles
+        worldEvents: true,      // allow random world events to fire
+        cameraZoom: 1.0         // 0.85 = zoom out, 1.0 = default
     },
     buildMode: { active: false, sourceId: null, targetId: null },
     buffs: {
@@ -241,14 +371,27 @@ let state = {
         { id: 'crit_harvest', name: 'Critical Bloom', description: 'Chance to get double pods', basePrice: 175, priceMult: 1.9, level: 0, effect: (lvl) => Math.min(0.6, lvl * 0.06), currency: 'motes' },
         { id: 'light_weaver', name: 'Light Weaver', description: 'Unlock Light Tethers to automate harvesting', basePrice: 2, priceMult: 1.4, level: 0, effect: (lvl) => lvl, currency: 'starFragments' },
         { id: 'star_blessing', name: 'Stellar Blessing', description: 'Increases all Mote gains', basePrice: 4, priceMult: 1.65, level: 0, effect: (lvl) => 1 + lvl * 0.6, currency: 'starFragments' },
-        { id: 'sentinel', name: 'Void Sentinel', description: 'A defensive orb that dispels spirits attacking tethers.', basePrice: 8, priceMult: 2.1, level: 0, effect: (lvl) => lvl, currency: 'starFragments' }
+        { id: 'sentinel', name: 'Void Sentinel', description: 'A defensive orb that dispels spirits attacking tethers.', basePrice: 8, priceMult: 2.1, level: 0, effect: (lvl) => lvl, currency: 'starFragments' },
+        // v3.1 Active abilities — one-shot unlocks per run (priceMult=1, maxLevel=1)
+        { id: 'ability_dash',  name: 'Luminous Dash',  description: 'Unlock Q — dash forward, stun nearby spirits.',        basePrice: 800,  priceMult: 1, level: 0, effect: (lvl) => lvl, currency: 'motes', maxLevel: 1 },
+        { id: 'ability_pulse', name: 'Chrono-Pulse',   description: 'Unlock E — freeze spirits, boost regrowth nearby.',    basePrice: 1500, priceMult: 1, level: 0, effect: (lvl) => lvl, currency: 'motes', maxLevel: 1 },
+        { id: 'ability_ward',  name: 'Spirit Ward',    description: 'Unlock R — shield all tethers for 12s.',               basePrice: 2500, priceMult: 1, level: 0, effect: (lvl) => lvl, currency: 'motes', maxLevel: 1 }
     ],
     cosmetics: [
-        { id: 'default',   key: 'spark',   name: 'Spark',   icon: '✨', price: 0,    unlocked: true },
-        { id: 'butterfly', key: 'faerie',  name: 'Faerie',  icon: '🦋', price: 1000, unlocked: false },
-        { id: 'fairy',     key: 'sprite',  name: 'Sprite',  icon: '🧚', price: 5000, unlocked: false },
-        { id: 'lantern',   key: 'lantern', name: 'Lantern', icon: '🏮', price: 10, currency: 'starFragments', unlocked: false }
+        { id: 'default',     key: 'spark',         name: 'Spark',         icon: '✨', price: 0,     unlocked: true },
+        { id: 'butterfly',   key: 'faerie',        name: 'Faerie',        icon: '🦋', price: 1000,  unlocked: false },
+        { id: 'fairy',       key: 'sprite',        name: 'Sprite',        icon: '🧚', price: 5000,  unlocked: false },
+        { id: 'lantern',     key: 'lantern',       name: 'Lantern',       icon: '🏮', price: 10,    currency: 'starFragments', unlocked: false },
+        // v3.1 new cosmetics
+        { id: 'wisp',        key: 'orbwisp',       name: 'Orb Wisp',      icon: '🟢', price: 2500,  unlocked: false },
+        { id: 'phoenix',     key: 'phoenix',       name: 'Phoenix',       icon: '🔥', price: 8000,  unlocked: false },
+        { id: 'moth',        key: 'moth',          name: 'Dusk Moth',     icon: '🌙', price: 5,     currency: 'starFragments', unlocked: false },
+        { id: 'lotus',       key: 'lotus',         name: 'Lotus Bloom',   icon: '🪷', price: 12000, unlocked: false },
+        // Boss-locked cosmetics (unlocked by defeating bosses)
+        { id: 'voidcrown',         key: 'voidcrown',         name: 'Voidcrown',         icon: '👑', price: 0, unlocked: false, bossLocked: 'spirit_lord' },
+        { id: 'sovereign_crown',   key: 'sovereign_crown',   name: 'Sovereign Crown',   icon: '👑', price: 0, unlocked: false, bossLocked: 'eclipse_sovereign' }
     ],
+    abilities: { dash: { triggeredAt: 0, cdMs: 12000 }, pulse: { triggeredAt: 0, cdMs: 25000 }, ward: { triggeredAt: 0, cdMs: 30000 } },
     entityMap: {}, // $O(1)$ lookup cache
     activeSpiritType: 'glimmer' // Randomized every 5 levels
 };
@@ -292,7 +435,13 @@ const biomes = {
     7: { name: 'Bioluminescent Depths', bg: '#051b24', bgMid: '#0a3340', accent: '#00f2ff', accent2: '#bc00ff', spiritInterval: 10500, spiritSpeed: 1.25, regrowth: 1.0, bgmFreqs: [98, 146.83, 196], fogColor: 'rgba(0, 242, 255, 0.07)' },
     11: { name: 'Radiant Hollows', bg: '#241a05', bgMid: '#3a2e0a', accent: '#ffd700', accent2: '#ff9d00', spiritInterval: 9000, spiritSpeed: 1.45, regrowth: 1.25, bgmFreqs: [130.81, 196, 261.63], fogColor: 'rgba(255, 215, 0, 0.07)' },
     14: { name: 'Cinder Sanctum', bg: '#240a0a', bgMid: '#3a1414', accent: '#ff007b', accent2: '#ff9d00', spiritInterval: 8000, spiritSpeed: 1.65, regrowth: 0.95, bgmFreqs: [87.31, 130.81, 174.61], fogColor: 'rgba(255, 0, 123, 0.08)' },
-    18: { name: 'The Void', bg: '#070310', bgMid: '#0e0820', accent: '#8a4dff', accent2: '#444444', spiritInterval: 6500, spiritSpeed: 2.0, regrowth: 0.8, bgmFreqs: [82.41, 123.47, 164.81], fogColor: 'rgba(138, 77, 255, 0.1)' }
+    18: { name: 'The Void',            bg: '#070310', bgMid: '#0e0820', accent: '#8a4dff', accent2: '#444444', spiritInterval: 6500, spiritSpeed: 2.0, regrowth: 0.8, bgmFreqs: [82.41, 123.47, 164.81], fogColor: 'rgba(138, 77, 255, 0.1)' },
+    // v3.1 new biomes — extend the world deeper
+    22: { name: 'Frostbloom Tundra',   bg: '#0a1418', bgMid: '#15303a', accent: '#aaeaff', accent2: '#ffffff', spiritInterval: 7500, spiritSpeed: 1.8, regrowth: 0.85, bgmFreqs: [110, 146.83, 220], fogColor: 'rgba(170, 234, 255, 0.08)' },
+    26: { name: 'Crimson Spire',       bg: '#180408', bgMid: '#3a0a14', accent: '#ff3a5a', accent2: '#ff9d00', spiritInterval: 5800, spiritSpeed: 2.1, regrowth: 0.9,  bgmFreqs: [92.5, 138.59, 185], fogColor: 'rgba(255, 58, 90, 0.09)' },
+    30: { name: 'Astral Sanctum',      bg: '#02060e', bgMid: '#0a1430', accent: '#ffd700', accent2: '#00f2ff', spiritInterval: 5000, spiritSpeed: 2.3, regrowth: 1.1,  bgmFreqs: [73.42, 110, 146.83], fogColor: 'rgba(255, 215, 0, 0.10)' },
+    35: { name: 'Mycelial Deep',       bg: '#10081a', bgMid: '#1f0c2e', accent: '#a2ff00', accent2: '#bc00ff', spiritInterval: 4500, spiritSpeed: 2.4, regrowth: 1.0,  bgmFreqs: [98, 130.81, 164.81], fogColor: 'rgba(162, 255, 0, 0.10)' },
+    42: { name: 'The Eternal',         bg: '#000000', bgMid: '#0a0a14', accent: '#ffffff', accent2: '#8a4dff', spiritInterval: 4000, spiritSpeed: 2.6, regrowth: 0.9,  bgmFreqs: [65.41, 98, 130.81], fogColor: 'rgba(255, 255, 255, 0.08)' }
 };
 
 function updateBiome() {
@@ -573,6 +722,14 @@ function advanceLevel() {
     const objective = getLevelObjective(state.level);
     const progress = getObjectiveProgress(objective);
 
+    // Gate: defeat any active boss before continuing
+    if (state.activeBoss) {
+        showAchievementToast({ icon: '⚔️', name: 'Boss Still Active', reward: { motes: 0 } });
+        const t = document.getElementById('achievement-toast');
+        if (t) t.querySelector('.ach-reward').textContent = `Defeat ${state.activeBoss.def.name} first.`;
+        return;
+    }
+
     if (progress >= objective.target) {
         const warp = document.getElementById('warp-overlay');
         const toast = document.getElementById('biome-toast');
@@ -594,6 +751,8 @@ function advanceLevel() {
             // Lifetime: track highest area reached
             state.lifetime.area = Math.max(state.lifetime.area || 0, state.level);
             state.runRecords.highestArea = Math.max(state.runRecords.highestArea || 0, state.level);
+            // Spawn boss for this area if applicable (run loop will see state.activeBoss next tick)
+            // We defer to after world rebuild so the boss spawns into the fresh world
             state.stats.upgradesBoughtThisLevel = 0;
             state.stats.totalPodsHarvested = 0;
 
@@ -603,8 +762,17 @@ function advanceLevel() {
             state.player.y = state.world.height / 2;
 
             state.entities = [];
+            // Clear any boss from previous area
+            if (state.activeBoss && state.activeBoss.el) state.activeBoss.el.remove();
+            if (state.activeBoss && state.activeBoss.telegraphEl) state.activeBoss.telegraphEl.remove();
+            state.activeBoss = null;
+            hideBossHpBar();
             initWorld();
             reconnectTethers();
+            // Spawn boss for the new area
+            spawnBossForArea();
+            // Maybe spawn a hidden secret in the new area
+            maybeSpawnSecret();
 
             // Randomize Spirit Theme every 5 levels
             if (state.level % 5 === 1) {
@@ -747,12 +915,23 @@ function applyRunSnapshot(snap) {
     state.companions.forEach(c => spawnCompanionElement(c));
 }
 
-// Toggle the daily-mode UI banner
+// Toggle the daily-mode UI banner + live score readout
 function updateDailyBanner() {
     const banner = document.getElementById('daily-banner');
     if (!banner) return;
     banner.style.display = state.dailyMode ? 'flex' : 'none';
+    if (!state.dailyMode) return;
+    const seed = getTodaySeed();
+    const best = state.dailyBest?.[seed]?.motes || 0;
+    const cur = Math.floor(state.stats.totalMotesEarned || 0);
+    const textEl = banner.querySelector('.db-text');
+    if (textEl) {
+        const beating = best > 0 && cur > best;
+        textEl.innerHTML = `Daily · <strong>${formatNumber(cur)}</strong>${best > 0 ? ` <span style="opacity:0.6">/ best ${formatNumber(best)}</span>` : ''}${beating ? ' <span style="color: var(--neon-lime); font-weight: 800;">NEW BEST</span>' : ''}`;
+    }
 }
+// Live tick the banner once per second
+setInterval(updateDailyBanner, 1000);
 
 function startDailyChallenge() {
     const seed = getTodaySeed();
@@ -824,6 +1003,8 @@ function recordDailyBest() {
         showAchievementToast({ icon: '🏅', name: 'New Daily Best!', reward: { motes: 0 } });
         const t = document.getElementById('achievement-toast');
         if (t) t.querySelector('.ach-reward').textContent = `${score} motes • Area ${state.level}`;
+        // Push daily score to global leaderboard
+        cloudSubmitScore('daily', String(seed), score, state.level);
         return true;
     }
     return false;
@@ -949,8 +1130,512 @@ function generateUsername() {
     return `${adj} ${noun}`;
 }
 
-state.profile = state.profile || { name: null, playerId: null, joined: null };
+state.profile = state.profile || { name: null, playerId: null, joined: null, title: null };
 state.lifetime = state.lifetime || { runs: 0, ascensions: 0, motes: 0, area: 0, playSec: 0 };
+state.streak = state.streak || { current: 0, longest: 0, lastUTCDay: null, rewardsClaimed: {} };
+
+// ============================================================
+// v3.2 Hidden Secrets — rare world entities with random effects
+// ============================================================
+const SECRET_DEFS = {
+    wandering_sage: {
+        key: 'wandering_sage', icon: '🧙', name: 'Wandering Sage',
+        spawnWeight: 4,
+        onTouch: () => {
+            const choices = [
+                { msg: 'Mote Blessing · 2× motes for 90s', apply: () => { state.boosts.active['sage_motes2x'] = 90; refreshMultipliers(); } },
+                { msg: 'Swift Blessing · +30% speed for 90s', apply: () => { state.boosts.active['sage_speed'] = 90; refreshMultipliers(); } },
+                { msg: 'Harvest Blessing · all trees refilled', apply: () => { state.entities.forEach(e => { if (e.type === 'tree') e.pods = e.subType === 'star-tree' ? 1 : 10; }); } },
+                { msg: 'Spark of Insight · +1 ⭐', apply: () => { state.starFragments += 1; updateHUD(); } }
+            ];
+            const pick = choices[Math.floor(Math.random() * choices.length)];
+            pick.apply();
+            return pick.msg;
+        }
+    },
+    lost_beacon: {
+        key: 'lost_beacon', icon: '🗼', name: 'Lost Beacon',
+        spawnWeight: 3,
+        onTouch: () => {
+            // Auto-tether the nearest unconnected tree to the forge
+            const forge = state.entities.find(e => e.type === 'forge');
+            if (!forge) return 'A beacon stirs… nothing happened.';
+            const connectedIds = new Set(state.tethers.map(t => t.sourceId));
+            let nearest = null, minD = Infinity;
+            for (const e of state.entities) {
+                if (e.type !== 'tree' || e.subType === 'star-tree') continue;
+                if (connectedIds.has(e.id)) continue;
+                const d = Math.hypot(e.x - forge.x, e.y - forge.y);
+                if (d < minD) { minD = d; nearest = e; }
+            }
+            if (!nearest) return 'A beacon stirs… every tree is already tethered.';
+            state.tethers.push({ sourceId: nearest.id, targetId: forge.id, health: 100, maxHealth: 100, fromBeacon: true });
+            state.runRecords.peakTethers = Math.max(state.runRecords.peakTethers || 0, state.tethers.length);
+            renderTethers();
+            return 'A beacon stirs · free tether granted';
+        }
+    },
+    phoenix_nest: {
+        key: 'phoenix_nest', icon: '🪺', name: 'Phoenix Nest',
+        spawnWeight: 2,
+        onTouch: (entity) => {
+            // Big payoff with a danger spike: 3 stars, but spawn 5 spirits
+            state.starFragments += 3;
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    if (typeof spawnVoidSpirit === 'function') spawnVoidSpirit();
+                }, i * 250);
+            }
+            triggerShake();
+            return '+3 ⭐ but the nest awakens — spirits incoming!';
+        }
+    }
+};
+
+function maybeSpawnSecret() {
+    // Roll once per area transition: ~25% chance overall, weighted across the three types
+    if (state.dailyMode) return;             // dailies stay deterministic
+    if (state.level < 3) return;             // give players some experience first
+    if (Math.random() > 0.25) return;
+    // Weighted pick
+    const defs = Object.values(SECRET_DEFS);
+    const totalWeight = defs.reduce((s, d) => s + d.spawnWeight, 0);
+    let r = Math.random() * totalWeight;
+    let pick = defs[0];
+    for (const d of defs) { if ((r -= d.spawnWeight) <= 0) { pick = d; break; } }
+
+    // Find a spawn spot away from the player and forge
+    const centerX = state.world.width / 2;
+    const centerY = state.world.height / 2;
+    let sx, sy, tries = 0;
+    do {
+        sx = Math.random() * (state.world.width - 300) + 150;
+        sy = Math.random() * (state.world.height - 300) + 150;
+        tries++;
+    } while (tries < 20 && (
+        Math.hypot(sx - centerX, sy - centerY) < 300 ||
+        Math.hypot(sx - state.player.x, sy - state.player.y) < 200
+    ));
+
+    const secret = {
+        id: `secret-${pick.key}-${Date.now()}`,
+        x: sx, y: sy,
+        type: 'secret',
+        subType: pick.key,
+        defKey: pick.key
+    };
+    state.entities.push(secret);
+    updateEntityMap();
+    renderEntity(secret);
+}
+
+function tryInteractSecret(entity) {
+    const def = SECRET_DEFS[entity.defKey];
+    if (!def) return;
+    recordCodexEncounter('secrets', def.key);
+    const msg = def.onTouch(entity) || `${def.name} discovered!`;
+    // Discovery toast (reuses achievement-toast styling)
+    showAchievementToast({ icon: def.icon, name: def.name + ' Discovered', reward: { motes: 0 } });
+    const t = document.getElementById('achievement-toast');
+    if (t) {
+        t.querySelector('.ach-label').textContent = 'HIDDEN SECRET';
+        t.querySelector('.ach-reward').textContent = msg;
+        t.style.borderColor = `var(--${CODEX_ENTRIES.secrets.find(s => s.key === def.key)?.color || 'neon-cyan'})`;
+        setTimeout(() => { t.querySelector('.ach-label').textContent = 'Achievement Unlocked'; t.style.borderColor = ''; }, 4500);
+    }
+    playTone(660, 'sine', 0.4, 0.4); playTone(990, 'sine', 0.4, 0.3);
+
+    // Remove the secret entity from world
+    if (entity.el) entity.el.remove();
+    state.entities = state.entities.filter(e => e.id !== entity.id);
+    updateEntityMap();
+    saveGame();
+}
+
+// ============================================================
+// v3.2 Boss Rush — sequential arena, unlocked after defeating Eclipse Sovereign
+// ============================================================
+state.bossRush = state.bossRush || { unlocked: false, bestTimeSec: null, attempts: 0 };
+function bossRushUnlocked() { return !!state.bosses?.defeatedEver?.eclipse_sovereign; }
+function isInBossRush() { return !!state._bossRush; }
+
+function startBossRush() {
+    if (!bossRushUnlocked()) return;
+    if (state.dailyMode) return; // can't start from inside a daily
+
+    // Snapshot main run so we can restore on exit
+    state.runSnapshots.main = captureRunSnapshot();
+    state._bossRush = { startedAt: Date.now(), queue: ['spirit_lord', 'eclipse_sovereign'], current: 0 };
+    state.bossRush.attempts = (state.bossRush.attempts || 0) + 1;
+
+    // Reset run state into an arena: small world, fresh upgrades, no objective
+    state.level = 99;            // sentinel value so objective text reads as 'arena'
+    state.motes = 0;
+    state.pods = 0;
+    state.world = { width: 1600, height: 1600 };
+    state.entities = []; state.tethers = []; state.companions = [];
+    state.voidSpirits.forEach(s => { if (s.el) s.el.remove(); });
+    state.voidSpirits = [];
+    state.upgrades.forEach(u => u.level = 0);
+    state.player.x = 800; state.player.y = 800;
+    state.player.speed = state.upgrades.find(u => u.id === 'speed').effect(0);
+    state.player.maxPods = state.upgrades.find(u => u.id === 'capacity').effect(0);
+    state.camera.x = 0; state.camera.y = 0;
+    state.bosses.defeatedThisRun = {}; // clear so bosses can spawn
+
+    initWorld(); updateWorldColors(); updateHUD(); renderUpgrades();
+    showBiomeToast('BOSS RUSH', 'Defeat them in order');
+    updateBossRushBanner();
+    // Spawn first boss
+    _bossRushSpawnNext();
+    saveGame();
+}
+
+function _bossRushSpawnNext() {
+    const ru = state._bossRush;
+    if (!ru) return;
+    const id = ru.queue[ru.current];
+    if (!id) { _bossRushVictory(); return; }
+    state.level = BOSS_DEFS[id].unlockArea; // makes spawnBossForArea pick the right one
+    spawnBossForArea();
+}
+
+function onBossRushKillNext() {
+    const ru = state._bossRush;
+    if (!ru) return;
+    ru.current += 1;
+    if (ru.current >= ru.queue.length) {
+        _bossRushVictory();
+    } else {
+        setTimeout(() => _bossRushSpawnNext(), 1200);
+    }
+}
+
+function _bossRushVictory() {
+    const ru = state._bossRush;
+    if (!ru) return;
+    const elapsed = Math.round((Date.now() - ru.startedAt) / 1000);
+    const prevBest = state.bossRush.bestTimeSec;
+    const newBest = prevBest == null || elapsed < prevBest;
+    if (newBest) state.bossRush.bestTimeSec = elapsed;
+
+    // Rewards
+    state.starFragments += 25;
+    state.sparks += 5;
+    updateHUD();
+    showAchievementToast({ icon: '👑', name: 'Boss Rush Complete', reward: { motes: 0 } });
+    const t = document.getElementById('achievement-toast');
+    if (t) {
+        t.querySelector('.ach-label').textContent = 'VICTORY';
+        t.querySelector('.ach-reward').textContent = `${formatPlayTime(elapsed)}${newBest ? ' · NEW BEST' : ''} · +25 ⭐ +5 ✨`;
+        t.style.borderColor = 'var(--neon-gold)';
+        setTimeout(() => { t.querySelector('.ach-label').textContent = 'Achievement Unlocked'; t.style.borderColor = ''; }, 5000);
+    }
+
+    // Return to main run
+    state._bossRush = null;
+    updateBossRushBanner();
+    if (state.runSnapshots.main) {
+        applyRunSnapshot(state.runSnapshots.main);
+        updateWorldColors(); updateHUD(); renderUpgrades();
+    }
+    saveGame();
+}
+
+function exitBossRush() {
+    if (!isInBossRush()) return;
+    state._bossRush = null;
+    if (state.activeBoss && state.activeBoss.el) state.activeBoss.el.remove();
+    if (state.activeBoss && state.activeBoss.telegraphEl) state.activeBoss.telegraphEl.remove();
+    state.activeBoss = null;
+    hideBossHpBar();
+    if (state.runSnapshots.main) {
+        applyRunSnapshot(state.runSnapshots.main);
+        updateWorldColors(); updateHUD(); renderUpgrades();
+    }
+    updateBossRushBanner();
+    saveGame();
+}
+
+function updateBossRushBanner() {
+    const banner = document.getElementById('boss-rush-banner');
+    if (!banner) return;
+    if (!isInBossRush()) { banner.style.display = 'none'; return; }
+    banner.style.display = 'flex';
+    const progress = banner.querySelector('.brb-progress');
+    if (progress) progress.textContent = `${state._bossRush.current + 1} / ${state._bossRush.queue.length}`;
+}
+setInterval(updateBossRushBanner, 1000);
+
+// ============================================================
+// v3.2 Spirit Codex — collection panel that fills in as you defeat entities
+// ============================================================
+const CODEX_ENTRIES = {
+    spirits: [
+        { key: 'glimmer', name: 'Glimmer',  icon: '✦', color: 'neon-cyan',   desc: 'Quick and small, drawn to bright light. Dispels in a single hit.', tip: 'Lead them into your burst radius.' },
+        { key: 'creeper', name: 'Creeper',  icon: '◉', color: 'neon-purple', desc: 'Slow and heavy, with eerie patience. Bigger body, harder to dodge.', tip: 'Stuns easily but moves predictably — flank it.' },
+        { key: 'flare',   name: 'Solar Flare', icon: '✸', color: 'neon-orange', desc: 'Periodically pulses a heat wave that slows tree regrowth nearby.', tip: 'Dispel quickly before its pulse hits your sources.' },
+        { key: 'shade',   name: 'Shade',    icon: '✻', color: 'neon-pink',   desc: 'A creature of fragmenting shadow. Splits into two smaller shreds on death.', tip: 'Burst it near a tether for an instant double-clear.' }
+    ],
+    bosses: [
+        { key: 'spirit_lord',       name: 'The Spirit Lord',  icon: '👁️', color: 'neon-pink',   desc: 'Awakens in the depths of Area 10 to test your resolve.', tip: 'Stay outside the telegraph ring during slams.' },
+        { key: 'eclipse_sovereign', name: 'Eclipse Sovereign',icon: '🌑', color: 'neon-gold',   desc: 'Rules the void beyond Area 20. Faster, heavier, more deadly.', tip: 'Bring Spirit Ward and a fleet of sentinels.' }
+    ],
+    secrets: [
+        { key: 'wandering_sage', name: 'Wandering Sage', icon: '🧙', color: 'neon-cyan',   desc: 'A rare traveler who grants a temporary blessing when found.', tip: 'Spawns randomly in worlds — keep your eyes peeled.' },
+        { key: 'lost_beacon',    name: 'Lost Beacon',    icon: '🗼', color: 'neon-lime',   desc: 'A forgotten light that automatically connects to your nearest tree.', tip: 'Free tether — saves you star fragments.' },
+        { key: 'phoenix_nest',   name: 'Phoenix Nest',   icon: '🪺', color: 'neon-gold',   desc: 'A nest of dormant flame. Touching it grants stars but releases a swarm.', tip: 'Make sure your burst is ready before opening it.' }
+    ]
+};
+state.codex = state.codex || { spirits: {}, bosses: {}, secrets: {} };
+
+function recordCodexEncounter(category, key) {
+    if (!state.codex[category]) state.codex[category] = {};
+    const rec = state.codex[category][key] || (state.codex[category][key] = { count: 0, firstSeen: null });
+    rec.count += 1;
+    if (!rec.firstSeen) rec.firstSeen = Date.now();
+}
+
+function renderCodex() {
+    const body = document.getElementById('codex-body');
+    if (!body) return;
+    const sections = [
+        { id: 'spirits', label: 'Void Spirits',  entries: CODEX_ENTRIES.spirits },
+        { id: 'bosses',  label: 'Bosses',        entries: CODEX_ENTRIES.bosses },
+        { id: 'secrets', label: 'Hidden Secrets',entries: CODEX_ENTRIES.secrets }
+    ];
+    body.innerHTML = sections.map(sec => {
+        const cards = sec.entries.map(e => {
+            const rec = state.codex[sec.id]?.[e.key];
+            const unlocked = !!rec;
+            const color = `var(--${e.color})`;
+            const firstSeen = rec?.firstSeen ? new Date(rec.firstSeen).toLocaleDateString() : '—';
+            if (!unlocked) {
+                return `<div class="codex-card locked">
+                    <div class="codex-icon">?</div>
+                    <div class="codex-meta">
+                        <div class="codex-name">???</div>
+                        <div class="codex-desc">Encounter to reveal.</div>
+                    </div>
+                </div>`;
+            }
+            return `<div class="codex-card unlocked" style="border-color: ${color};">
+                <div class="codex-icon" style="color: ${color}; text-shadow: 0 0 10px ${color};">${e.icon}</div>
+                <div class="codex-meta">
+                    <div class="codex-name" style="color: ${color};">${escapeHTML(e.name)}</div>
+                    <div class="codex-desc">${escapeHTML(e.desc)}</div>
+                    <div class="codex-tip"><strong>Tip:</strong> ${escapeHTML(e.tip)}</div>
+                    <div class="codex-stats">Encountered <strong>${rec.count}</strong> ${rec.count === 1 ? 'time' : 'times'} · First seen ${firstSeen}</div>
+                </div>
+            </div>`;
+        }).join('');
+        const unlockedCount = sec.entries.filter(e => state.codex[sec.id]?.[e.key]).length;
+        return `<div class="codex-section">
+            <div class="codex-section-header">
+                <span class="codex-section-title">${sec.label}</span>
+                <span class="codex-section-progress">${unlockedCount} / ${sec.entries.length}</span>
+            </div>
+            <div class="codex-grid">${cards}</div>
+        </div>`;
+    }).join('');
+}
+
+// ============================================================
+// v3.2 Player Titles — flair earned through milestones, displayed in profile + leaderboard
+// ============================================================
+const TITLES = [
+    // id, name, color (CSS var), condition (returns bool)
+    { id: 'wanderer',        name: 'Wanderer',         color: 'text-muted',   check: () => true }, // default
+    { id: 'first_bloom',     name: 'First Bloom',      color: 'neon-lime',    check: () => (state.stats?.totalPodsHarvested || 0) >= 50 || state.achievements?.first_pod?.unlocked },
+    { id: 'voidwalker',      name: 'Voidwalker',       color: 'neon-purple',  check: () => state.bosses?.defeatedEver?.spirit_lord },
+    { id: 'sovereign_slayer',name: 'Sovereign-Slayer', color: 'neon-gold',    check: () => state.bosses?.defeatedEver?.eclipse_sovereign },
+    { id: 'transcendent',    name: 'Transcendent',     color: 'neon-purple',  check: () => (state.lifetime?.ascensions || 0) >= 1 },
+    { id: 'devotee_7',       name: '7-Day Devotee',    color: 'neon-pink',    check: () => (state.streak?.longest || 0) >= 7 },
+    { id: 'devotee_30',      name: '30-Day Devotee',   color: 'neon-gold',    check: () => (state.streak?.longest || 0) >= 30 },
+    { id: 'daily_champ',     name: 'Daily Champion',   color: 'neon-cyan',    check: () => Object.keys(state.dailyBest || {}).length >= 5 },
+    { id: 'pathfinder',      name: 'Pathfinder',       color: 'neon-cyan',    check: () => (state.runRecords?.highestArea || state.lifetime?.area || 0) >= 5 },
+    { id: 'voyager',         name: 'Voyager',          color: 'neon-purple',  check: () => (state.runRecords?.highestArea || state.lifetime?.area || 0) >= 10 },
+    { id: 'eternal_wanderer',name: 'Eternal Wanderer', color: 'neon-gold',    check: () => (state.runRecords?.highestArea || state.lifetime?.area || 0) >= 20 },
+    { id: 'mote_magnate',    name: 'Mote Magnate',     color: 'neon-lime',    check: () => (state.lifetime?.motes || 0) >= 100000 },
+    { id: 'starforged',      name: 'Starforged',       color: 'neon-gold',    check: () => (state.stats?.totalStarsHarvested || 0) >= 25 || state.achievements?.stars_25?.unlocked },
+    { id: 'cosmos_touched',  name: 'Cosmos-Touched',   color: 'neon-gold',    check: () => Object.keys(state.sparkUpgrades || {}).some(k => state.sparkUpgrades[k] > 0 && astralUpgrades.find(u => u.id === k)?.tier === 'cosmos') }
+];
+function isTitleUnlocked(id) {
+    const t = TITLES.find(t => t.id === id);
+    return !!(t && t.check());
+}
+function getEquippedTitle() {
+    const id = state.profile.title || 'wanderer';
+    let t = TITLES.find(t => t.id === id);
+    if (!t || !t.check()) t = TITLES[0]; // fallback to default if condition is no longer met
+    return t;
+}
+function renderTitleHTML(t) {
+    const color = `var(--${t.color})`;
+    return `<span class="player-title" style="color: ${color}; text-shadow: 0 0 6px ${color};">${escapeHTML(t.name)}</span>`;
+}
+
+// ============================================================
+// v3.1 Daily Streak — counts consecutive UTC days the player loaded the game
+// ============================================================
+function dayKey(d = new Date()) {
+    return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+}
+// ============================================================
+// v3.1 In-run stats popover — pods/sec, motes/sec, ETA
+// ============================================================
+state._rateTrack = { motes: 0, pods: 0, lastMotes: 0, lastPods: 0, lastT: Date.now(), motesPerSec: 0, podsPerSec: 0 };
+
+function updateRunStatsRates() {
+    const now = Date.now();
+    const dt = (now - state._rateTrack.lastT) / 1000;
+    if (dt < 0.5) return;
+    const dMotes = state.stats.totalMotesEarned - state._rateTrack.lastMotes;
+    const dPods  = state.stats.totalPodsHarvested - state._rateTrack.lastPods;
+    // Exponential moving average for smoothness
+    const alpha = Math.min(1, dt / 5); // ~5s smoothing
+    state._rateTrack.motesPerSec = state._rateTrack.motesPerSec * (1 - alpha) + (dMotes / dt) * alpha;
+    state._rateTrack.podsPerSec  = state._rateTrack.podsPerSec  * (1 - alpha) + (dPods  / dt) * alpha;
+    state._rateTrack.lastMotes = state.stats.totalMotesEarned;
+    state._rateTrack.lastPods  = state.stats.totalPodsHarvested;
+    state._rateTrack.lastT = now;
+
+    const panel = document.getElementById('run-stats-panel');
+    if (!panel || panel.style.display === 'none') return;
+    const objective = getLevelObjective(state.level);
+    const progress  = getObjectiveProgress(objective);
+    const remaining = Math.max(0, objective.target - progress);
+    let etaStr = '—';
+    if (objective.type === 'collect_motes' && state._rateTrack.motesPerSec > 0.1) {
+        etaStr = formatPlayTime(remaining / state._rateTrack.motesPerSec);
+    } else if (objective.type === 'harvest_pods' && state._rateTrack.podsPerSec > 0.1) {
+        etaStr = formatPlayTime(remaining / state._rateTrack.podsPerSec);
+    } else if (objective.type === 'buy_upgrades') {
+        etaStr = `${objective.target - progress} left`;
+    }
+    panel.querySelector('.rs-motes').textContent = state._rateTrack.motesPerSec.toFixed(1) + '/s';
+    panel.querySelector('.rs-pods').textContent  = state._rateTrack.podsPerSec.toFixed(1) + '/s';
+    panel.querySelector('.rs-eta').textContent   = etaStr;
+}
+setInterval(updateRunStatsRates, 1000);
+
+// ============================================================
+// v3.1 Random World Events — dynamic biome-flavored buffs/debuffs
+// ============================================================
+const WORLD_EVENTS = [
+    { id: 'aurora',   name: 'Aurora Boost',   desc: '2× mote gain for 30s',                        durationMs: 30000, color: 'var(--neon-cyan)', icon: '🌈', biomes: 'any',
+        apply: () => { state.boosts.active['event_motes2x'] = 30; refreshMultipliers(); },
+        clear: () => { delete state.boosts.active['event_motes2x']; refreshMultipliers(); } },
+    { id: 'bloom',    name: 'Verdant Bloom',  desc: 'All trees instantly refill + 2× regrowth 30s', durationMs: 30000, color: 'var(--neon-lime)', icon: '🌿', biomes: 'any',
+        apply: () => {
+            state.entities.forEach(e => { if (e.type === 'tree') { e.pods = (e.subType === 'star-tree') ? 1 : 10; e.boostedUntil = Date.now() + 30000; } });
+        },
+        clear: () => {} },
+    { id: 'moteshower', name: 'Mote Shower',  desc: 'Free motes drift in from the canopy',         durationMs: 20000, color: 'var(--neon-lime)', icon: '💫', biomes: 'any',
+        apply: () => { state._moteShowerUntil = Date.now() + 20000; },
+        clear: () => {} },
+    { id: 'eclipse',  name: 'Void Eclipse',   desc: 'Spirits 3× faster but motes 1.5× this run',   durationMs: 35000, color: 'var(--neon-purple)', icon: '🌑', biomes: 'any',
+        apply: () => {
+            state._eclipseUntil = Date.now() + 35000;
+            state.boosts.active['event_motes15'] = 35;
+            // Drain spirit spawn interval
+            if (state.spiritIntervalId) clearInterval(state.spiritIntervalId);
+            state.spiritIntervalId = setInterval(spawnVoidSpirit, 3500);
+            refreshMultipliers();
+        },
+        clear: () => {
+            delete state.boosts.active['event_motes15'];
+            refreshMultipliers();
+            updateBiome(); // restore normal spawn interval
+        } },
+    { id: 'glimmer',  name: 'Glimmer Tide',   desc: 'Star trees regrow 4× for 45s',                 durationMs: 45000, color: 'var(--neon-gold)', icon: '🌟', biomes: 'any',
+        apply: () => { state._glimmerUntil = Date.now() + 45000; },
+        clear: () => {} }
+];
+
+let _activeEvent = null;
+function pickRandomEvent() {
+    if (_activeEvent) return; // one at a time
+    const choices = WORLD_EVENTS;
+    const ev = choices[Math.floor(Math.random() * choices.length)];
+    triggerWorldEvent(ev);
+}
+function triggerWorldEvent(ev) {
+    _activeEvent = { ev, startedAt: Date.now() };
+    ev.apply();
+    // Announce via achievement toast (reused styling)
+    showAchievementToast({ icon: ev.icon, name: ev.name, reward: { motes: 0 } });
+    const t = document.getElementById('achievement-toast');
+    if (t) {
+        t.querySelector('.ach-label').textContent = 'World Event';
+        t.querySelector('.ach-reward').textContent = ev.desc;
+        t.style.borderColor = ev.color;
+    }
+    setTimeout(() => {
+        const t = document.getElementById('achievement-toast');
+        if (t) { t.querySelector('.ach-label').textContent = 'Achievement Unlocked'; t.style.borderColor = ''; }
+    }, 4500);
+    playTone(440, 'sine', 0.4, 0.3); playTone(660, 'sine', 0.4, 0.3); playTone(880, 'sine', 0.4, 0.4);
+    setTimeout(() => {
+        ev.clear();
+        _activeEvent = null;
+    }, ev.durationMs);
+}
+
+// Event picker — runs every 90-150s, 60% chance to fire
+function _scheduleNextEvent() {
+    const delay = 90000 + Math.random() * 60000;
+    setTimeout(() => {
+        if (Math.random() < 0.6 && state.level >= 2 && !state.dailyMode && state.settings.worldEvents !== false) {
+            pickRandomEvent();
+        }
+        _scheduleNextEvent();
+    }, delay);
+}
+_scheduleNextEvent();
+
+// Mote shower tick — sprinkle motes randomly
+setInterval(() => {
+    if (!state._moteShowerUntil || Date.now() > state._moteShowerUntil) return;
+    const gain = 5 + Math.random() * 10;
+    state.motes += gain;
+    state.stats.totalMotesEarned += gain;
+    state.lifetime.motes = (state.lifetime.motes || 0) + gain;
+    // Visual: floating number near player
+    showFloatingNumber(state.player.x + (Math.random() - 0.5) * 100, state.player.y - 40, `+${Math.floor(gain)} motes`, { color: 'var(--neon-lime)' });
+    updateHUD();
+}, 1200);
+
+// Star tree boost during Glimmer Tide
+const _origGlimmerCheck = () => state._glimmerUntil && Date.now() < state._glimmerUntil;
+window.isGlimmerActive = _origGlimmerCheck;
+
+function tickDailyStreak() {
+    const today = dayKey();
+    const last = state.streak.lastUTCDay;
+    if (last === today) return; // already counted today
+    const yesterday = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 1); return dayKey(d); })();
+    if (last === yesterday) {
+        state.streak.current = (state.streak.current || 0) + 1;
+    } else if (last == null) {
+        state.streak.current = 1; // first ever day
+    } else {
+        state.streak.current = 1; // missed a day → reset
+    }
+    state.streak.longest = Math.max(state.streak.longest || 0, state.streak.current);
+    state.streak.lastUTCDay = today;
+
+    // Reward thresholds: 3, 7, 14, 30 day streaks award sparks
+    const REWARDS = { 3: { sparks: 1 }, 7: { sparks: 3 }, 14: { sparks: 8 }, 30: { sparks: 20 } };
+    const r = REWARDS[state.streak.current];
+    if (r && !state.streak.rewardsClaimed[state.streak.current]) {
+        state.streak.rewardsClaimed[state.streak.current] = true;
+        state.sparks += r.sparks;
+        showAchievementToast({ icon: '🔥', name: `${state.streak.current}-Day Streak!`, reward: { motes: 0 } });
+        const t = document.getElementById('achievement-toast');
+        if (t) t.querySelector('.ach-reward').textContent = `+${r.sparks} Eternal Sparks`;
+    }
+}
 
 function ensureProfileInitialized() {
     if (!state.profile.playerId) state.profile.playerId = generatePlayerId();
@@ -993,19 +1678,60 @@ function renderProfile() {
     const idDisplay = document.getElementById('profile-id-display');
     if (idDisplay) idDisplay.textContent = state.profile.playerId;
 
+    // Equipped title display
+    const titleDisplay = document.getElementById('profile-title-display');
+    if (titleDisplay) {
+        const t = getEquippedTitle();
+        titleDisplay.innerHTML = renderTitleHTML(t);
+    }
+
+    // Titles section — render all titles, locked/unlocked/equipped
+    const titlesGrid = document.getElementById('profile-titles');
+    if (titlesGrid) {
+        const equippedId = (getEquippedTitle().id);
+        titlesGrid.innerHTML = TITLES.map(t => {
+            const unlocked = !!t.check();
+            const equipped = equippedId === t.id;
+            const color = `var(--${t.color})`;
+            return `<button class="title-chip ${unlocked ? 'unlocked' : 'locked'} ${equipped ? 'equipped' : ''}"
+                ${unlocked ? `data-title-id="${t.id}"` : 'disabled'}
+                style="${unlocked ? `color: ${color}; border-color: ${color};` : ''}">
+                ${escapeHTML(t.name)}${equipped ? ' <span class="title-tag">★</span>' : ''}
+            </button>`;
+        }).join('');
+    }
+
+    // Cloud sync indicator
+    const cloudIndicator = document.getElementById('profile-cloud-status');
+    if (cloudIndicator) {
+        if (!isCloudEnabled()) {
+            cloudIndicator.className = 'profile-cloud off';
+            cloudIndicator.innerHTML = `<span class="dot"></span> Cloud Sync · Not Configured`;
+        } else if (CLOUD_STATE.online) {
+            const ago = CLOUD_STATE.lastSync ? Math.floor((Date.now() - CLOUD_STATE.lastSync) / 1000) : null;
+            cloudIndicator.className = 'profile-cloud online';
+            cloudIndicator.innerHTML = `<span class="dot"></span> Cloud Sync · Connected${ago != null ? ` · last ${ago}s ago` : ''}`;
+        } else {
+            cloudIndicator.className = 'profile-cloud error';
+            cloudIndicator.innerHTML = `<span class="dot"></span> Cloud Sync · Error <span class="cloud-err">${escapeHTML(CLOUD_STATE.lastError || 'offline')}</span>`;
+        }
+    }
+
     // Lifetime stats grid
     const grid = document.getElementById('profile-stats');
     if (grid) {
         const lt = state.lifetime;
         const highestArea = Math.max(lt.area || 0, state.level || 1);
         const joined = state.profile.joined ? new Date(state.profile.joined).toLocaleDateString() : '—';
+        const streakStr = `${state.streak?.current || 0}🔥${state.streak?.longest ? ` (best ${state.streak.longest})` : ''}`;
         const stats = [
-            { label: 'Runs',         value: lt.runs || 0 },
-            { label: 'Ascensions',   value: lt.ascensions || 0 },
-            { label: 'Highest Area', value: highestArea },
+            { label: 'Runs',           value: lt.runs || 0 },
+            { label: 'Ascensions',     value: lt.ascensions || 0 },
+            { label: 'Highest Area',   value: highestArea },
             { label: 'Lifetime Motes', value: formatNumber(lt.motes || 0) },
-            { label: 'Play Time',    value: formatPlayTime(lt.playSec || 0) },
-            { label: 'Joined',       value: joined }
+            { label: 'Play Time',      value: formatPlayTime(lt.playSec || 0) },
+            { label: 'Daily Streak',   value: streakStr },
+            { label: 'Joined',         value: joined }
         ];
         grid.innerHTML = stats.map(s => `
             <div class="profile-stat">
@@ -1091,13 +1817,67 @@ function renderLeaderboard() {
         return;
     }
     if (activeLeaderboardTab === 'global') {
-        body.innerHTML = `
-            <div class="lb-coming-soon">
-                <div class="lb-icon">🌐</div>
-                <h3>Global Leaderboard — Coming Soon</h3>
-                <p>Compete against players worldwide once cloud sync ships. Your Player ID in <strong>Profile</strong> will identify your submissions.</p>
-            </div>`;
+        if (!isCloudEnabled()) {
+            body.innerHTML = `
+                <div class="lb-coming-soon">
+                    <div class="lb-icon">🌐</div>
+                    <h3>Global Leaderboard — Not Configured</h3>
+                    <p>Follow <code>SUPABASE_SETUP.md</code> in the project root and paste your <strong>Project URL + anon key</strong> into the <code>CLOUD CONFIG</code> block at the top of <code>src/main.js</code>. The Global tab will light up automatically.</p>
+                </div>`;
+            return;
+        }
+        // Loading state
+        body.innerHTML = `<div class="lb-empty"><div class="lb-icon">🌐</div><div>Loading global rankings…</div></div>`;
+        // Sub-tabs: All-time Runs vs Today's Daily
+        const renderRows = (rows, mode) => {
+            if (!rows || rows.length === 0) {
+                body.innerHTML = `
+                    <div class="lb-sub-tabs"><button class="lb-sub active" data-sub="run">Top Runs</button><button class="lb-sub" data-sub="daily">Today's Daily</button></div>
+                    <div class="lb-empty">
+                        <div class="lb-icon">🌐</div>
+                        <div>No global scores yet on ${mode === 'run' ? 'all-time' : 'today\'s seed'}.</div>
+                        <div style="margin-top: 8px; font-size: 0.82rem;">Ascend (or finish a daily) to be the first.</div>
+                    </div>`;
+                wireSubTabs();
+                return;
+            }
+            const myId = state.profile.playerId;
+            body.innerHTML = `
+                <div class="lb-sub-tabs">
+                    <button class="lb-sub ${mode === 'run' ? 'active' : ''}"   data-sub="run">Top Runs</button>
+                    <button class="lb-sub ${mode === 'daily' ? 'active' : ''}" data-sub="daily">Today's Daily</button>
+                </div>` +
+                rows.map((row, i) => {
+                    const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+                    const isMe = row.player_id === myId;
+                    // If row has a title field, render it; otherwise just show name
+                    const titleStr = row.title ? `<div class="lb-title">${escapeHTML(row.title)}</div>` : '';
+                    return `
+                        <div class="lb-row ${isMe ? 'is-me' : ''}">
+                            <div class="lb-rank ${rankClass}">${i + 1}</div>
+                            <div class="lb-name">${escapeHTML(row.name)}${isMe ? ' <span class="lb-you">YOU</span>' : ''}${titleStr}<div class="lb-meta">Area ${row.level}${row.seed ? ` • Seed #${row.seed}` : ''}</div></div>
+                            <div class="lb-score">${formatNumber(row.score)} motes</div>
+                        </div>`;
+                }).join('');
+            wireSubTabs();
+        };
+        const wireSubTabs = () => {
+            document.querySelectorAll('.lb-sub').forEach(b => {
+                b.onclick = () => {
+                    const sub = b.dataset.sub;
+                    body.innerHTML = `<div class="lb-empty"><div class="lb-icon">🌐</div><div>Loading…</div></div>`;
+                    const seed = sub === 'daily' ? String(getTodaySeed()) : '';
+                    cloudFetchLeaderboard(sub, seed).then(rows => renderRows(rows, sub));
+                };
+            });
+        };
+        // Default: top runs
+        cloudFetchLeaderboard('run', '').then(rows => renderRows(rows, 'run'));
     }
+}
+
+function escapeHTML(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 function notifyAchievementProgress(_event, _value) {
@@ -1181,9 +1961,14 @@ function renderAchievements() {
 function applyAccessibility() {
     const body = document.body;
     body.classList.toggle('reduced-motion', !!state.settings.reducedMotion);
+    body.classList.toggle('performance-mode', !!state.settings.performanceMode);
     body.classList.remove('cb-deuteranopia', 'cb-protanopia', 'cb-tritanopia');
     const cb = state.settings.colorblind;
     if (cb && cb !== 'off') body.classList.add(`cb-${cb}`);
+    // Camera zoom — apply to game world scale
+    const z = state.settings.cameraZoom || 1;
+    const world = document.getElementById('game-world');
+    if (world) world.style.setProperty('--world-scale', z);
 }
 
 // v3.0: Floating gain numbers (anchored in game-world coordinates)
@@ -1312,6 +2097,79 @@ const SPRITE_TEMPLATES = {
             </div>
             <div class="lantern-base"></div>
             <div class="lantern-tassel"></div>
+        </div>`,
+    // v3.1 new cosmetics
+    orbwisp: `
+        <div class="sprite-art sprite-orbwisp">
+            <div class="ow-glow"></div>
+            <div class="ow-tail t3"></div>
+            <div class="ow-tail t2"></div>
+            <div class="ow-tail t1"></div>
+            <div class="ow-orb"></div>
+            <div class="ow-core"></div>
+        </div>`,
+    phoenix: `
+        <div class="sprite-art sprite-phoenix">
+            <div class="ph-glow"></div>
+            <div class="ph-wing left"></div>
+            <div class="ph-wing right"></div>
+            <div class="ph-body"></div>
+            <div class="ph-tail t1"></div>
+            <div class="ph-tail t2"></div>
+            <div class="ph-tail t3"></div>
+            <div class="ph-eye"></div>
+        </div>`,
+    moth: `
+        <div class="sprite-art sprite-moth">
+            <div class="mt-glow"></div>
+            <div class="mt-wing-upper left"></div>
+            <div class="mt-wing-upper right"></div>
+            <div class="mt-wing-lower left"></div>
+            <div class="mt-wing-lower right"></div>
+            <div class="mt-eye left"></div>
+            <div class="mt-eye right"></div>
+            <div class="mt-body"></div>
+            <div class="mt-antenna left"></div>
+            <div class="mt-antenna right"></div>
+        </div>`,
+    lotus: `
+        <div class="sprite-art sprite-lotus">
+            <div class="lt-glow"></div>
+            <div class="lt-petal p1"></div>
+            <div class="lt-petal p2"></div>
+            <div class="lt-petal p3"></div>
+            <div class="lt-petal p4"></div>
+            <div class="lt-petal p5"></div>
+            <div class="lt-inner i1"></div>
+            <div class="lt-inner i2"></div>
+            <div class="lt-inner i3"></div>
+            <div class="lt-core"></div>
+        </div>`,
+    voidcrown: `
+        <div class="sprite-art sprite-voidcrown">
+            <div class="vc-glow"></div>
+            <div class="vc-band"></div>
+            <div class="vc-spike s1"></div>
+            <div class="vc-spike s2"></div>
+            <div class="vc-spike s3"></div>
+            <div class="vc-spike s4"></div>
+            <div class="vc-spike s5"></div>
+            <div class="vc-gem"></div>
+            <div class="vc-rune"></div>
+        </div>`,
+    sovereign_crown: `
+        <div class="sprite-art sprite-sovereign">
+            <div class="sc-glow"></div>
+            <div class="sc-band"></div>
+            <div class="sc-spike s1"></div>
+            <div class="sc-spike s2"></div>
+            <div class="sc-spike s3"></div>
+            <div class="sc-spike s4"></div>
+            <div class="sc-spike s5"></div>
+            <div class="sc-gem g1"></div>
+            <div class="sc-gem g2"></div>
+            <div class="sc-gem g3"></div>
+            <div class="sc-core"></div>
         </div>`
 };
 
@@ -1385,6 +2243,15 @@ function renderEntity(entity) {
         } else {
             el.innerHTML = `<div class="vine-leaf v1"></div><div class="vine-leaf v2"></div><div class="vine-leaf v3"></div>`;
         }
+    } else if (entity.type === 'secret') {
+        const def = SECRET_DEFS[entity.defKey];
+        el.className = `secret secret-${entity.defKey}`;
+        el.style.left = `${entity.x - 30}px`;
+        el.style.top  = `${entity.y - 30}px`;
+        el.innerHTML = `
+            <div class="secret-aura"></div>
+            <div class="secret-ring"></div>
+            <div class="secret-icon">${def?.icon || '?'}</div>`;
     } else {
         // Forge: multi-ring rotating core with pulse aura and label
         el.innerHTML = `
@@ -1460,6 +2327,11 @@ function handleKeyDown(e) {
     if (e.key === ' ' || e.key === 'Enter') {
         triggerBurst();
     }
+    // v3.1 Active abilities
+    const k = e.key.toLowerCase();
+    if (k === 'q') triggerAbility('dash');
+    if (k === 'e') triggerAbility('pulse');
+    if (k === 'r') triggerAbility('ward');
 }
 function handleKeyUp(e) { if (state.keys.hasOwnProperty(e.key)) state.keys[e.key] = false; }
 
@@ -1518,7 +2390,8 @@ function update() {
     state.camera.y += (centerY - state.player.y - state.camera.y) * state.camera.lerp;
 
     playerEl.style.transform = `translate(${state.player.x - 20}px, ${state.player.y - 20}px)`;
-    gameWorld.style.transform = `translate(${state.camera.x}px, ${state.camera.y}px)`;
+    const zoom = state.settings.cameraZoom || 1;
+    gameWorld.style.transform = `translate(${state.camera.x}px, ${state.camera.y}px) scale(${zoom})`;
 
     // v3.0: Render layered cosmetic sprite (replaces emoji textContent swap)
     renderPlayerSprite();
@@ -1530,11 +2403,13 @@ function update() {
     updateSpirits();
     updateRemnants();
     updateCompanions();
+    updateBoss();
 
     if (state.burst.cooldown > 0) {
         state.burst.cooldown--;
         updateBurstUI();
     }
+    updateAbilityButtons();
 
     updateCombo();
     updatePlayerGlow();
@@ -1637,11 +2512,15 @@ function checkInteractions() {
                 // Fix: Separate star tree regrowth from normal pods
                 if (entity.subType === 'star-tree') {
                     // Star fragments regrow much slower and aren't tied to normal regrowth rate
-                    entity.pods = Math.min(maxCapacity, entity.pods + 0.0001 * regrowthBonus);
+                    const glimmer = (state._glimmerUntil && Date.now() < state._glimmerUntil) ? 4 : 1;
+                    entity.pods = Math.min(maxCapacity, entity.pods + 0.0001 * regrowthBonus * glimmer);
                 } else {
                     let rate = regrowthRate * regrowthBonus * biome.regrowth;
                     if (entity.slowedUntil && Date.now() < entity.slowedUntil) {
-                        rate *= 0.2; // 80% slower when pulsed by Solar Flare
+                        rate *= 0.2; // Solar Flare slow
+                    }
+                    if (entity.boostedUntil && Date.now() < entity.boostedUntil) {
+                        rate *= 3.5; // Chrono-Pulse boost
                     }
                     entity.pods = Math.min(maxCapacity, entity.pods + rate);
                 }
@@ -1704,7 +2583,7 @@ function checkInteractions() {
                     const sellAmount = Math.min(forgeSellRate, state.pods);
                     const moteMultiplier = state.upgrades.find(u => u.id === 'star_blessing').effect(state.upgrades.find(u => u.id === 'star_blessing').level);
                     const buffMulti = state.buffs.active ? 2 : 1;
-                    const sparkMulti = 1 + (state.sparks * 0.1) + (state.sparkUpgrades.astral_attunement ? 0.2 : 0);
+                    const sparkMulti = 1 + (state.sparks * 0.1) + (state.sparkUpgrades.astral_attunement ? 0.2 : 0) + (state.sparkUpgrades.cosmic_bloom ? 0.5 : 0);
 
                     state.pods -= sellAmount;
                     const gained = sellAmount * moteMultiplier * buffMulti * sparkMulti * state.boosts.moteMultiplier;
@@ -1731,6 +2610,10 @@ function checkInteractions() {
                 }
             } else {
                 el.style.filter = ''; el.style.transform = `scale(1)`;
+            }
+        } else if (entity.type === 'secret') {
+            if (dist < 60) {
+                tryInteractSecret(entity);
             }
         } else if (entity.type === 'shrine') {
             if (dist < 80) {
@@ -1900,8 +2783,8 @@ function tetherHarvest() {
     let totalHarvested = 0;
     const moteMultiplier = state.upgrades.find(u => u.id === 'star_blessing').effect(state.upgrades.find(u => u.id === 'star_blessing').level);
     const buffMulti = state.buffs.active ? 2 : 1;
-    const sparkMulti = 1 + (state.sparks * 0.1) + (state.sparkUpgrades.astral_attunement ? 0.2 : 0);
-    const tetherBonus = 1 + (state.sparkUpgrades.tether_mastery ? 0.25 : 0);
+    const sparkMulti = 1 + (state.sparks * 0.1) + (state.sparkUpgrades.astral_attunement ? 0.2 : 0) + (state.sparkUpgrades.cosmic_bloom ? 0.5 : 0);
+    const tetherBonus = 1 + (state.sparkUpgrades.tether_mastery ? 0.25 : 0) + (state.sparkUpgrades.star_crucible ? 0.5 : 0);
 
     state.tethers.forEach(t => {
         const src = state.entityMap[t.sourceId];
@@ -2073,6 +2956,11 @@ function renderUpgrades() {
                 btnText = "Tether Limit Reached";
             }
         }
+        // v3.1 maxLevel cap (active abilities are 0/1 unlocks)
+        if (upgrade.maxLevel && upgrade.level >= upgrade.maxLevel) {
+            isLimitReached = true;
+            btnText = 'Unlocked';
+        }
 
         // v3.0: next-level effect preview (tooltip-style line under description)
         let nextLine = '';
@@ -2116,8 +3004,9 @@ function buyUpgrade(id) {
 }
 
 function applyUpgradeEffects(upgrade) {
-    const speedBonus = 1 + (state.sparkUpgrades.luminous_stride ? 0.15 : 0);
-    const capBonus = state.sparkUpgrades.celestial_pockets ? 50 : 0;
+    // v3.1 Cosmos tier stacks on top of base astral bonuses
+    const speedBonus = 1 + (state.sparkUpgrades.luminous_stride ? 0.15 : 0) + (state.sparkUpgrades.eternal_stride ? 0.30 : 0);
+    const capBonus   = (state.sparkUpgrades.celestial_pockets ? 50 : 0) + (state.sparkUpgrades.phantom_pouch ? 100 : 0);
 
     if (upgrade.id === 'speed') state.player.speed = upgrade.effect(upgrade.level) * speedBonus;
     else if (upgrade.id === 'capacity') state.player.maxPods = upgrade.effect(upgrade.level) + capBonus;
@@ -2146,6 +3035,15 @@ function renderCosmetics() {
                 ${preview}
                 <h3>${cosmetic.name}</h3>
                 <button class="upgrade-btn cosmetic-btn" data-id="${cosmetic.id}" ${isEquipped ? 'disabled' : ''}>${isEquipped ? 'Equipped' : 'Equip'}</button>
+            `;
+        } else if (cosmetic.bossLocked) {
+            // Boss-locked cosmetic — show the boss name as the requirement
+            const bossDef = BOSS_DEFS[cosmetic.bossLocked];
+            const bossName = bossDef ? bossDef.name : 'a boss';
+            card.innerHTML = `
+                <div class="cosmetic-preview locked">${SPRITE_TEMPLATES[cosmetic.key] || cosmetic.icon}</div>
+                <h3>${cosmetic.name}</h3>
+                <button class="upgrade-btn cosmetic-btn" disabled style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,0,123,0.4); color: var(--neon-pink);">Defeat ${bossName}</button>
             `;
         } else {
             card.innerHTML = `
@@ -2189,6 +3087,11 @@ function calculateSparksReward() {
 }
 
 function handleAscend() {
+    // Submit run score to global leaderboard BEFORE state mutations
+    const finalMotes = state.stats.totalMotesEarned;
+    const finalLevel = state.level;
+    if (!state.dailyMode) cloudSubmitScore('run', '', finalMotes, finalLevel);
+
     if (state.dailyMode) endDailyChallenge();
     const reward = calculateSparksReward();
     state.sparks += reward;
@@ -2215,14 +3118,18 @@ function openAstralForge() {
 
 function renderAstralTree() {
     astralTree.innerHTML = '';
+    // Cosmos nodes also require ≥1 ascension OR any prior cosmos node already purchased
+    const cosmosUnlocked = (state.lifetime?.ascensions || 0) >= 1;
+
     astralUpgrades.forEach(upg => {
         const level = state.sparkUpgrades[upg.id] || 0;
         const isPurchased = level > 0;
-        const isAvailable = !isPurchased && (!upg.req || state.sparkUpgrades[upg.req] > 0);
+        let isAvailable = !isPurchased && (!upg.req || state.sparkUpgrades[upg.req] > 0);
+        if (upg.tier === 'cosmos' && !cosmosUnlocked) isAvailable = false;
         const isLocked = !isPurchased && !isAvailable;
 
         const node = document.createElement('div');
-        node.className = `astral-node ${isPurchased ? 'purchased' : (isAvailable ? 'available' : 'locked')}`;
+        node.className = `astral-node ${isPurchased ? 'purchased' : (isAvailable ? 'available' : 'locked')}${upg.tier === 'cosmos' ? ' cosmos' : ''}`;
         node.style.position = 'absolute';
         node.style.left = `${upg.x}%`;
         node.style.top = `${upg.y}%`;
@@ -2253,6 +3160,12 @@ function renderAstralTree() {
 function beginJourney() {
     // Lifetime: count this as a new run
     state.lifetime.runs = (state.lifetime.runs || 0) + 1;
+    // Reset boss defeats for this run; clear any active boss DOM
+    state.bosses.defeatedThisRun = {};
+    if (state.activeBoss && state.activeBoss.el) state.activeBoss.el.remove();
+    if (state.activeBoss && state.activeBoss.telegraphEl) state.activeBoss.telegraphEl.remove();
+    state.activeBoss = null;
+    hideBossHpBar();
     // Reset Game
     state.level = 1;
     state.motes = 0;
@@ -2348,6 +3261,10 @@ function saveGame() {
             sparkUpgrades: state.sparkUpgrades,
             achievements: state.achievements,
             dailyBest: state.dailyBest,
+            streak: state.streak,
+            bosses: state.bosses,
+            codex: state.codex,
+            bossRush: state.bossRush,
             profile: state.profile,
             lifetime: state.lifetime,
             runRecords: state.runRecords,
@@ -2370,6 +3287,9 @@ function saveGame() {
 
         localStorage.setItem('lushHarvestSave', json);
         console.log(`Save Successful! Size: ${json.length} chars. Motes: ${saveData.motes}`);
+
+        // Cloud mirror (debounced, fire-and-forget — local save is the source of truth)
+        queueCloudSave(saveData);
     } catch (e) {
         console.error("CRITICAL SAVE ERROR:", e);
     }
@@ -2440,6 +3360,10 @@ function loadGame() {
         }
         if (parsed.achievements) state.achievements = parsed.achievements;
         if (parsed.dailyBest)    state.dailyBest    = parsed.dailyBest;
+        if (parsed.streak)       state.streak       = { ...state.streak, ...parsed.streak };
+        if (parsed.bosses)       state.bosses       = { ...state.bosses, ...parsed.bosses };
+        if (parsed.codex)        state.codex        = { spirits: {}, bosses: {}, secrets: {}, ...parsed.codex };
+        if (parsed.bossRush)     state.bossRush     = { ...state.bossRush, ...parsed.bossRush };
         if (parsed.profile)      state.profile      = { ...state.profile, ...parsed.profile };
         if (parsed.lifetime)     state.lifetime     = { ...state.lifetime, ...parsed.lifetime };
         if (parsed.runRecords)   state.runRecords   = { ...state.runRecords, ...parsed.runRecords };
@@ -2632,6 +3556,16 @@ if (profileNameInput) {
         nameDebounce = setTimeout(saveGame, 400);
     });
 }
+// v3.2 Title chip click → equip
+document.addEventListener('click', (e) => {
+    const chip = e.target.closest('.title-chip[data-title-id]');
+    if (!chip) return;
+    const id = chip.dataset.titleId;
+    if (!isTitleUnlocked(id)) return;
+    state.profile.title = id;
+    renderProfile();
+    saveGame();
+});
 const profileIdCopy = document.getElementById('profile-id-copy');
 if (profileIdCopy) {
     profileIdCopy.addEventListener('click', () => {
@@ -2689,6 +3623,185 @@ if (achievementList) {
 }
 // Run a progress scan periodically so passive milestones (tethers, level, sparks) tick over
 setInterval(notifyAchievementProgress, 2000);
+
+// ============================================================
+// v3.2 Patch-notes callout — show a small banner on first load after a version bump
+// ============================================================
+const CURRENT_VERSION = '3.2.0'; // bump when releasing a new changelog entry
+function checkPatchNotesCallout() {
+    const seen = localStorage.getItem('lushHarvest:seenVersion');
+    if (seen === CURRENT_VERSION) return;
+    const callout = document.getElementById('patch-callout');
+    if (!callout) return;
+    callout.querySelector('.pc-version').textContent = `v${CURRENT_VERSION}`;
+    callout.classList.add('show');
+}
+function dismissPatchCallout(opts = {}) {
+    const callout = document.getElementById('patch-callout');
+    if (callout) callout.classList.remove('show');
+    localStorage.setItem('lushHarvest:seenVersion', CURRENT_VERSION);
+    if (opts.openChangelog) openChangelog();
+}
+
+// v3.1 Changelog viewer — fetches changelog.md and renders a small subset of markdown
+let _changelogLoaded = false;
+async function openChangelog() {
+    const panel = document.getElementById('changelog-panel');
+    const body  = document.getElementById('changelog-body');
+    if (!panel || !body) return;
+    panel.classList.add('active');
+    if (_changelogLoaded) return;
+    try {
+        const res = await fetch('./changelog.md?t=' + Date.now());
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const md = await res.text();
+        body.innerHTML = renderChangelogMarkdown(md);
+        _changelogLoaded = true;
+    } catch (e) {
+        body.innerHTML = `<div class="changelog-error">Could not load changelog: ${escapeHTML(e.message)}</div>`;
+    }
+}
+
+function renderChangelogMarkdown(md) {
+    // Escape any raw HTML first
+    let safe = md.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    // Code spans
+    safe = safe.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // Bold
+    safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    // Italics (single _ or *)
+    safe = safe.replace(/(^|[^*])\*([^*\n]+)\*([^*]|$)/g, '$1<em>$2</em>$3');
+    // Links [text](url)
+    safe = safe.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    // Process line-by-line for headings, lists, hr, paragraphs
+    const lines = safe.split('\n');
+    const out = [];
+    let inList = false;
+    const closeList = () => { if (inList) { out.push('</ul>'); inList = false; } };
+
+    for (let i = 0; i < lines.length; i++) {
+        const ln = lines[i];
+        if (/^---+\s*$/.test(ln)) { closeList(); out.push('<hr>'); continue; }
+        let m;
+        if ((m = ln.match(/^#\s+(.+)$/)))        { closeList(); out.push(`<h1>${m[1]}</h1>`); continue; }
+        if ((m = ln.match(/^##\s+(.+)$/)))       { closeList(); out.push(`<h2>${m[1]}</h2>`); continue; }
+        if ((m = ln.match(/^###\s+(.+)$/)))      { closeList(); out.push(`<h3>${m[1]}</h3>`); continue; }
+        if ((m = ln.match(/^####\s+(.+)$/)))     { closeList(); out.push(`<h4>${m[1]}</h4>`); continue; }
+        if ((m = ln.match(/^[\-\*]\s+(.+)$/)))   { if (!inList) { out.push('<ul>'); inList = true; } out.push(`<li>${m[1]}</li>`); continue; }
+        if (ln.trim() === '')                    { closeList(); continue; }
+        // Italic asterisk credit line
+        closeList();
+        out.push(`<p>${ln}</p>`);
+    }
+    closeList();
+    return out.join('\n');
+}
+
+// v3.2 Photo Mode buttons
+const photoToggle = document.getElementById('photo-toggle');
+if (photoToggle) photoToggle.addEventListener('click', togglePhotoMode);
+const photoExit = document.getElementById('photo-exit');
+if (photoExit) photoExit.addEventListener('click', togglePhotoMode);
+
+// v3.1 Ability buttons (touch/desktop click)
+['dash', 'pulse', 'ward'].forEach(key => {
+    const btn = document.getElementById('ab-' + key);
+    if (btn) btn.addEventListener('click', (e) => { e.stopPropagation(); triggerAbility(key); });
+});
+
+// ============================================================
+// v3.2 Photo Mode — clean stage for screenshots
+// ============================================================
+let _photoMode = false;
+function togglePhotoMode() {
+    _photoMode = !_photoMode;
+    document.body.classList.toggle('photo-mode', _photoMode);
+    const exitBtn = document.getElementById('photo-exit');
+    if (exitBtn) exitBtn.style.display = _photoMode ? 'inline-flex' : 'none';
+    const enterBtn = document.getElementById('photo-toggle');
+    if (enterBtn) enterBtn.classList.toggle('active-mode', _photoMode);
+    // Close any open overlays for a clean shot
+    if (_photoMode) document.querySelectorAll('.overlay.active').forEach(o => o.classList.remove('active'));
+}
+window.addEventListener('keydown', (e) => {
+    if (_photoMode && e.key === 'Escape') togglePhotoMode();
+});
+
+// v3.1 Changelog viewer triggers
+const viewChangelogBtn = document.getElementById('view-changelog');
+if (viewChangelogBtn) viewChangelogBtn.addEventListener('click', () => openChangelog());
+const closeChangelogBtn = document.getElementById('close-changelog');
+if (closeChangelogBtn) closeChangelogBtn.addEventListener('click', () => document.getElementById('changelog-panel').classList.remove('active'));
+
+// v3.2 Codex panel
+const codexPanel = document.getElementById('codex-panel');
+const menuCodexBtn = document.getElementById('menu-codex-btn');
+const closeCodexBtn = document.getElementById('close-codex');
+if (menuCodexBtn) menuCodexBtn.addEventListener('click', () => {
+    mainMenu.classList.remove('active');
+    renderCodex();
+    codexPanel.classList.add('active');
+});
+if (closeCodexBtn) closeCodexBtn.addEventListener('click', () => codexPanel.classList.remove('active'));
+
+// v3.2 Boss Rush panel + banner + start
+const bossRushPanel = document.getElementById('boss-rush-panel');
+const menuBossRushBtn = document.getElementById('menu-bossrush-btn');
+const closeBossRushBtn = document.getElementById('close-boss-rush');
+const startBossRushBtn = document.getElementById('start-boss-rush');
+const bossRushExitBtn = document.getElementById('boss-rush-exit');
+
+function refreshBossRushMenuButton() {
+    if (!menuBossRushBtn) return;
+    menuBossRushBtn.style.display = bossRushUnlocked() ? 'flex' : 'none';
+}
+function renderBossRushStats() {
+    const el = document.getElementById('boss-rush-stats');
+    if (!el) return;
+    const best = state.bossRush.bestTimeSec;
+    const attempts = state.bossRush.attempts || 0;
+    el.innerHTML = `
+        <div style="display: flex; justify-content: space-around; gap: 20px;">
+            <div><div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Best Time</div><div style="font-size: 1.2rem; font-weight: 800; color: ${best != null ? 'var(--neon-gold)' : 'var(--text-muted)'};">${best != null ? formatPlayTime(best) : '—'}</div></div>
+            <div><div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Attempts</div><div style="font-size: 1.2rem; font-weight: 800;">${attempts}</div></div>
+        </div>`;
+}
+if (menuBossRushBtn) menuBossRushBtn.addEventListener('click', () => {
+    mainMenu.classList.remove('active');
+    renderBossRushStats();
+    bossRushPanel.classList.add('active');
+});
+if (closeBossRushBtn) closeBossRushBtn.addEventListener('click', () => bossRushPanel.classList.remove('active'));
+if (startBossRushBtn) startBossRushBtn.addEventListener('click', () => {
+    bossRushPanel.classList.remove('active');
+    startBossRush();
+});
+if (bossRushExitBtn) bossRushExitBtn.addEventListener('click', () => {
+    if (confirm('Forfeit this Boss Rush attempt? Your main run will be restored, but you won\'t get the rewards.')) exitBossRush();
+});
+
+// Refresh the Boss Rush menu visibility whenever the Hub opens (after openHub runs)
+const _hbForBossRush = document.getElementById('home-toggle');
+if (_hbForBossRush) _hbForBossRush.addEventListener('click', () => setTimeout(refreshBossRushMenuButton, 0));
+// Also refresh once at boot in case the main menu is shown on initial load
+setTimeout(refreshBossRushMenuButton, 200);
+
+// v3.2 Patch callout buttons
+const patchSeeBtn = document.getElementById('patch-see-whats-new');
+const patchDismissBtn = document.getElementById('patch-dismiss');
+if (patchSeeBtn) patchSeeBtn.addEventListener('click', () => dismissPatchCallout({ openChangelog: true }));
+if (patchDismissBtn) patchDismissBtn.addEventListener('click', () => dismissPatchCallout());
+
+// v3.1 Stats popover toggle
+const statsToggle = document.getElementById('stats-toggle');
+const runStatsPanel = document.getElementById('run-stats-panel');
+if (statsToggle && runStatsPanel) {
+    statsToggle.addEventListener('click', () => {
+        const open = runStatsPanel.style.display !== 'none';
+        runStatsPanel.style.display = open ? 'none' : 'flex';
+        statsToggle.classList.toggle('active-mode', !open);
+    });
+}
 document.addEventListener('DOMContentLoaded', () => {
     closeSettings.onclick = () => { settingsPanel.classList.remove('active'); settingsMsg.textContent = ''; };
     menuSettingsBtn.onclick = () => { settingsPanel.classList.add('active'); settingsMsg.textContent = ''; };
@@ -2749,6 +3862,37 @@ document.addEventListener('DOMContentLoaded', () => {
         colorblindMode.value = state.settings.colorblind || 'off';
         colorblindMode.onchange = (e) => {
             state.settings.colorblind = e.target.value;
+            applyAccessibility();
+            saveGame();
+        };
+    }
+
+    // v3.1 new settings
+    const perfMode = document.getElementById('performance-mode-toggle');
+    if (perfMode) {
+        perfMode.checked = !!state.settings.performanceMode;
+        perfMode.onchange = (e) => {
+            state.settings.performanceMode = e.target.checked;
+            applyAccessibility();
+            saveGame();
+        };
+    }
+    const evtToggle = document.getElementById('world-events-toggle');
+    if (evtToggle) {
+        evtToggle.checked = state.settings.worldEvents !== false;
+        evtToggle.onchange = (e) => {
+            state.settings.worldEvents = e.target.checked;
+            saveGame();
+        };
+    }
+    const zoom = document.getElementById('camera-zoom-control');
+    const zoomVal = document.getElementById('camera-zoom-val');
+    if (zoom && zoomVal) {
+        zoom.value = Math.round((state.settings.cameraZoom || 1) * 100);
+        zoomVal.textContent = zoom.value + '%';
+        zoom.oninput = (e) => {
+            state.settings.cameraZoom = parseInt(e.target.value) / 100;
+            zoomVal.textContent = e.target.value + '%';
             applyAccessibility();
             saveGame();
         };
@@ -2838,6 +3982,371 @@ setInterval(() => {
     // Timers are now handled in updateBoosts() to center logic
     updateHUD();
 }, 1000);
+
+// ============================================================
+// v3.1 Bosses — mini-boss at A10, mega-boss at A20
+// ============================================================
+const BOSS_DEFS = {
+    spirit_lord: {
+        id: 'spirit_lord', name: 'The Spirit Lord', icon: '👁️',
+        unlockArea: 10,
+        hp: 30, size: 90, speed: 0.55,
+        attackEveryMs: 5000, telegraphMs: 1500, attackRadius: 200, attackDamage: 18,
+        rewards: { stars: 5, sparks: 0, cosmetic: 'voidcrown', motes: 1200 }
+    },
+    eclipse_sovereign: {
+        id: 'eclipse_sovereign', name: 'Eclipse Sovereign', icon: '🌑',
+        unlockArea: 20,
+        hp: 80, size: 130, speed: 0.85,
+        attackEveryMs: 3800, telegraphMs: 1100, attackRadius: 260, attackDamage: 30,
+        rewards: { stars: 15, sparks: 2, cosmetic: 'sovereign_crown', motes: 5000 }
+    }
+};
+
+// Tracks defeats — reset per-run for blocking, persistent for cosmetic unlocks
+state.bosses = state.bosses || { defeatedThisRun: {}, defeatedEver: {} };
+
+function bossDefIdForArea(level) {
+    for (const def of Object.values(BOSS_DEFS)) {
+        if (def.unlockArea === level) return def.id;
+    }
+    return null;
+}
+
+function spawnBossForArea() {
+    const defId = bossDefIdForArea(state.level);
+    if (!defId) return;
+    if (state.bosses.defeatedThisRun[defId]) return;
+    if (state.activeBoss) return;
+
+    const def = BOSS_DEFS[defId];
+    // Spawn in viewport center-ish offset away from player
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 350;
+    const bx = Math.max(150, Math.min(state.world.width - 150,  state.player.x + Math.cos(angle) * distance));
+    const by = Math.max(150, Math.min(state.world.height - 150, state.player.y + Math.sin(angle) * distance));
+
+    const boss = {
+        defId,
+        def,
+        id: `boss-${defId}-${Date.now()}`,
+        x: bx, y: by,
+        hp: def.hp, maxHp: def.hp,
+        lastAttackAt: Date.now(),
+        telegraphingAt: null,
+        invuln: false
+    };
+    state.activeBoss = boss;
+
+    // DOM
+    const el = document.createElement('div');
+    el.className = `boss boss-${defId}`;
+    el.id = boss.id;
+    el.style.width  = `${def.size}px`;
+    el.style.height = `${def.size}px`;
+    el.innerHTML = `
+        <div class="boss-aura"></div>
+        <div class="boss-ring outer"></div>
+        <div class="boss-ring mid"></div>
+        <div class="boss-ring inner"></div>
+        <div class="boss-core"></div>
+        <div class="boss-name">${def.name}</div>`;
+    entitiesLayer.appendChild(el);
+    boss.el = el;
+
+    // Telegraph indicator (hidden until charging an attack)
+    const telegraph = document.createElement('div');
+    telegraph.className = `boss-telegraph telegraph-${defId}`;
+    telegraph.style.display = 'none';
+    entitiesLayer.appendChild(telegraph);
+    boss.telegraphEl = telegraph;
+
+    // HP bar UI at top
+    showBossHpBar(def);
+
+    // Announcement
+    showAchievementToast({ icon: def.icon, name: def.name + ' Awakens', reward: { motes: 0 } });
+    const t = document.getElementById('achievement-toast');
+    if (t) {
+        t.querySelector('.ach-label').textContent = 'BOSS';
+        t.querySelector('.ach-reward').textContent = 'Defeat it to continue. Use burst (Space) or sentinels.';
+        t.style.borderColor = '#ff007b';
+        setTimeout(() => {
+            t.querySelector('.ach-label').textContent = 'Achievement Unlocked';
+            t.style.borderColor = '';
+        }, 5000);
+    }
+    triggerShake();
+    playTone(60, 'sawtooth', 0.6, 1.2, true);
+}
+
+function showBossHpBar(def) {
+    let bar = document.getElementById('boss-hp-bar');
+    if (!bar) return;
+    bar.style.display = 'flex';
+    bar.querySelector('.bhp-name').textContent = def.name;
+    bar.querySelector('.bhp-icon').textContent = def.icon;
+}
+function hideBossHpBar() {
+    const bar = document.getElementById('boss-hp-bar');
+    if (bar) bar.style.display = 'none';
+}
+function updateBossHpBar() {
+    if (!state.activeBoss) return;
+    const bar = document.getElementById('boss-hp-bar');
+    if (!bar) return;
+    const fill = bar.querySelector('.bhp-fill');
+    const pct = Math.max(0, state.activeBoss.hp / state.activeBoss.maxHp);
+    fill.style.width = `${pct * 100}%`;
+}
+
+function damageBoss(amount) {
+    const b = state.activeBoss;
+    if (!b || b.invuln) return;
+    b.hp -= amount;
+    updateBossHpBar();
+    if (b.el) {
+        b.el.classList.remove('boss-hurt');
+        void b.el.offsetWidth;
+        b.el.classList.add('boss-hurt');
+    }
+    if (b.hp <= 0) defeatBoss();
+}
+
+function defeatBoss() {
+    const b = state.activeBoss;
+    if (!b) return;
+    state.activeBoss = null;
+
+    const def = b.def;
+    // Reward
+    state.starFragments += def.rewards.stars || 0;
+    state.sparks += def.rewards.sparks || 0;
+    state.motes += def.rewards.motes || 0;
+    state.stats.totalMotesEarned += def.rewards.motes || 0;
+    state.bosses.defeatedThisRun[def.id] = true;
+    state.bosses.defeatedEver[def.id] = true;
+    recordCodexEncounter('bosses', def.id);
+
+    // Unlock the boss-locked cosmetic
+    if (def.rewards.cosmetic) {
+        const cos = state.cosmetics.find(c => c.key === def.rewards.cosmetic);
+        if (cos && !cos.unlocked) cos.unlocked = true;
+    }
+
+    // Visual death burst
+    if (b.el) {
+        b.el.classList.add('boss-dying');
+        for (let i = 0; i < 24; i++) {
+            const p = document.createElement('div');
+            p.className = 'boss-death-spark';
+            p.style.left = `${b.x}px`;
+            p.style.top  = `${b.y}px`;
+            const angle = (i / 24) * Math.PI * 2;
+            p.style.setProperty('--dx', Math.cos(angle) * 120 + 'px');
+            p.style.setProperty('--dy', Math.sin(angle) * 120 + 'px');
+            entitiesLayer.appendChild(p);
+            setTimeout(() => p.remove(), 1200);
+        }
+        setTimeout(() => { if (b.el && b.el.parentNode) b.el.remove(); }, 800);
+    }
+    if (b.telegraphEl) b.telegraphEl.remove();
+    hideBossHpBar();
+    triggerShake();
+    playTone(200, 'sawtooth', 0.5, 0.5);
+    playTone(400, 'sine', 0.6, 0.8);
+    playTone(800, 'sine', 0.8, 1.0);
+
+    // Toast
+    showAchievementToast({ icon: '👑', name: def.name + ' Defeated', reward: { motes: 0 } });
+    const t = document.getElementById('achievement-toast');
+    if (t) t.querySelector('.ach-reward').textContent =
+        `+${def.rewards.stars} ⭐ +${def.rewards.motes} motes` + (def.rewards.sparks ? ` +${def.rewards.sparks} ✨` : '') + (def.rewards.cosmetic ? ` +Cosmetic` : '');
+
+    updateHUD();
+    saveGame();
+    // Push score boost to cloud (counts as a recordable milestone)
+    cloudSubmitScore('run', '', state.stats.totalMotesEarned, state.level);
+    // If we're in Boss Rush, advance to the next boss in the queue
+    if (isInBossRush()) onBossRushKillNext();
+}
+
+function updateBoss() {
+    const b = state.activeBoss;
+    if (!b || !b.el) return;
+    const def = b.def;
+
+    // Position element
+    b.el.style.left = `${b.x - def.size / 2}px`;
+    b.el.style.top  = `${b.y - def.size / 2}px`;
+
+    // Move toward player slowly
+    const dx = state.player.x - b.x, dy = state.player.y - b.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const minRange = 120; // stop a bit out from the player
+    if (dist > minRange) {
+        b.x += (dx / dist) * def.speed;
+        b.y += (dy / dist) * def.speed;
+    }
+
+    // Attack cycle
+    const now = Date.now();
+    if (b.telegraphingAt && now - b.telegraphingAt >= def.telegraphMs) {
+        // Slam executes
+        const px = state.player.x, py = state.player.y;
+        const ddx = px - b.telegraphX, ddy = py - b.telegraphY;
+        if (ddx * ddx + ddy * ddy < def.attackRadius * def.attackRadius) {
+            state.pods = Math.max(0, state.pods - def.attackDamage);
+            triggerShake();
+            playTone(80, 'sawtooth', 0.5, 0.4);
+            updateHUD();
+        }
+        if (b.telegraphEl) b.telegraphEl.style.display = 'none';
+        b.telegraphingAt = null;
+        b.lastAttackAt = now;
+    } else if (!b.telegraphingAt && now - b.lastAttackAt >= def.attackEveryMs) {
+        // Start charging an attack centered on the player's current position
+        b.telegraphingAt = now;
+        b.telegraphX = state.player.x;
+        b.telegraphY = state.player.y;
+        if (b.telegraphEl) {
+            b.telegraphEl.style.display = 'block';
+            b.telegraphEl.style.width  = `${def.attackRadius * 2}px`;
+            b.telegraphEl.style.height = `${def.attackRadius * 2}px`;
+            b.telegraphEl.style.left   = `${b.telegraphX - def.attackRadius}px`;
+            b.telegraphEl.style.top    = `${b.telegraphY - def.attackRadius}px`;
+            b.telegraphEl.style.animation = `boss-telegraph-charge ${def.telegraphMs}ms linear forwards`;
+        }
+        playTone(120, 'triangle', 0.3, 0.3);
+    }
+
+    // Burst damage detection (handled in triggerBurst's animation loop — we add a check here too)
+    if (state.burst.active) {
+        const bdx = b.x - state.burst.x, bdy = b.y - state.burst.y;
+        if (bdx * bdx + bdy * bdy < (state.burst.radius + def.size / 2) ** 2) {
+            if (!b._burstTaggedAt || now - b._burstTaggedAt > 200) {
+                b._burstTaggedAt = now;
+                damageBoss(1);
+            }
+        }
+    }
+}
+
+// ============================================================
+// v3.1 Active abilities — Luminous Dash, Chrono-Pulse, Spirit Ward
+// ============================================================
+function abilityUnlocked(key) {
+    return state.upgrades.find(u => u.id === 'ability_' + key)?.level > 0;
+}
+function abilityReady(key) {
+    const ab = state.abilities[key];
+    return ab && (Date.now() - ab.triggeredAt) >= ab.cdMs;
+}
+function abilityCooldownPct(key) {
+    const ab = state.abilities[key];
+    if (!ab) return 1;
+    const elapsed = Date.now() - ab.triggeredAt;
+    return Math.max(0, Math.min(1, 1 - elapsed / ab.cdMs));
+}
+function triggerAbility(key) {
+    if (!abilityUnlocked(key) || !abilityReady(key)) return;
+    state.abilities[key].triggeredAt = Date.now();
+    if (key === 'dash')  doDash();
+    if (key === 'pulse') doPulse();
+    if (key === 'ward')  doWard();
+}
+
+function doDash() {
+    // Direction = current movement input
+    const vk = getKeyboardVector();
+    const v = state.joystick.active ? state.joystick.vector : vk;
+    if (v.x === 0 && v.y === 0) { state.abilities.dash.triggeredAt = 0; return; } // refund
+    const mag = Math.hypot(v.x, v.y) || 1;
+    const dx = v.x / mag, dy = v.y / mag;
+    const distance = 160;
+    const nx = Math.max(0, Math.min(state.world.width,  state.player.x + dx * distance));
+    const ny = Math.max(0, Math.min(state.world.height, state.player.y + dy * distance));
+    // Ghost trail
+    for (let i = 1; i <= 5; i++) {
+        const t = state.player.x + (nx - state.player.x) * (i / 6);
+        const u = state.player.y + (ny - state.player.y) * (i / 6);
+        setTimeout(() => {
+            const g = document.createElement('div');
+            g.className = 'dash-ghost';
+            g.style.left = `${t - 20}px`;
+            g.style.top  = `${u - 20}px`;
+            entitiesLayer.appendChild(g);
+            setTimeout(() => g.remove(), 480);
+        }, i * 25);
+    }
+    state.player.x = nx;
+    state.player.y = ny;
+    // Stun nearby spirits along the dash
+    state.voidSpirits.forEach(s => {
+        const ddx = s.x - nx, ddy = s.y - ny;
+        if (ddx * ddx + ddy * ddy < 10000) s.dispelling = true; // 100 radius
+    });
+    playTone(720, 'sine', 0.4, 0.18);
+    playTone(960, 'sine', 0.35, 0.12);
+    triggerShake();
+}
+
+function doPulse() {
+    // Freeze spirits + boost tree regrowth in 280-radius for 6s
+    const R2 = 280 * 280;
+    const until = Date.now() + 6000;
+    state.voidSpirits.forEach(s => {
+        const dx = s.x - state.player.x, dy = s.y - state.player.y;
+        if (dx * dx + dy * dy < R2) s.frozenUntil = until;
+    });
+    state.entities.forEach(e => {
+        if (e.type === 'tree') {
+            const dx = e.x - state.player.x, dy = e.y - state.player.y;
+            if (dx * dx + dy * dy < R2) e.boostedUntil = until;
+        }
+    });
+    // Visual: expanding pulse ring
+    const ring = document.createElement('div');
+    ring.className = 'chrono-pulse';
+    ring.style.left = `${state.player.x}px`;
+    ring.style.top  = `${state.player.y}px`;
+    entitiesLayer.appendChild(ring);
+    setTimeout(() => ring.remove(), 900);
+    playTone(420, 'sine', 0.5, 0.5);
+    playTone(840, 'sine', 0.4, 0.5);
+}
+
+function doWard() {
+    const until = Date.now() + 12000;
+    state.tethers.forEach(t => { t.wardedUntil = until; });
+    renderTethers();
+    // Visual: golden ripple at forge
+    const forge = state.entities.find(e => e.type === 'forge');
+    if (forge) {
+        const r = document.createElement('div');
+        r.className = 'ward-ripple';
+        r.style.left = `${forge.x}px`;
+        r.style.top  = `${forge.y}px`;
+        entitiesLayer.appendChild(r);
+        setTimeout(() => r.remove(), 1100);
+    }
+    playTone(600, 'sine', 0.5, 0.4);
+    playTone(900, 'sine', 0.4, 0.4);
+}
+
+function updateAbilityButtons() {
+    ['dash', 'pulse', 'ward'].forEach(key => {
+        const btn = document.getElementById('ab-' + key);
+        if (!btn) return;
+        const unlocked = abilityUnlocked(key);
+        btn.style.display = unlocked ? 'flex' : 'none';
+        if (!unlocked) return;
+        const fill = btn.querySelector('.ab-fill');
+        const pct = abilityCooldownPct(key);
+        if (fill) fill.style.transform = `translateY(${pct * 100}%)`;
+        btn.classList.toggle('ready', pct === 0);
+    });
+}
 
 function triggerBurst() {
     if (state.burst.cooldown > 0) return;
@@ -2999,6 +4508,8 @@ function updateSpirits() {
         if (s.dispelling) {
             s.el.style.opacity = parseFloat(s.el.style.opacity || 1) - 0.1;
             if (parseFloat(s.el.style.opacity) <= 0) {
+                // Codex: record on actual dispel completion (one entry per kill, not per shred)
+                if (!s.isShred && s.type) recordCodexEncounter('spirits', s.type);
                 // Handle Shade splitting on death
                 if (s.type === 'shade' && !s.isShred) {
                     spawnShreds(s.x, s.y);
@@ -3025,6 +4536,12 @@ function updateSpirits() {
             if (s.x > minX && s.x < maxX && s.y > minY && s.y < maxY) {
                 const dist = getDistToSegment(s.x, s.y, x1, y1, x2, y2);
                 if (dist < 25) {
+                    // v3.1 Warded tethers absorb the hit and dispel the spirit
+                    if (t.wardedUntil && Date.now() < t.wardedUntil) {
+                        s.dispelling = true;
+                        playTone(900, 'sine', 0.3, 0.15);
+                        break;
+                    }
                     t.health -= 5;
                     s.dispelling = true;
                     damagedTether = true;
@@ -3048,6 +4565,14 @@ function updateSpirits() {
         }
 
         if (damagedTether) return true;
+
+        // v3.1 Frozen by Chrono-Pulse — don't move this frame
+        if (s.frozenUntil && Date.now() < s.frozenUntil) {
+            if (s.el) s.el.classList.add('spirit-frozen');
+            return true;
+        } else if (s.el) {
+            s.el.classList.remove('spirit-frozen');
+        }
 
         // Move toward player OR nearest tree (tether source)
         let targetX = state.player.x;
@@ -3086,7 +4611,8 @@ function updateSpirits() {
 
         // Collision with player
         if (dist < 30 && targetX === state.player.x) {
-            const damage = state.sparkUpgrades.void_shield ? 2 : 5;
+            let damage = state.sparkUpgrades.void_shield ? 2 : 5;
+            if (state.sparkUpgrades.void_aegis) damage = Math.ceil(damage * 0.4); // 60% reduction
             state.pods = Math.max(0, state.pods - damage);
             s.dispelling = true;
             playTone(150, 'sawtooth', 0.3, 0.4, true);
@@ -3268,6 +4794,18 @@ function updateCompanions() {
                 targetSpirit.dispelling = true;
                 playTone(600, 'sine', 0.2, 0.1);
             }
+        } else if (state.activeBoss) {
+            // No spirits to chase: harass the boss
+            const b = state.activeBoss;
+            targetX = b.x; targetY = b.y;
+            const ddx = b.x - c.x, ddy = b.y - c.y;
+            const dSqB = ddx * ddx + ddy * ddy;
+            if (dSqB < 3600) { // within 60 units
+                if (!c._bossHitAt || Date.now() - c._bossHitAt > 700) {
+                    c._bossHitAt = Date.now();
+                    damageBoss(0.5);
+                }
+            }
         } else if (state.tethers.length > 0) {
             const tetherIndex = (Math.floor(Date.now() / 3000) + index) % state.tethers.length;
             const t = state.tethers[tetherIndex];
@@ -3313,7 +4851,31 @@ function updateBurstUI() {
     burstFill.style.transform = `translateY(${pct}%)`;
 }
 
-loadGame(); ensureProfileInitialized(); initWorld(); updateHUD(); renderPlayerSprite(); updateDailyBanner(); update();
+loadGame(); ensureProfileInitialized(); tickDailyStreak(); initWorld(); updateHUD(); renderPlayerSprite(); updateDailyBanner(); update();
+setTimeout(checkPatchNotesCallout, 1200); // brief delay so the menu animations land first
+
+// v3.1 Cloud sync — best-effort boot routine (won't block the game if it fails)
+(async () => {
+    if (!isCloudEnabled()) return;
+    await cloudUpsertPlayer();
+    // If cloud save is newer than the local save, pull it
+    try {
+        const localRaw = localStorage.getItem('lushHarvestSave');
+        const localTs = localRaw ? (JSON.parse(localRaw).lastModified || 0) : 0;
+        const cloud = await cloudPullSave();
+        if (cloud && cloud.data) {
+            const cloudTs = cloud.data.lastModified || new Date(cloud.updated_at).getTime();
+            if (cloudTs > localTs + 1000) { // 1s tolerance
+                console.log(`[cloud] using cloud save (${new Date(cloudTs).toISOString()}) over local (${new Date(localTs).toISOString()})`);
+                localStorage.setItem('lushHarvestSave', JSON.stringify(cloud.data));
+                // Soft reload: re-run loadGame and refresh world
+                loadGame(); initWorld(); updateHUD(); renderPlayerSprite(); updateDailyBanner();
+            }
+        }
+    } catch (e) { console.warn('[cloud] boot sync failed', e); }
+    // Update profile UI if it's open
+    if (document.getElementById('profile-panel')?.classList.contains('active')) renderProfile();
+})();
 // Wire daily banner exit button (banner element is in DOM at this point)
 const dailyExitBtn = document.getElementById('daily-exit-btn');
 if (dailyExitBtn) dailyExitBtn.addEventListener('click', () => exitDailyToMain());

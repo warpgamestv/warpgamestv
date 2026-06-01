@@ -10,9 +10,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="icon" href="./favicon.png?v=3.7" type="image/png">
-    <link rel="apple-touch-icon" href="./apple-touch-icon.png?v=3.7">
-    <link rel="stylesheet" href="./src/style.css?v=3.7">
+    <link rel="icon" href="./favicon.png?v=3.14" type="image/png">
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png?v=3.14">
+    <link rel="stylesheet" href="./src/style.css?v=3.14">
 </head>
 
 <body>
@@ -47,6 +47,31 @@
 
             <div class="actions top-actions">
                 <button id="boosts-toggle" class="nav-btn glass" title="Rewarded Boosts">⚡</button>
+                <button id="stats-toggle" class="nav-btn glass" title="Run Stats">📊</button>
+                <button id="photo-toggle" class="nav-btn glass" title="Photo Mode">📷</button>
+            </div>
+
+            <!-- Photo Mode exit pill -->
+            <div id="photo-exit-zone">
+                <div class="photo-hint glass">Use your OS screenshot shortcut · <span class="photo-key">Esc</span> to exit</div>
+                <button id="photo-exit" class="upgrade-btn" style="display:none;">Exit Photo Mode</button>
+            </div>
+
+            <!-- Patch-notes callout (one-time on version bump) -->
+            <div id="patch-callout">
+                <span class="pc-spark">✨</span>
+                <div class="pc-text">
+                    <div class="pc-label">New Update Available</div>
+                    <div class="pc-version-row"><strong class="pc-version">v3.2</strong> · Codex &amp; Crowns</div>
+                </div>
+                <button id="patch-see-whats-new" class="pc-btn primary">See What's New</button>
+                <button id="patch-dismiss" class="pc-btn" title="Dismiss">×</button>
+            </div>
+
+            <div id="run-stats-panel" class="glass" style="display: none;">
+                <div class="rs-row"><span class="rs-label">Motes</span><span class="rs-motes neon-lime">0/s</span></div>
+                <div class="rs-row"><span class="rs-label">Pods</span><span class="rs-pods neon-cyan">0/s</span></div>
+                <div class="rs-row"><span class="rs-label">ETA</span><span class="rs-eta neon-gold">—</span></div>
             </div>
 
             <div id="combo-container" class="glass" style="display: none;">
@@ -58,6 +83,14 @@
                     <div id="combo-fill"></div>
                 </div>
                 <div id="frenzy-indicator" style="display: none;">FRENZY!</div>
+            </div>
+
+            <div id="boss-hp-bar" class="glass" style="display: none;">
+                <span class="bhp-icon">👁️</span>
+                <div class="bhp-content">
+                    <div class="bhp-name">Boss</div>
+                    <div class="bhp-bar"><div class="bhp-fill"></div></div>
+                </div>
             </div>
 
             <div id="daily-banner" class="glass">
@@ -107,6 +140,25 @@
             <div id="joystick-base">
                 <div id="joystick-stick"></div>
             </div>
+        </div>
+
+        <!-- Active Ability Buttons (shown when unlocked) -->
+        <div id="ability-zone">
+            <button id="ab-dash"  class="ab-btn" style="display:none;" title="Luminous Dash (Q)">
+                <span class="ab-icon">💨</span>
+                <span class="ab-key">Q</span>
+                <div class="ab-fill"></div>
+            </button>
+            <button id="ab-pulse" class="ab-btn" style="display:none;" title="Chrono-Pulse (E)">
+                <span class="ab-icon">❄️</span>
+                <span class="ab-key">E</span>
+                <div class="ab-fill"></div>
+            </button>
+            <button id="ab-ward"  class="ab-btn" style="display:none;" title="Spirit Ward (R)">
+                <span class="ab-icon">🛡️</span>
+                <span class="ab-key">R</span>
+                <div class="ab-fill"></div>
+            </button>
         </div>
 
         <!-- Combat Burst Button (Mobile) -->
@@ -230,6 +282,21 @@
                         <option value="tritanopia">Tritanopia (blue-yellow)</option>
                     </select>
                 </div>
+                <div class="setting-item">
+                    <label>Performance Mode</label>
+                    <input type="checkbox" id="performance-mode-toggle">
+                </div>
+                <div class="setting-item">
+                    <label>World Events</label>
+                    <input type="checkbox" id="world-events-toggle" checked>
+                </div>
+                <div class="setting-item" style="flex-direction: column; align-items: start; gap: 5px;">
+                    <div style="display: flex; justify-content: space-between; width: 100%;">
+                        <label>Camera Zoom</label>
+                        <span id="camera-zoom-val">100%</span>
+                    </div>
+                    <input type="range" id="camera-zoom-control" min="70" max="120" value="100" style="width: 100%;">
+                </div>
 
                 <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 10px 0;"></div>
                 
@@ -237,11 +304,14 @@
                 <button id="export-save" class="upgrade-btn" style="padding: 8px;">Copy Save String</button>
                 <button id="import-save" class="upgrade-btn" style="padding: 8px;">Load Save String</button>
                 <button id="wipe-save" class="upgrade-btn" style="background: #a92020; padding: 8px;">Hard Reset Progress</button>
+
+                <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 10px 0;"></div>
+                <button id="view-changelog" class="upgrade-btn" style="padding: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(0, 242, 255, 0.3); color: var(--neon-cyan);">📜 View Changelog</button>
                 
                 <p id="settings-msg" style="color: var(--neon-lime); min-height: 20px; font-weight: bold; margin-top: 5px; font-size: 0.8rem;"></p>
                 
                 <div style="margin-top: 10px; padding: 10px; border-radius: 10px; background: rgba(0,0,255,0.1);">
-                    <p style="font-size: 0.75rem; color: var(--neon-cyan); margin: 0;">v3.0 — Radiant Edition</p>
+                    <p style="font-size: 0.75rem; color: var(--neon-cyan); margin: 0;">v3.2 — Codex & Crowns</p>
                     <p style="font-size: 0.7rem; color: var(--text-muted); margin: 5px 0 0 0;">Developed by <span style="color: white; font-weight: bold;">WarpGamesTV</span></p>
                 </div>
             </div>
@@ -461,13 +531,21 @@
                         <span class="btn-icon">🏆</span> Leaderboard
                     </button>
                 </div>
+                <div class="menu-row">
+                    <button id="menu-codex-btn" class="secondary-menu-btn">
+                        <span class="btn-icon">📖</span> Codex
+                    </button>
+                    <button id="menu-bossrush-btn" class="secondary-menu-btn" style="display:none;">
+                        <span class="btn-icon">👑</span> Boss Rush
+                    </button>
+                </div>
                 <button id="menu-settings-toggle" class="secondary-menu-btn">
                     <span class="btn-icon">⚙️</span> Settings
                 </button>
             </div>
             
             <div class="menu-footer-card glass">
-                <div class="version-tag">v3.0 — RADIANT EDITION</div>
+                <div class="version-tag">v3.2 — CODEX & CROWNS</div>
                 <div class="creator-info">Created by <span>WarpGamesTV</span></div>
                 <p class="tagline">Crafted with ✨ and 🌿</p>
             </div>
@@ -485,12 +563,20 @@
                 <div class="profile-identity">
                     <label class="profile-label">Display Name</label>
                     <input id="profile-name-input" class="profile-name-input" type="text" maxlength="24" placeholder="Wanderer">
+                    <div id="profile-title-display" class="profile-title-display"></div>
                     <div class="profile-id-row">
                         <span class="profile-label">Player ID</span>
                         <code id="profile-id-display" class="profile-id"></code>
                         <button id="profile-id-copy" class="profile-mini-btn" title="Copy ID">📋</button>
                     </div>
+                    <div id="profile-cloud-status" class="profile-cloud off">
+                        <span class="dot"></span> Cloud Sync · Not Configured
+                    </div>
                 </div>
+            </div>
+            <div class="profile-section">
+                <div class="profile-section-title">Titles</div>
+                <div id="profile-titles" class="profile-titles"></div>
             </div>
             <div class="profile-section">
                 <div class="profile-section-title">Lifetime Stats</div>
@@ -526,6 +612,48 @@
         </div>
     </div>
 
+    <div id="codex-panel" class="overlay">
+        <div class="overlay-content glass">
+            <header>
+                <h2>Codex</h2>
+                <button id="close-codex" class="close-btn">&times;</button>
+            </header>
+            <p style="text-align: center; margin-bottom: 12px; font-size: 0.85rem; color: var(--text-muted);">Every spirit, boss, and secret you've encountered.</p>
+            <div id="codex-body" class="codex-body"></div>
+        </div>
+    </div>
+
+    <div id="boss-rush-panel" class="overlay">
+        <div class="overlay-content glass" style="text-align: center;">
+            <header>
+                <h2>Boss Rush</h2>
+                <button id="close-boss-rush" class="close-btn">&times;</button>
+            </header>
+            <p style="font-size: 0.95rem;">Face <strong class="neon-pink">The Spirit Lord</strong> and <strong class="neon-gold">Eclipse Sovereign</strong> back-to-back in a small arena. Your main run is saved and restored when you finish.</p>
+            <div id="boss-rush-stats" style="margin: 16px 0; padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);"></div>
+            <button id="start-boss-rush" class="upgrade-btn" style="width: 100%; background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple)); font-size: 1.05rem; min-height: 50px;">Begin Boss Rush</button>
+            <p style="color: var(--text-muted); font-size: 0.78rem; margin-top: 16px;">Rewards: <strong class="neon-gold">+25 ⭐</strong> + <strong class="neon-purple">+5 ✨</strong> on victory.</p>
+        </div>
+    </div>
+
+    <div id="boss-rush-banner" class="glass" style="display: none;">
+        <span class="brb-icon">👑</span>
+        <span class="brb-text">Boss Rush · <strong class="brb-progress">1 / 2</strong></span>
+        <button id="boss-rush-exit" class="brb-btn">Forfeit</button>
+    </div>
+
+    <div id="changelog-panel" class="overlay">
+        <div class="overlay-content glass">
+            <header>
+                <h2>Changelog</h2>
+                <button id="close-changelog" class="close-btn">&times;</button>
+            </header>
+            <div id="changelog-body" class="changelog-body">
+                <div class="changelog-loading">Loading changelog…</div>
+            </div>
+        </div>
+    </div>
+
     <div id="achievements-panel" class="overlay">
         <div class="overlay-content glass">
             <header>
@@ -557,7 +685,7 @@
         </div>
     </div>
     </div>
-    <script src="./src/main.js?v=3.7"></script>
+    <script src="./src/main.js?v=3.14"></script>
 </body>
 
 </html>
