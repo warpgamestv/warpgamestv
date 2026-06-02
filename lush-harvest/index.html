@@ -10,9 +10,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="icon" href="./favicon.png?v=3.15" type="image/png">
-    <link rel="apple-touch-icon" href="./apple-touch-icon.png?v=3.15">
-    <link rel="stylesheet" href="./src/style.css?v=3.15">
+    <link rel="icon" href="./favicon.png?v=3.19" type="image/png">
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png?v=3.19">
+    <link rel="stylesheet" href="./src/style.css?v=3.19">
 </head>
 
 <body>
@@ -62,7 +62,7 @@
                 <span class="pc-spark">✨</span>
                 <div class="pc-text">
                     <div class="pc-label">New Update Available</div>
-                    <div class="pc-version-row"><strong class="pc-version">v3.2.1</strong> · Tether QoL</div>
+                    <div class="pc-version-row"><strong class="pc-version">v3.2.2</strong> · Menus &amp; Mechanics Patch</div>
                 </div>
                 <button id="patch-see-whats-new" class="pc-btn primary">See What's New</button>
                 <button id="patch-dismiss" class="pc-btn" title="Dismiss">×</button>
@@ -248,12 +248,14 @@
                 <button id="close-settings" class="close-btn">&times;</button>
             </header>
             <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 10px;">
+                <p class="settings-group-label">Audio</p>
                 <div class="setting-item" style="flex-direction: column; align-items: start; gap: 5px;">
                     <div style="display: flex; justify-content: space-between; width: 100%;">
                         <label>Master Volume</label>
                         <span id="master-vol-val">80%</span>
                     </div>
                     <input type="range" id="master-volume-control" min="0" max="100" value="80" style="width: 100%;">
+                    <p class="setting-subtext">Overall volume cap applied on top of music + effects.</p>
                 </div>
                 <div class="setting-item" style="flex-direction: column; align-items: start; gap: 5px;">
                     <div style="display: flex; justify-content: space-between; width: 100%;">
@@ -261,6 +263,7 @@
                         <span id="bgm-vol-val">80%</span>
                     </div>
                     <input type="range" id="bgm-volume-control" min="0" max="100" value="80" style="width: 100%;">
+                    <p class="setting-subtext">Ambient drone layer that shifts pitch with each biome.</p>
                 </div>
                 <div class="setting-item" style="flex-direction: column; align-items: start; gap: 5px;">
                     <div style="display: flex; justify-content: space-between; width: 100%;">
@@ -268,18 +271,35 @@
                         <span id="sfx-vol-val">80%</span>
                     </div>
                     <input type="range" id="sfx-volume-control" min="0" max="100" value="80" style="width: 100%;">
+                    <p class="setting-subtext">Harvest pings, forge whoosh, burst, ability casts.</p>
                 </div>
+                <p class="settings-group-label">Visuals</p>
                 <div class="setting-item">
                     <label>Show Particles</label>
-                    <input type="checkbox" id="particles-toggle" checked>
+                    <label class="pill-switch-wrap"><input type="checkbox" id="particles-toggle" class="pill-switch" checked><span class="pill-switch-track"></span></label>
+                    <p class="setting-subtext">Toggle ambient particles like harvest sparks, sell motes, and the player movement trail.</p>
                 </div>
                 <div class="setting-item">
                     <label>Screen Shake</label>
-                    <input type="checkbox" id="shake-toggle" checked>
+                    <label class="pill-switch-wrap"><input type="checkbox" id="shake-toggle" class="pill-switch" checked><span class="pill-switch-track"></span></label>
+                    <p class="setting-subtext">Camera kicks on bursts, crits, and boss attacks. Turn off if it's distracting.</p>
                 </div>
                 <div class="setting-item">
+                    <label>Floating Numbers</label>
+                    <label class="pill-switch-wrap"><input type="checkbox" id="floating-numbers-toggle" class="pill-switch" checked><span class="pill-switch-track"></span></label>
+                    <p class="setting-subtext">Show pop-up gain text like +12 motes, +1 ⭐, or CRIT ×2 above harvest events.</p>
+                </div>
+                <div class="setting-item">
+                    <label>Performance Mode</label>
+                    <label class="pill-switch-wrap"><input type="checkbox" id="performance-mode-toggle" class="pill-switch"><span class="pill-switch-track"></span></label>
+                    <p class="setting-subtext">Disables fog, fireflies, parallax, glass blur, and trails for a big FPS boost on lower-end devices.</p>
+                </div>
+
+                <p class="settings-group-label">Accessibility</p>
+                <div class="setting-item">
                     <label>Reduced Motion</label>
-                    <input type="checkbox" id="reduced-motion-toggle">
+                    <label class="pill-switch-wrap"><input type="checkbox" id="reduced-motion-toggle" class="pill-switch"><span class="pill-switch-track"></span></label>
+                    <p class="setting-subtext">Cancels animations across the entire game for sensitivity to motion.</p>
                 </div>
                 <div class="setting-item">
                     <label>Colorblind Mode</label>
@@ -289,14 +309,24 @@
                         <option value="protanopia">Protanopia (red-green)</option>
                         <option value="tritanopia">Tritanopia (blue-yellow)</option>
                     </select>
+                    <p class="setting-subtext">Remaps the five neon currencies and UI colors to a safer palette.</p>
                 </div>
-                <div class="setting-item">
-                    <label>Performance Mode</label>
-                    <input type="checkbox" id="performance-mode-toggle">
-                </div>
+
+                <p class="settings-group-label">Gameplay</p>
                 <div class="setting-item">
                     <label>World Events</label>
-                    <input type="checkbox" id="world-events-toggle" checked>
+                    <label class="pill-switch-wrap"><input type="checkbox" id="world-events-toggle" class="pill-switch" checked><span class="pill-switch-track"></span></label>
+                    <p class="setting-subtext">Random buffs and debuffs like Aurora Boost or Void Eclipse trigger every 90–150s in regular runs.</p>
+                </div>
+                <div class="setting-item">
+                    <label>Auto-Equip Best Title</label>
+                    <label class="pill-switch-wrap"><input type="checkbox" id="auto-title-toggle" class="pill-switch"><span class="pill-switch-track"></span></label>
+                    <p class="setting-subtext">Automatically equips the highest-tier title you've unlocked. Manual selection in Profile still works.</p>
+                </div>
+                <div class="setting-item">
+                    <label>Confirm Ascend</label>
+                    <label class="pill-switch-wrap"><input type="checkbox" id="confirm-ascend-toggle" class="pill-switch" checked><span class="pill-switch-track"></span></label>
+                    <p class="setting-subtext">Pop up a confirmation dialog with your spark reward before ascending. Prevents fat-finger resets.</p>
                 </div>
                 <div class="setting-item" style="flex-direction: column; align-items: start; gap: 5px;">
                     <div style="display: flex; justify-content: space-between; width: 100%;">
@@ -304,6 +334,7 @@
                         <span id="camera-zoom-val">100%</span>
                     </div>
                     <input type="range" id="camera-zoom-control" min="70" max="120" value="100" style="width: 100%;">
+                    <p class="setting-subtext">70% gives a strategic overview · 120% pulls the camera in tight on the player.</p>
                 </div>
 
                 <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 10px 0;"></div>
@@ -319,7 +350,7 @@
                 <p id="settings-msg" style="color: var(--neon-lime); min-height: 20px; font-weight: bold; margin-top: 5px; font-size: 0.8rem;"></p>
                 
                 <div style="margin-top: 10px; padding: 10px; border-radius: 10px; background: rgba(0,0,255,0.1);">
-                    <p style="font-size: 0.75rem; color: var(--neon-cyan); margin: 0;">v3.2.1 — Tether QoL</p>
+                    <p style="font-size: 0.75rem; color: var(--neon-cyan); margin: 0;">v3.2.2 — Menus & Mechanics Patch</p>
                     <p style="font-size: 0.7rem; color: var(--text-muted); margin: 5px 0 0 0;">Developed by <span style="color: white; font-weight: bold;">WarpGamesTV</span></p>
                 </div>
             </div>
@@ -553,7 +584,7 @@
             </div>
             
             <div class="menu-footer-card glass">
-                <div class="version-tag">v3.2.1 — TETHER QOL</div>
+                <div class="version-tag">v3.2.2 — MENUS & MECHANICS PATCH</div>
                 <div class="creator-info">Created by <span>WarpGamesTV</span></div>
                 <p class="tagline">Crafted with ✨ and 🌿</p>
             </div>
@@ -693,7 +724,7 @@
         </div>
     </div>
     </div>
-    <script src="./src/main.js?v=3.15"></script>
+    <script src="./src/main.js?v=3.19"></script>
 </body>
 
 </html>

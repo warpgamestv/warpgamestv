@@ -1994,6 +1994,14 @@ body:has(.overlay:not(.hidden)) #burst-zone {
         background: rgba(255, 255, 255, 0.05);
     }
 
+    /* v3.2.2 desktop: daily banner stacks under the larger minimap + objective tracker
+       (objective tracker at top 280 + ~140 tall when Travel button is showing) */
+    #daily-banner {
+        top: 440px;
+        right: 20px;
+        width: 240px;
+    }
+
     /* Premium Hover States */
     .nav-btn:hover {
         background: rgba(255, 255, 255, 0.25);
@@ -3705,30 +3713,38 @@ body.cb-tritanopia {
 #daily-banner {
     display: none;             /* JS toggles to flex when in daily mode */
     position: absolute;
-    top: 70px;
-    left: 50%;
-    transform: translateX(-50%);
-    align-items: center;
-    gap: 12px;
-    padding: 8px 14px;
-    border-radius: 14px;
-    z-index: 140;
+    /* Stack on the right rail with enough room for the objective tracker
+       to expand when the "Travel to Next Area" button appears. */
+    top: 300px;
+    right: 15px;
+    width: 180px;              /* matches objective tracker width */
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    z-index: 12;               /* same stacking band as the objective tracker */
     pointer-events: auto;
     border: 1px solid var(--neon-gold);
     background: linear-gradient(135deg, rgba(255, 215, 0, 0.12), rgba(0, 0, 0, 0.55));
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45), 0 0 22px rgba(255, 215, 0, 0.18);
     max-width: 90%;
+    text-align: center;
 }
 #daily-banner .db-icon {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     filter: drop-shadow(0 0 6px var(--neon-gold));
+    display: block;
+    margin: 0 auto 2px;
 }
 #daily-banner .db-text {
     font-weight: 700;
     color: var(--neon-gold);
     text-shadow: 0 0 8px rgba(255, 215, 0, 0.45);
-    letter-spacing: 0.5px;
-    font-size: 0.88rem;
+    letter-spacing: 0.3px;
+    font-size: 0.78rem;
+    line-height: 1.3;
+    display: block;
 }
 #daily-banner .db-btn {
     background: rgba(0, 0, 0, 0.4);
@@ -3746,14 +3762,17 @@ body.cb-tritanopia {
     background: rgba(255, 215, 0, 0.15);
     border-color: var(--neon-gold);
 }
-@media (max-width: 600px) {
+@media (max-width: 600px), (pointer: coarse) {
     #daily-banner {
-        top: 60px;
-        font-size: 0.8rem;
-        padding: 6px 10px;
-        gap: 8px;
+        /* Mobile minimap (90 + 25 gap = 115) + objective tracker (with travel button: ~110 tall) */
+        top: 235px;
+        right: 15px;
+        width: 140px;          /* matches mobile objective tracker width */
+        padding: 8px 10px;
+        font-size: 0.75rem;
     }
-    #daily-banner .db-text { font-size: 0.75rem; }
+    #daily-banner .db-icon { font-size: 1rem; }
+    #daily-banner .db-text { font-size: 0.7rem; }
     #daily-banner .db-btn  { font-size: 0.7rem; padding: 4px 8px; }
 }
 
@@ -4912,7 +4931,7 @@ body.photo-mode .photo-hint { display: block; }
    ============================================================ */
 #boss-rush-banner {
     position: absolute;
-    top: 70px;
+    top: 116px;
     left: 50%;
     transform: translateX(-50%);
     display: none;
@@ -4920,7 +4939,7 @@ body.photo-mode .photo-hint { display: block; }
     gap: 12px;
     padding: 8px 14px;
     border-radius: 14px;
-    z-index: 140;
+    z-index: 160;
     border: 1px solid var(--neon-pink);
     background: linear-gradient(135deg, rgba(255, 0, 123, 0.12), rgba(0, 0, 0, 0.55));
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 24px rgba(255, 0, 123, 0.25);
@@ -5058,6 +5077,162 @@ body.build-mode-active #player {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 24px rgba(255, 0, 123, 0.35);
 }
 #build-counter.full .bc-count { color: var(--neon-pink); }
+
+/* ============================================================
+   v3.2.1 Pill switch (replacement for native checkbox in Settings)
+   ============================================================ */
+.settings-group-label {
+    margin: 14px 4px 2px;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--neon-cyan);
+    font-weight: 800;
+    text-shadow: 0 0 6px rgba(0, 242, 255, 0.4);
+    text-align: left;
+}
+.pill-switch-wrap {
+    position: relative;
+    display: inline-block;
+    width: 46px;
+    height: 26px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.pill-switch {
+    position: absolute;
+    width: 100%; height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+.pill-switch-track {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(0,0,0,0.4));
+    border: 1px solid rgba(255,255,255,0.15);
+    transition: background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+.pill-switch-track::before {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fff, #d8e6ee);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.22s ease, box-shadow 0.22s ease;
+}
+.pill-switch:checked ~ .pill-switch-track {
+    background: linear-gradient(135deg, var(--neon-cyan), var(--neon-lime));
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 12px rgba(0, 242, 255, 0.45), inset 0 0 6px rgba(255, 255, 255, 0.2);
+}
+.pill-switch:checked ~ .pill-switch-track::before {
+    transform: translateX(20px);
+    background: linear-gradient(135deg, #fff, #fff);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.6), 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+.pill-switch:focus-visible ~ .pill-switch-track {
+    outline: 2px solid var(--neon-cyan);
+    outline-offset: 2px;
+}
+.pill-switch-wrap:hover .pill-switch-track {
+    border-color: rgba(255, 255, 255, 0.3);
+}
+.pill-switch-wrap:hover .pill-switch:checked ~ .pill-switch-track {
+    border-color: var(--neon-lime);
+    box-shadow: 0 0 16px rgba(162, 255, 0, 0.5);
+}
+.pill-switch:disabled ~ .pill-switch-track {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Reduced motion: snap instead of bounce */
+body.reduced-motion .pill-switch-track,
+body.reduced-motion .pill-switch-track::before {
+    transition: none !important;
+}
+
+/* ============================================================
+   v3.2.2 Themed range sliders + setting subtext + responsive fixes
+   ============================================================ */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 22px;
+    background: transparent;
+    cursor: pointer;
+    font-family: inherit;
+}
+/* WebKit / Blink track */
+input[type="range"]::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg,
+        var(--neon-cyan) 0%,
+        var(--neon-purple) 50%,
+        var(--neon-lime) 100%);
+    background-size: 200% 100%;
+    background-position: 0 0;
+    border: 1px solid rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.5), 0 0 6px rgba(0, 242, 255, 0.18);
+}
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ffffff 0%, var(--neon-cyan) 70%);
+    border: 1.5px solid #fff;
+    box-shadow: 0 0 10px var(--neon-cyan), 0 0 18px rgba(0, 242, 255, 0.4);
+    margin-top: -6px;
+    cursor: grab;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+input[type="range"]:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.15); box-shadow: 0 0 14px var(--neon-cyan), 0 0 22px rgba(0,242,255,0.6); }
+
+/* Firefox */
+input[type="range"]::-moz-range-track {
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple), var(--neon-lime));
+    border: 1px solid rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.5);
+}
+input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ffffff 0%, var(--neon-cyan) 70%);
+    border: 1.5px solid #fff;
+    box-shadow: 0 0 10px var(--neon-cyan), 0 0 18px rgba(0, 242, 255, 0.4);
+    cursor: grab;
+}
+
+/* Focus ring for keyboard users */
+input[type="range"]:focus-visible::-webkit-slider-runnable-track {
+    box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.5), 0 0 10px rgba(0, 242, 255, 0.55);
+}
+
+/* Setting-item subtext */
+.setting-item .setting-subtext {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    line-height: 1.35;
+    letter-spacing: 0.2px;
+    margin-top: 4px;
+    text-align: left;
+    flex-basis: 100%;
+    order: 3;  /* always under the label + control row */
+}
+.setting-item {
+    flex-wrap: wrap;
+}
+.setting-item > label { text-align: left; }
 
 /* ---------- Performance hint ---------- */
 .source-tree, .light-forge, .void-spirit, .character {

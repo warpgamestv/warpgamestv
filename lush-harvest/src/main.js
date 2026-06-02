@@ -305,7 +305,11 @@ let state = {
         // v3.1 new settings
         performanceMode: false, // disables fog, fireflies, trail particles
         worldEvents: true,      // allow random world events to fire
-        cameraZoom: 1.0         // 0.85 = zoom out, 1.0 = default
+        cameraZoom: 1.0,        // 0.85 = zoom out, 1.0 = default
+        // v3.2.1 new toggles
+        floatingNumbers: true,  // show +N motes / CRIT pop-ups
+        autoEquipBestTitle: false,
+        confirmAscend: true     // ask before completing an Ascension
     },
     buildMode: { active: false, sourceId: null, targetId: null },
     buffs: {
@@ -1475,6 +1479,21 @@ function renderTitleHTML(t) {
     return `<span class="player-title" style="color: ${color}; text-shadow: 0 0 6px ${color};">${escapeHTML(t.name)}</span>`;
 }
 
+// v3.2.1 Auto-equip the highest unlocked title (later entries in the TITLES list
+// are considered higher-tier). Called whenever achievements/lifetime stats change.
+function autoEquipBestTitleIfEnabled() {
+    if (!state.settings.autoEquipBestTitle) return;
+    const candidates = TITLES.filter(t => t.id !== 'wanderer' && t.check());
+    if (candidates.length === 0) return;
+    const best = candidates[candidates.length - 1];
+    if (state.profile.title !== best.id) {
+        state.profile.title = best.id;
+        if (document.getElementById('profile-panel')?.classList.contains('active')) renderProfile();
+    }
+}
+// Run alongside the existing achievement progress scan
+setInterval(autoEquipBestTitleIfEnabled, 5000);
+
 // ============================================================
 // v3.1 Daily Streak — counts consecutive UTC days the player loaded the game
 // ============================================================
@@ -1974,6 +1993,7 @@ function applyAccessibility() {
 // v3.0: Floating gain numbers (anchored in game-world coordinates)
 function showFloatingNumber(x, y, text, opts = {}) {
     if (!state.settings.showParticles) return;
+    if (state.settings.floatingNumbers === false) return;
     const el = document.createElement('div');
     el.className = 'float-num' + (opts.crit ? ' crit' : '');
     el.textContent = text;
@@ -3340,6 +3360,17 @@ function loadGame() {
             const cb = document.getElementById('colorblind-mode');
             if (rm) rm.checked = !!state.settings.reducedMotion;
             if (cb) cb.value = state.settings.colorblind || 'off';
+            // v3.2.1 sync new toggles from loaded save
+            const pm = document.getElementById('performance-mode-toggle');
+            const we = document.getElementById('world-events-toggle');
+            const fn = document.getElementById('floating-numbers-toggle');
+            const at = document.getElementById('auto-title-toggle');
+            const ca = document.getElementById('confirm-ascend-toggle');
+            if (pm) pm.checked = !!state.settings.performanceMode;
+            if (we) we.checked = state.settings.worldEvents !== false;
+            if (fn) fn.checked = state.settings.floatingNumbers !== false;
+            if (at) at.checked = !!state.settings.autoEquipBestTitle;
+            if (ca) ca.checked = state.settings.confirmAscend !== false;
             applyAccessibility();
             updateVolume();
         }
@@ -3702,7 +3733,7 @@ setInterval(notifyAchievementProgress, 2000);
 // ============================================================
 // v3.2 Patch-notes callout — show a small banner on first load after a version bump
 // ============================================================
-const CURRENT_VERSION = '3.2.1'; // bump when releasing a new changelog entry
+const CURRENT_VERSION = '3.2.2'; // bump when releasing a new changelog entry
 function checkPatchNotesCallout() {
     const seen = localStorage.getItem('lushHarvest:seenVersion');
     if (seen === CURRENT_VERSION) return;
@@ -3712,9 +3743,10 @@ function checkPatchNotesCallout() {
     callout.classList.add('show');
 }
 function dismissPatchCallout(opts = {}) {
+    // Persist BEFORE removing the class so any race that interrupts the click still records the dismissal
+    try { localStorage.setItem('lushHarvest:seenVersion', CURRENT_VERSION); } catch (e) {}
     const callout = document.getElementById('patch-callout');
     if (callout) callout.classList.remove('show');
-    localStorage.setItem('lushHarvest:seenVersion', CURRENT_VERSION);
     if (opts.openChangelog) openChangelog();
 }
 
@@ -3879,7 +3911,11 @@ if (statsToggle && runStatsPanel) {
 }
 document.addEventListener('DOMContentLoaded', () => {
     closeSettings.onclick = () => { settingsPanel.classList.remove('active'); settingsMsg.textContent = ''; };
-    menuSettingsBtn.onclick = () => { settingsPanel.classList.add('active'); settingsMsg.textContent = ''; };
+    menuSettingsBtn.onclick = () => {
+        mainMenu.classList.remove('active');     // close the Hub
+        settingsPanel.classList.add('active');
+        settingsMsg.textContent = '';
+    };
 
     const masterVol = document.getElementById('master-volume-control');
     if (masterVol) {
@@ -3973,6 +4009,27 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    // v3.2.1 new pill toggles
+    const fnums = document.getElementById('floating-numbers-toggle');
+    if (fnums) {
+        fnums.checked = state.settings.floatingNumbers !== false;
+        fnums.onchange = (e) => { state.settings.floatingNumbers = e.target.checked; saveGame(); };
+    }
+    const autoTitle = document.getElementById('auto-title-toggle');
+    if (autoTitle) {
+        autoTitle.checked = !!state.settings.autoEquipBestTitle;
+        autoTitle.onchange = (e) => {
+            state.settings.autoEquipBestTitle = e.target.checked;
+            saveGame();
+            autoEquipBestTitleIfEnabled();
+        };
+    }
+    const confirmAsc = document.getElementById('confirm-ascend-toggle');
+    if (confirmAsc) {
+        confirmAsc.checked = state.settings.confirmAscend !== false;
+        confirmAsc.onchange = (e) => { state.settings.confirmAscend = e.target.checked; saveGame(); };
+    }
+
     startGameBtn.onclick = () => {
         initAudio();
         mainMenu.classList.remove('active');
@@ -4051,7 +4108,14 @@ ascendToggle.addEventListener('click', () => {
     ascendPanel.classList.add('active');
 });
 closeAscend.addEventListener('click', () => ascendPanel.classList.remove('active'));
-confirmAscend.addEventListener('click', handleAscend);
+confirmAscend.addEventListener('click', () => {
+    // Settings: Confirm Ascend gate (default on)
+    if (state.settings.confirmAscend !== false) {
+        const reward = calculateSparksReward();
+        if (!confirm(`Ascend now? You will gain ${reward} Eternal Spark${reward === 1 ? '' : 's'} and reset your run.`)) return;
+    }
+    handleAscend();
+});
 
 setInterval(() => {
     // Timers are now handled in updateBoosts() to center logic
@@ -4599,8 +4663,18 @@ function updateSpirits() {
         let damagedTether = false;
         for (let i = 0; i < state.tethers.length; i++) {
             const t = state.tethers[i];
-            // Use cached coordinates if available
-            const x1 = t.x1 || 0, y1 = t.y1 || 0, x2 = t.x2 || 0, y2 = t.y2 || 0;
+            // Defensive: derive coords from entityMap if renderTethers hasn't cached them yet
+            if (t.x1 == null || t.y1 == null || t.x2 == null || t.y2 == null) {
+                const src = state.entityMap[t.sourceId];
+                const tgt = state.entityMap[t.targetId];
+                if (src && tgt) {
+                    t.x1 = src.x; t.y1 = src.y;
+                    t.x2 = tgt.x; t.y2 = tgt.y;
+                } else {
+                    continue; // tether references a missing entity — skip this frame
+                }
+            }
+            const x1 = t.x1, y1 = t.y1, x2 = t.x2, y2 = t.y2;
 
             // Fast bounding box check (optional but helper)
             const minX = Math.min(x1, x2) - 30;

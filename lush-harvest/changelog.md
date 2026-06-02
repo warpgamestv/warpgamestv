@@ -4,6 +4,23 @@ All notable changes to **Lush Harvest** will be documented in this file.
 
 ---
 
+## [3.2.2] — 2026-05-28 — Menus & Mechanics Patch
+
+A focused patch addressing several reported issues with menus, settings, and tether behavior.
+
+### Fixes
+- **Hub overlay now closes when opening Settings from the Hub.** Previously the Hub stayed visible behind the settings panel.
+- **Patch notes banner persists dismissal.** The `seenVersion` write now happens *before* the show-class is removed, eliminating any race where a tab close could lose the dismissal mid-transition.
+- **Spirits damage tethers again.** A latent bug from the v3.2.1 tether overhaul: spirit-tether collision relied on cached `x1/y1/x2/y2` set by `renderTethers`. In some flows (cloud-save load, run-snapshot restore) collision ran before render. Now `updateSpirits` derives the coordinates from `entityMap` on demand if the cache is missing.
+- **Daily score banner no longer hides behind the currency pane.** Moved from `top: 70px` to `top: 116px` (desktop) / `top: 124px` (mobile) and raised z-index above the HUD. Boss-rush banner moved alongside for consistency.
+
+### Settings Overhaul
+- **Themed range sliders.** Cyan→purple→lime gradient track with a glowing cyan thumb (grab cursor on hover, scale-up + intensified glow while dragging). Replaces the default browser slider on Master / Music / Effects volume and Camera Zoom. WebKit, Blink, and Firefox track + thumb pseudo-elements all styled.
+- **Setting subtext.** Every toggle, slider, and dropdown now has a one-line description underneath explaining exactly what it does. *Performance Mode* explains the FPS tradeoff; *Confirm Ascend* explains why you'd want it; *Auto-Equip Best Title* notes that manual selection still works; etc. Total: 14 new description lines.
+- **Audio group label.** Volume sliders now sit under an "Audio" section header to match the Visuals / Accessibility / Gameplay grouping introduced earlier.
+
+---
+
 ## [3.2.1] — 2026-05-28 — Tether QoL
 
 A focused quality-of-life patch overhauling how Light Tethers are placed and removed. The old flow — *enter build mode → walk to a tree → click → walk to the forge → click* — has been replaced with a single-click toggle directly on any tree in the world.
