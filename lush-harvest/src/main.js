@@ -2270,6 +2270,8 @@ function renderEntity(entity) {
 
 function handleJoystickStart(e) {
     if (e.target.closest('.hud, .actions, .overlay, .close-btn, #objective-tracker, #burst-zone')) return;
+    // In build mode, taps on tetherable trees are tether clicks, not movement
+    if (state.buildMode.active && e.target.closest('.source-tree.tetherable')) return;
     const touch = e.touches ? e.touches[0] : e;
 
     // Dual-Zone: Left half for movement, Bottom-Right corner for burst
@@ -2883,7 +2885,7 @@ function updateHUD(type = null) {
         }
 
         if (labelEl) {
-            const desiredLabel = state.buildMode.active ? (state.buildMode.sourceId ? "SELECT FORGE" : "SELECT TREE") : "TETHER";
+            const desiredLabel = state.buildMode.active ? 'EXIT BUILD' : 'TETHER';
             if (labelEl.textContent !== desiredLabel) labelEl.textContent = desiredLabel;
         }
 
@@ -3437,62 +3439,135 @@ upgradeList.addEventListener('click', (e) => { if (e.target.classList.contains('
 closeAstral.addEventListener('click', () => astralPanel.classList.remove('active'));
 beginNextRun.addEventListener('click', beginJourney);
 
+// v3.2.1 — Tether system overhaul: simple toggle + click-to-place / click-to-remove
+function setBuildMode(on) {
+    state.buildMode.active = !!on;
+    state.buildMode.sourceId = null;
+    document.body.classList.toggle('build-mode-active', state.buildMode.active);
+    if (state.buildMode.active) refreshTetherableTreeHints();
+    else clearTetherableTreeHints();
+    updateHUD();
+    updateBuildCounter();
+}
+
+function refreshTetherableTreeHints() {
+    const connectedIds = new Set(state.tethers.map(t => t.sourceId));
+    for (const e of state.entities) {
+        if (e.type !== 'tree' || e.subType === 'star-tree') continue;
+        const el = document.getElementById(e.id);
+        if (!el) continue;
+        const tethered = connectedIds.has(e.id);
+        el.classList.add('tetherable');
+        el.classList.toggle('tetherable-active', tethered);
+        el.dataset.tetherTarget = e.id;
+    }
+}
+function clearTetherableTreeHints() {
+    document.querySelectorAll('.source-tree').forEach(el => {
+        el.classList.remove('tetherable', 'tetherable-active');
+        delete el.dataset.tetherTarget;
+    });
+}
+
+function placeTetherOnTree(tree) {
+    if (!tree || tree.type !== 'tree' || tree.subType === 'star-tree') return;
+    const forge = state.entities.find(e => e.type === 'forge');
+    if (!forge) return;
+    const weaverLevel = state.upgrades.find(u => u.id === 'light_weaver').level;
+    if (state.tethers.length >= weaverLevel) {
+        flashBuildCounter('Tether limit reached');
+        return;
+    }
+    state.tethers.push({ sourceId: tree.id, targetId: forge.id, health: 100, maxHealth: 100 });
+    state.runRecords.peakTethers = Math.max(state.runRecords.peakTethers || 0, state.tethers.length);
+    renderTethers();
+    refreshTetherableTreeHints();
+    playTone(700, 'sine', 0.4, 0.3);
+    playTone(900, 'sine', 0.3, 0.25);
+    // small confirmation particle at the tree
+    createHarvestParticle(tree.x, tree.y, true);
+    updateHUD();
+    updateBuildCounter();
+    saveGame();
+}
+
+function removeTetherFromTree(tree) {
+    const idx = state.tethers.findIndex(t => t.sourceId === tree.id);
+    if (idx === -1) return;
+    state.tethers.splice(idx, 1);
+    renderTethers();
+    refreshTetherableTreeHints();
+    playTone(420, 'sawtooth', 0.3, 0.2);
+    playTone(280, 'sine', 0.3, 0.25);
+    updateHUD();
+    updateBuildCounter();
+    saveGame();
+}
+
+function updateBuildCounter() {
+    const counter = document.getElementById('build-counter');
+    if (!counter) return;
+    if (!state.buildMode.active) { counter.style.display = 'none'; return; }
+    const weaverLevel = state.upgrades.find(u => u.id === 'light_weaver').level;
+    counter.style.display = 'flex';
+    counter.querySelector('.bc-current').textContent = state.tethers.length;
+    counter.querySelector('.bc-max').textContent = weaverLevel;
+    counter.classList.toggle('full', state.tethers.length >= weaverLevel);
+}
+function flashBuildCounter(msg) {
+    const counter = document.getElementById('build-counter');
+    if (!counter) return;
+    const hint = counter.querySelector('.bc-hint');
+    if (!hint) return;
+    const prev = hint.textContent;
+    hint.textContent = msg;
+    hint.classList.add('flash');
+    setTimeout(() => { hint.textContent = prev; hint.classList.remove('flash'); }, 1400);
+}
+
 buildToggle.addEventListener('click', () => {
     const weaverLevel = state.upgrades.find(u => u.id === 'light_weaver').level;
-    if (state.tethers.length >= weaverLevel && !state.buildMode.active) return; // Prevent activation if maxed
+    if (weaverLevel === 0) return;
+    setBuildMode(!state.buildMode.active);
+});
 
-    if (!state.buildMode.active) {
-        state.buildMode.active = true;
-        state.buildMode.sourceId = null;
-        updateHUD();
+// Click delegation: when in build mode, clicking any tetherable tree toggles its tether
+document.addEventListener('click', (e) => {
+    if (!state.buildMode.active) return;
+    const treeEl = e.target.closest('.source-tree.tetherable');
+    if (!treeEl) return;
+    e.stopPropagation();
+    const treeId = treeEl.dataset.tetherTarget;
+    const tree = state.entities.find(en => en.id === treeId);
+    if (!tree) return;
+    if (treeEl.classList.contains('tetherable-active')) {
+        removeTetherFromTree(tree);
     } else {
-        if (!state.buildMode.sourceId) {
-            let closestTree = null;
-            let minDist = 150;
-            for (const e of state.entities) {
-                if (e.type === 'tree' && e.subType !== 'star-tree') {
-                    const dist = Math.sqrt(Math.pow(e.x - state.player.x, 2) + Math.pow(e.y - state.player.y, 2));
-                    if (dist < minDist) { minDist = dist; closestTree = e; }
-                }
-            }
-            if (closestTree) {
-                if (state.tethers.find(t => t.sourceId === closestTree.id)) {
-                    const label = buildToggle.querySelector('.btn-label');
-                    if (label) label.textContent = "ALREADY TETHERED!";
-                    setTimeout(updateHUD, 1000);
-                    state.buildMode.active = false;
-                    return;
-                }
-                state.buildMode.sourceId = closestTree.id;
-                playTone(600, 'sine', 0.2, 0.4);
-                updateHUD();
-            } else {
-                state.buildMode.active = false;
-                updateHUD();
-            }
-        } else {
-            const forge = state.entities.find(e => e.type === 'forge');
-            const dist = Math.sqrt(Math.pow(forge.x - state.player.x, 2) + Math.pow(forge.y - state.player.y, 2));
-            if (dist < 200) {
-                state.tethers.push({
-                    sourceId: state.buildMode.sourceId,
-                    targetId: forge.id,
-                    health: 100,
-                    maxHealth: 100
-                });
-                state.runRecords.peakTethers = Math.max(state.runRecords.peakTethers || 0, state.tethers.length);
-                state.buildMode.active = false;
-                renderTethers();
-                playTone(800, 'sine', 0.5, 0.5);
-                updateHUD();
-                saveGame();
-            } else {
-                state.buildMode.active = false;
-                updateHUD();
-            }
-        }
+        placeTetherOnTree(tree);
     }
 });
+
+// ESC exits build mode
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && state.buildMode.active) setBuildMode(false);
+});
+
+// Mobile: same click delegation also fires on touchstart on the tree
+document.addEventListener('touchstart', (e) => {
+    if (!state.buildMode.active) return;
+    const treeEl = e.target.closest('.source-tree.tetherable');
+    if (!treeEl) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const treeId = treeEl.dataset.tetherTarget;
+    const tree = state.entities.find(en => en.id === treeId);
+    if (!tree) return;
+    if (treeEl.classList.contains('tetherable-active')) {
+        removeTetherFromTree(tree);
+    } else {
+        placeTetherOnTree(tree);
+    }
+}, { passive: false });
 
 cosmeticsToggle.addEventListener('click', () => { renderCosmetics(); cosmeticsPanel.classList.add('active'); });
 closeCosmetics.addEventListener('click', () => cosmeticsPanel.classList.remove('active'));
@@ -3627,7 +3702,7 @@ setInterval(notifyAchievementProgress, 2000);
 // ============================================================
 // v3.2 Patch-notes callout — show a small banner on first load after a version bump
 // ============================================================
-const CURRENT_VERSION = '3.2.0'; // bump when releasing a new changelog entry
+const CURRENT_VERSION = '3.2.1'; // bump when releasing a new changelog entry
 function checkPatchNotesCallout() {
     const seen = localStorage.getItem('lushHarvest:seenVersion');
     if (seen === CURRENT_VERSION) return;

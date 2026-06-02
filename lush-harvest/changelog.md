@@ -4,6 +4,26 @@ All notable changes to **Lush Harvest** will be documented in this file.
 
 ---
 
+## [3.2.1] — 2026-05-28 — Tether QoL
+
+A focused quality-of-life patch overhauling how Light Tethers are placed and removed. The old flow — *enter build mode → walk to a tree → click → walk to the forge → click* — has been replaced with a single-click toggle directly on any tree in the world.
+
+### Tether System Overhaul
+- **Click-to-place, click-to-remove** — Enter build mode and every eligible tree in the world gets a colored pulse:
+  - **Cyan dashed outline** = "click me to tether"
+  - **Red dashed outline + ✕ badge** = "click me to remove"
+- Clicking any pulsing tree instantly places or removes its tether — no walking, no second click required.
+- **Build counter** floats at the top center while building: `🔗 3 / 5 Tethers · Click a tree to place · click again to remove`. Border turns pink when you hit your tether cap; "Tether limit reached" flashes on overcap attempts.
+- **Esc** exits build mode at any time. Clicking the build button again also exits.
+- **Touch-friendly** — mobile taps on tetherable trees register the same way; the joystick is suppressed so a build-mode tap doesn't drag the camera.
+- **Visual context** — the rest of the world dims slightly during build mode (player at 85% opacity) so trees pop. Hovering a tree speeds up its pulse and brightens — instant feedback that a click will register.
+- **Confirmation feedback** — placing plays a two-note rising chime + a star particle; removing plays a downward saw + sine pair.
+
+### Why
+The previous flow required four discrete inputs (button → click → walk → button → walk → button) and zero way to remove a tether short of waiting for spirits to destroy it. The new flow is a single input per tether and bidirectional (place + remove with the same gesture). Backwards-compatible — old saves keep their `buildMode.sourceId` field but it's always `null` under the new system.
+
+---
+
 ## [3.2.0] — 2026-05-28 — Codex & Crowns
 
 A content-focused drop. Express who you are with **Player Titles** earned from milestones. Take screenshots without HUD clutter via **Photo Mode**. Track every spirit, boss, and hidden secret you've encountered in the new **Codex**. Discover **Hidden Secrets** scattered randomly through the world. Test your boss-killing chops in the new **Boss Rush** arena unlocked after beating Eclipse Sovereign. And get notified the moment a new update lands with the **Patch Notes Callout**.
